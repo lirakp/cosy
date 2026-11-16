@@ -1,0 +1,41 @@
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #1b1730;
+  color: #b9a6c9;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+canvas {
+  display: block;
+  /* Pixel bleiben beim Hochskalieren scharf */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 0 0 2px #2a2456, 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.hint {
+  margin: 0;
+  padding: 0 16px;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.7;
+}
