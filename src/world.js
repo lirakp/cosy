@@ -1,4 +1,6 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X } from './config.js';
+import { itemImage } from './items.js';
+import * as expedition from './expedition.js';
 import { state, COIN_VALUE } from './state.js';
 import { PAL } from './palette.js';
 import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
@@ -152,16 +154,71 @@ function drawWell(ctx, x) {
   rect(ctx, x - 9, base - 11, 18, 1, PAL.magic);
 }
 
+function drawTent(ctx, x) {
+  const base = GROUND_Y + 4;
+  rect(ctx, x, base - 24, 1, 6, PAL.woodDark);
+  rect(ctx, x + 1, base - 24, 4, 2, PAL.roof);
+  px(ctx, x + 5, base - 23, PAL.roof);
+  for (let i = 0; i < 19; i++) {
+    const half = Math.floor(i * 0.75) + 1;
+    const y = base - 19 + i;
+    rect(ctx, x - half, y, half * 2, 1, PAL.wall);
+    rect(ctx, x + Math.floor(half / 3), y, half - Math.floor(half / 3), 1, PAL.wallShade);
+    px(ctx, x - half, y, PAL.glowLight);
+    if (i > 6) rect(ctx, x - Math.floor((i - 6) / 4) - 1, y, Math.floor((i - 6) / 4) * 2 + 2, 1, PAL.ink);
+  }
+  rect(ctx, x - 15, base - 1, 30, 1, PAL.roof);
+}
+
+// Die Truhe füllt sich sichtbar; liegt ein Fund darin, funkelt sie.
+function drawChest(ctx, x, base, fill, hasLoot, time) {
+  rect(ctx, x - 8, base - 8, 16, 9, PAL.ink);
+  rect(ctx, x - 7, base - 7, 14, 7, PAL.wood);
+  rect(ctx, x - 7, base - 1, 14, 1, PAL.woodDark);
+  rect(ctx, x - 4, base - 7, 1, 7, PAL.coinDark);
+  rect(ctx, x + 3, base - 7, 1, 7, PAL.coinDark);
+  if (fill <= 0 && !hasLoot) {
+    rect(ctx, x - 8, base - 12, 16, 5, PAL.ink);
+    rect(ctx, x - 7, base - 11, 14, 4, PAL.woodLight);
+    rect(ctx, x - 7, base - 8, 14, 1, PAL.woodDark);
+    rect(ctx, x - 4, base - 11, 1, 4, PAL.coinDark);
+    rect(ctx, x + 3, base - 11, 1, 4, PAL.coinDark);
+    rect(ctx, x - 1, base - 8, 2, 2, PAL.coin);
+    return;
+  }
+  rect(ctx, x - 8, base - 15, 16, 4, PAL.ink);
+  rect(ctx, x - 7, base - 14, 14, 2, PAL.woodDark);
+  rect(ctx, x - 7, base - 14, 14, 1, PAL.wood);
+  rect(ctx, x - 7, base - 12, 14, 5, PAL.ink);
+  const pile = 1 + Math.round(fill * 3);
+  for (let k = 0; k < pile; k++) {
+    rect(ctx, x - 6 + k, base - 8 - k, 12 - k * 2, 1, PAL.coin);
+    px(ctx, x - 4 + k * 2, base - 8 - k, PAL.glowLight);
+    px(ctx, x + 2 - k, base - 8 - k, PAL.coinDark);
+  }
+  if (hasLoot) {
+    const y = base - 20 + Math.round(Math.sin(time * 4));
+    rect(ctx, x - 1, y, 3, 1, PAL.magic);
+    rect(ctx, x, y - 1, 1, 3, PAL.magic);
+    px(ctx, x, y, PAL.glowLight);
+    px(ctx, x - 5, base - 15 - (Math.floor(time * 6) % 4), PAL.glowLight);
+    px(ctx, x + 5, base - 14 - (Math.floor(time * 6 + 2) % 4), PAL.magic);
+  }
+}
+
+const FLOATERS = ['Falter', 'Fisch'];
+
 function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [34, 118, 482, 572]) drawTree(ctx, x, r);
-  for (const x of [80, 300, 520, 620]) drawBush(ctx, x, r);
+  for (const x of [34, 118, 482, 612]) drawTree(ctx, x, r);
+  for (const x of [80, 300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
   drawLantern(ctx, LANTERN_X);
   drawWell(ctx, WELL_X);
+  drawTent(ctx, CAMP_X - 30);
   return c;
 }
 
@@ -214,8 +271,55 @@ export function createWorld() {
   const pops = [];
   let coinTimer = 1;
 
+  // Das Expeditionsteam läuft als kleine Pixelfiguren im Lager umher.
+  const actors = new Map();
+  function updateTeam(dt) {
+    const team = expedition.live.team;
+    for (const id of actors.keys()) if (!team.some((item) => item.id === id)) actors.delete(id);
+    for (const item of team) {
+      if (actors.has(item.id)) continue;
+      const slots = [0, 1, 2, 3].filter((s) => ![...actors.values()].some((a) => a.slot === s));
+      actors.set(item.id, { item, slot: slots[0], x: CAMP_X - 30 + r() * 80, target: null, wait: r() * 2, dir: 1, speed: 6 + r() * 6, phase: r() * 6 });
+    }
+    for (const a of actors.values()) {
+      if (a.wait > 0) {
+        a.wait -= dt;
+        continue;
+      }
+      if (a.target === null) a.target = CAMP_X - 42 + r() * 104;
+      const d = a.target - a.x;
+      a.dir = d < 0 ? -1 : 1;
+      if (Math.abs(d) <= a.speed * dt) {
+        a.x = a.target;
+        a.target = null;
+        a.wait = 1 + r() * 3;
+      } else a.x += a.dir * a.speed * dt;
+    }
+  }
+
+  function drawTeam(ctx, cam, time) {
+    ctx.drawImage(expedition.leaderImage(), CAMP_X - 6 - cam, GROUND_Y - 10);
+    for (const a of [...actors.values()].sort((p, q) => p.slot - q.slot)) {
+      let y = GROUND_Y - 9 + (a.slot % 2) * 3;
+      if (FLOATERS.includes(a.item.kind)) y -= 7 + Math.round(Math.sin(time * 2 + a.phase) * 2);
+      else if (a.wait <= 0) y -= Math.floor(time * 7 + a.phase) % 2;
+      const x = Math.round(a.x) - 8 - cam;
+      if (a.dir < 0) {
+        ctx.save();
+        ctx.translate(x + 16, y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(itemImage(a.item), 0, 0);
+        ctx.restore();
+      } else ctx.drawImage(itemImage(a.item), x, y);
+    }
+    // die Truhe steht vorne, damit sie immer anklickbar und sichtbar bleibt
+    const { gold, cap, loot } = expedition.live;
+    drawChest(ctx, CHEST_X - cam, GROUND_Y + 7, cap ? gold / cap : 0, loot > 0, time);
+  }
+
   return {
     update(dt, player) {
+      updateTeam(dt);
       coinTimer -= dt;
       if (coinTimer <= 0) {
         coinTimer = 2.5 + r() * 2;
@@ -260,6 +364,8 @@ export function createWorld() {
         if (t > 0.85) continue;
         px(ctx, WELL_X - cam + Math.round(Math.sin(time * 1.3 + i * 2.1) * 6), GROUND_Y - 8 - Math.round(t * 22), i % 2 ? PAL.magic : PAL.glowLight);
       }
+
+      drawTeam(ctx, cam, time);
 
       for (const c of coins) {
         const x = Math.round(c.x) - cam - 2;

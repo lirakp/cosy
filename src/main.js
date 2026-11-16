@@ -1,6 +1,8 @@
-import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y } from './config.js';
+import * as expedition from './expedition.js';
+import { state } from './state.js';
 import { clamp } from './utils.js';
-import { initInput, setBlocked } from './input.js';
+import { initInput, setBlocked, setTapHandler } from './input.js';
 import { createUI } from './ui.js';
 import { createBackground } from './background.js';
 import { createWorld } from './world.js';
@@ -25,19 +27,52 @@ resize();
 initInput(canvas);
 
 const ui = createUI({ onToggle: setBlocked });
-const wellButton = document.getElementById('btn-well');
-let nearWell = false;
+const actionButton = document.getElementById('btn-action');
+const actionLabel = actionButton.querySelector('span');
+let near = null; // 'well' | 'camp'
+
+const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot > 0;
+
+function act() {
+  if (near === 'well') ui.openWell();
+  if (near === 'camp') chestHasContent() ? ui.collectChest() : ui.openExpedition();
+}
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
-wellButton.addEventListener('click', () => ui.openWell());
+document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
+actionButton.addEventListener('click', act);
 addEventListener('keydown', (e) => {
   if (ui.isOpen() || e.repeat) return;
   if (e.code === 'KeyG') ui.openGallery();
-  if (nearWell && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) {
+  if (e.code === 'KeyX') ui.openExpedition();
+  if (near && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) {
     e.preventDefault();
-    ui.openWell();
+    act();
   }
 });
+
+// Ein Klick direkt auf die Truhe leert sie.
+setTapHandler((x, y) => {
+  const chestX = CHEST_X - Math.round(camX);
+  if (Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
+  ui.collectChest();
+  return true;
+});
+
+// Die Expedition wird einmal pro Sekunde abgerechnet und regelmäßig gespeichert.
+let saveCountdown = 10;
+function expeditionTick() {
+  const found = expedition.tick();
+  if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.');
+  ui.updateChest();
+  if (--saveCountdown <= 0 || found) {
+    saveCountdown = 10;
+    state.save();
+  }
+}
+expeditionTick();
+setInterval(expeditionTick, 1000);
+addEventListener('pagehide', () => state.save());
 
 const background = createBackground();
 const world = createWorld();
@@ -56,8 +91,13 @@ function frame(now) {
   background.update(dt);
   world.update(dt, player);
 
-  nearWell = Math.abs(player.x - WELL_X) < WELL_RANGE;
-  wellButton.hidden = !nearWell || ui.isOpen();
+  near = Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well' : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp' : null;
+  actionButton.hidden = !near || ui.isOpen();
+  const label =
+    near === 'well' ? '✦ Wunschbrunnen'
+    : !chestHasContent() ? 'Expedition'
+    : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
+  if (actionLabel.textContent !== label) actionLabel.textContent = label;
 
   // Kamera folgt der Figur sanft
   const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);

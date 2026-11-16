@@ -13,3 +13,8 @@ export const WALK_Y = 158;
 // Der Wunschbrunnen, an dem Sammelstücke gezogen werden.
 export const WELL_X = 428;
 export const WELL_RANGE = 24;
+
+// Das Expeditionslager mit der Truhe.
+export const CAMP_X = 545;
+export const CHEST_X = 560;
+export const CAMP_RANGE = 26;

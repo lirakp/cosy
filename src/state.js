@@ -9,25 +9,42 @@ export const PULL_COST = 50;
 export const PULL_10_COST = 450; // zehn Züge zum Preis von neun
 export const COIN_VALUE = 10;
 
+const newExpedition = () => ({
+  evo: {}, // Entwicklungsstufe je Lebewesen (0 = D … 5 = SS)
+  leader: 'mira',
+  leaderEvo: {},
+  last: 0, // Zeitpunkt der letzten Abrechnung
+  gold: 0, // Gold in der Truhe
+  frac: 0, // angebrochene Minute für die Fund-Würfe
+  loot: [], // gefundene Stücke in der Truhe
+});
+
 const listeners = new Set();
 const data = load();
 
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
-    if (saved && typeof saved.gold === 'number' && saved.owned) return saved;
+    if (saved && typeof saved.gold === 'number' && saved.owned) {
+      saved.exp = { ...newExpedition(), ...saved.exp };
+      return saved;
+    }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0 };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition() };
 }
 
-function changed() {
+function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(data));
   } catch {
     // Speichern nicht möglich (z. B. privates Fenster) – das Spiel läuft trotzdem
   }
+}
+
+function changed() {
+  save();
   for (const fn of listeners) fn();
 }
 
@@ -38,6 +55,11 @@ export const state = {
   get pulls() {
     return data.pulls;
   },
+  get exp() {
+    return data.exp;
+  },
+  save,
+  changed,
   count: (id) => data.owned[id] || 0,
   onChange: (fn) => listeners.add(fn),
 
@@ -54,6 +76,24 @@ export const state = {
     for (const item of items) data.owned[item.id] = (data.owned[item.id] || 0) + 1;
     changed();
     return true;
+  },
+
+  spend(cost) {
+    if (data.gold < cost) return false;
+    data.gold -= cost;
+    changed();
+    return true;
+  },
+
+  // Stücke ohne Bezahlung eintragen (z. B. Expeditionsfunde)
+  addItems(items) {
+    for (const item of items) data.owned[item.id] = (data.owned[item.id] || 0) + 1;
+    changed();
+  },
+
+  // Verbraucht ein Duplikat; das letzte Exemplar bleibt unangetastet.
+  useDuplicate(id) {
+    if ((data.owned[id] || 0) > 1) data.owned[id]--;
   },
 
   duplicates: (id) => Math.max(0, (data.owned[id] || 0) - 1),

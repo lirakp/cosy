@@ -12,11 +12,15 @@
       <canvas id="game" width="320" height="180" aria-label="Cosy – ein gemütliches Pixel-Art-Spiel"></canvas>
       <div id="hud">
         <div id="gold" title="Gold">◉ <span>0</span></div>
-        <button id="btn-gallery">Galerie <kbd>G</kbd></button>
+        <div class="hud-buttons">
+          <button id="btn-expedition">Expedition <kbd>X</kbd></button>
+          <button id="btn-gallery">Galerie <kbd>G</kbd></button>
+        </div>
       </div>
-      <button id="btn-well" hidden>✦ Wunschbrunnen <kbd>E</kbd></button>
+      <div id="toast" hidden></div>
+      <button id="btn-action" hidden><span></span> <kbd>E</kbd></button>
     </div>
-    <p class="hint">← → oder A / D laufen · Münzen einsammeln · am Brunnen wünschen</p>
+    <p class="hint">← → oder A / D laufen · Münzen sammeln · am Brunnen wünschen · im Lager die Truhe leeren</p>
   </main>
   <div id="overlay" hidden></div>
   <script type="module" src="src/main.js"></script>

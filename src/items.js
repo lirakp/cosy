@@ -67,6 +67,7 @@ CATEGORIES.forEach((cat, c) => {
         rank: rarity.id,
         sell: rarity.sell,
         name: `${kind.n} ${epithet}`,
+        kind: kind.n,
         draw: kind.d,
         seed: (c + 1) * 100003 + (tier + 1) * 1009 + i * 31 + 7,
       };

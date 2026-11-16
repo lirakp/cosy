@@ -5,14 +5,14 @@ import { M, ramp } from './core.js';
 const SKIN = [[28, 55, 78], [25, 50, 68], [22, 45, 55], [20, 40, 42], [30, 60, 84]];
 const HAIR = [[25, 45, 28], [42, 72, 62], [15, 70, 45], [260, 10, 18], [30, 10, 82]];
 
-function body(g, r, f, o = {}) {
+export function body(g, r, f, o = {}) {
   const over = {
-    [M.skin]: ramp(...r.pick(SKIN)),
-    [M.hair]: f > 0.5 && r.chance(0.5) ? ramp(r() * 360, 70, 60) : ramp(...r.pick(HAIR)),
+    [M.skin]: o.skin ?? ramp(...r.pick(SKIN)),
+    [M.hair]: o.hairColor ?? (f > 0.5 && r.chance(0.5) ? ramp(r() * 360, 70, 60) : ramp(...r.pick(HAIR))),
   };
   const top = o.bare ? M.skin : M.main;
 
-  if (o.cape || r.chance(f * 0.7)) {
+  if (o.cape ?? r.chance(f * 0.7)) {
     g.rect(3, 7, 10, 6, M.accent);
     g.pts(0, [[3, 7], [12, 7]]);
   }

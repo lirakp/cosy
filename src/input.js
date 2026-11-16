@@ -9,6 +9,13 @@ export function setBlocked(value) {
   if (value) pointerDir = 0;
 }
 
+let tapHandler = null;
+
+// Darf einen Klick auf die Spielfläche abfangen (Spielkoordinaten); true = erledigt.
+export function setTapHandler(fn) {
+  tapHandler = fn;
+}
+
 const LEFT = ['ArrowLeft', 'KeyA'];
 const RIGHT = ['ArrowRight', 'KeyD'];
 
@@ -29,6 +36,10 @@ export function initInput(canvas) {
     pointerDir = e.clientX < r.left + r.width / 2 ? -1 : 1;
   };
   canvas.addEventListener('pointerdown', (e) => {
+    const r = canvas.getBoundingClientRect();
+    const gx = ((e.clientX - r.left) / r.width) * canvas.width;
+    const gy = ((e.clientY - r.top) / r.height) * canvas.height;
+    if (blocked || tapHandler?.(gx, gy)) return;
     canvas.setPointerCapture(e.pointerId);
     point(e);
   });
