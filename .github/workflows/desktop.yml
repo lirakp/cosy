@@ -1,0 +1,42 @@
+name: Desktop-App bauen
+
+# Baut das Windows-Programm und legt es als Download unter "Releases" ab.
+on:
+  push:
+    branches: [main, claude/cozy-game-foundation-nhof2p]
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-build
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cosy-Windows
+          path: dist/*.exe
+          if-no-files-found: error
+      - name: Release aktualisieren
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete desktop-latest --cleanup-tag --yes || true
+          gh release create desktop-latest dist/*.exe \
+            --target "$GITHUB_SHA" \
+            --title "Cosy für Windows" \
+            --notes "Automatisch gebaut. Cosy-Setup-*.exe installiert das Spiel, Cosy-*-portable.exe startet ohne Installation."

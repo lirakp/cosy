@@ -3,7 +3,27 @@
 Grundlage für ein gemütliches Pixel-Art-Spiel – reines HTML5-Canvas, ohne
 Abhängigkeiten und ohne Build-Schritt.
 
-## Starten
+## Als Programm für Windows
+
+Unter **Releases** auf GitHub liegt der aktuelle Build („Cosy für Windows“):
+
+- `Cosy-Setup-….exe` installiert das Spiel mit Startmenü-Eintrag.
+- `Cosy-…-portable.exe` startet direkt, ohne Installation.
+
+Der Build entsteht automatisch bei jedem Push (`.github/workflows/desktop.yml`).
+Die Programme sind nicht signiert; Windows zeigt beim ersten Start deshalb eine
+SmartScreen-Warnung („Weitere Informationen“ → „Trotzdem ausführen“).
+`F11` schaltet Vollbild um.
+
+Selbst bauen oder im Fenster testen:
+
+```sh
+npm install
+npm start        # Spiel im Programmfenster starten
+npm run dist     # Windows-Programme nach dist/ bauen
+```
+
+## Im Browser starten
 
 Das Spiel nutzt ES-Module, braucht also einen kleinen lokalen Webserver:
 
@@ -104,4 +124,5 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/sprites.js` | Spielfigur als Text-Pixelraster |
 | `src/player.js` | Bewegung und Animation |
 | `src/input.js` | Tastatur und Touch |
+| `desktop/main.js` | Programmfenster für die Desktop-Version (Electron) |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |
