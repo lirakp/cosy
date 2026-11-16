@@ -1,12 +1,15 @@
 import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem } from './items.js';
 import { state, PULL_COST, PULL_10_COST } from './state.js';
 import * as exp from './expedition.js';
+import * as dungeon from './dungeon.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const fmt = (n) => n.toLocaleString('de-DE');
 const fmt1 = (n) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+const duration = (sec) => (sec < 60 ? `${sec} s` : `${sec / 60} min`);
 const percent = (p) => `${(p * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
 
 function picture(image) {
@@ -37,6 +40,7 @@ export function createUI({ onToggle }) {
   let filter = { cat: CATEGORIES[0].id, rank: 'D' };
   let selected = null;
   let lastPull = [];
+  const pick = { level: 0, heroes: [] }; // Auswahl im Dungeon-Menü
   const reveals = [];
 
   const refreshGold = () => {
@@ -54,6 +58,7 @@ export function createUI({ onToggle }) {
     if (view === 'well') renderWell();
     if (view === 'gallery') renderGallery();
     if (view === 'expedition') renderExpedition();
+    if (view === 'dungeon') renderDungeon();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -133,6 +138,7 @@ export function createUI({ onToggle }) {
     $('.reveal')?.remove();
     const next = reveals.shift();
     if (!next) return onToggle(busy());
+    if (next.result) return showResult(next.result);
     const { item, isNew, source } = next;
     const el = document.createElement('div');
     el.className = `reveal r-${item.rank}`;
@@ -152,6 +158,123 @@ export function createUI({ onToggle }) {
     onToggle(true);
   }
 
+  // ------------------------------------------------------------ Dungeon
+
+  function renderDungeon() {
+    const status = dungeon.status();
+    const run = dungeon.run();
+
+    if (run) {
+      const level = dungeon.LEVELS[run.level];
+      overlay.innerHTML = `
+        <section class="panel dungeon r-${level.rank}">
+          ${head('Dungeon')}
+          <p class="lead"><b class="evo">${level.rank}</b> · ${level.name} · Erfolgschance ${percent(dungeon.chance(run.level, run.heroes))}</p>
+          <div class="party${status === 'running' ? ' away' : ''}" id="party"></div>
+          <div class="chest">
+            <div class="line"><span id="run-text"></span></div>
+            <div class="bar"><i id="run-bar"></i></div>
+            <div class="line">
+              <button class="big" data-act="dungeon-collect" id="run-collect">Ergebnis abholen</button>
+              <button data-act="dungeon-abort" id="run-abort">Abbrechen (ohne Beute)</button>
+            </div>
+          </div>
+        </section>`;
+      $('#party').replaceChildren(...run.heroes.map((id) => tile(getItem(id))));
+      updateDungeon();
+      return;
+    }
+
+    const owned = dungeon.heroes();
+    pick.heroes = pick.heroes.filter((id) => state.count(id));
+    const odds = dungeon.chance(pick.level, pick.heroes);
+    const level = dungeon.LEVELS[pick.level];
+    const levels = dungeon.LEVELS.map((l, i) => `
+      <button class="level r-${l.rank}${i === pick.level ? ' on' : ''}" data-act="level" data-v="${i}">
+        <b><i>${l.rank}</i>${l.name}</b>
+        <span>${duration(l.seconds)} · Stärke ${l.need}</span>
+        <span class="gold-text">~${fmt(l.gold)} Gold</span>
+        <span>${l.standard ? `${l.standard}× D + ` : ''}${l.bonus}× ${l.minTier ? `ab ${dungeon.rankOf(l.minTier)}` : 'Zufall'}</span>
+      </button>`).join('');
+
+    overlay.innerHTML = `
+      <section class="panel dungeon">
+        ${head('Dungeon')}
+        <p class="lead">Schicke bis zu ${dungeon.MAX_HEROES} Helden los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
+        <h4>Gefahrenstufe</h4>
+        <div class="levels">${levels}</div>
+        <h4>Helden (${pick.heroes.length}/${dungeon.MAX_HEROES})</h4>
+        ${owned.length
+          ? '<div class="grid heroes" id="hero-grid"></div>'
+          : '<p class="muted">Noch keine Helden – ziehe welche am Wunschbrunnen.</p>'}
+        <div class="chest">
+          <div class="line odds">
+            <span>Team-Stärke <b>${dungeon.power(pick.heroes)}</b> / ${level.need}</span>
+            <span>Erfolgschance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${pick.heroes.length ? percent(odds) : '–'}</b></span>
+          </div>
+          <p class="muted">Stärke je Held: ${RARITIES.map((r, i) => `${r.id} ${dungeon.HERO_POWER[i]}`).join(' · ')}. Scheitert die Erkundung, gibt es keine Beute.</p>
+          <div class="line">
+            <button data-act="best" ${owned.length ? '' : 'disabled'}>Stärkste wählen</button>
+            <button class="big" data-act="dungeon-start" ${pick.heroes.length ? '' : 'disabled'}>Losschicken · ${duration(level.seconds)}</button>
+          </div>
+        </div>
+      </section>`;
+    $('#hero-grid')?.replaceChildren(
+      ...owned.map((h) => {
+        const el = tile(h);
+        if (pick.heroes.includes(h.id)) el.classList.add('picked');
+        return el;
+      })
+    );
+  }
+
+  // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
+  function updateDungeon() {
+    const text = $('#run-text');
+    const run = dungeon.run();
+    if (!text || !run) return;
+    const done = dungeon.status() === 'done';
+    const total = run.end - run.start;
+    text.textContent = done ? 'Deine Helden sind zurück!' : `Unterwegs … noch ${clock(dungeon.remaining())}`;
+    $('#run-bar').style.width = `${Math.min(100, ((Date.now() - run.start) / total) * 100)}%`;
+    $('#run-collect').disabled = !done;
+    $('#run-abort').hidden = done;
+    $('#party').classList.toggle('away', !done);
+  }
+
+  function collectDungeon() {
+    const result = dungeon.collect();
+    if (!result) return;
+    reveals.push({ result });
+    // besonders seltene Beute bekommt danach noch ihren großen Auftritt
+    reveals.push(...result.items.filter((i) => i.item.tier >= HIGHLIGHT_TIER).map((i) => ({ ...i, source: 'DUNGEONFUND' })));
+    if (view === 'dungeon') renderDungeon();
+    nextReveal();
+  }
+
+  // Ergebnis-Pop-up: Erfolg oder Niederlage, Gold und alle gefundenen Stücke
+  function showResult({ level, success, gold, items, odds }) {
+    const el = document.createElement('div');
+    el.className = `reveal result r-${level.rank}${success ? '' : ' fail'}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">DUNGEON ${level.rank} · ${level.name.toUpperCase()}</div>
+        <div class="rank-big">${success ? 'GESCHAFFT!' : 'GESCHEITERT'}</div>
+        ${success
+          ? `<div class="gold-won">+${fmt(gold)} Gold</div><div class="grid" id="loot"></div>
+             <p>${items.length} Sammelstück${items.length > 1 ? 'e' : ''} gefunden</p>`
+          : `<p>Deine Helden mussten umkehren – diesmal ohne Beute.<br>Die Erfolgschance lag bei ${percent(odds)}.</p>`}
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('#loot', el)?.replaceChildren(
+      ...items.map(({ item, isNew }) => tile(item, { badge: isNew ? '<span class="new">NEU</span>' : '' }))
+    );
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    onToggle(true);
+  }
+
   // ------------------------------------------------------------ Expedition
 
   // Leert die Truhe; jedes gefundene Sammelstück bekommt sein eigenes Pop-up.
@@ -165,6 +288,7 @@ export function createUI({ onToggle }) {
     toast(`+${fmt(result.gold)} Gold aus der Truhe${finds ? ` · ${finds} Fund${finds > 1 ? 'e' : ''}!` : ''}`);
     reveals.push(...result.items.map((i) => ({ ...i, source: 'EXPEDITIONSFUND' })));
     if (view === 'expedition') renderExpedition();
+    if (view === 'dungeon') renderDungeon();
     nextReveal();
   }
 
@@ -329,6 +453,14 @@ export function createUI({ onToggle }) {
       renderGallery();
       return;
     }
+    if (tileEl && view === 'dungeon') {
+      if (dungeon.run()) return;
+      const id = tileEl.dataset.id;
+      if (pick.heroes.includes(id)) pick.heroes = pick.heroes.filter((h) => h !== id);
+      else if (pick.heroes.length < dungeon.MAX_HEROES) pick.heroes.push(id);
+      renderDungeon();
+      return;
+    }
     if (tileEl && view === 'well') {
       const item = getItem(tileEl.dataset.id);
       filter = { cat: item.cat, rank: item.rank };
@@ -346,6 +478,11 @@ export function createUI({ onToggle }) {
     if (act === 'gallery') show('gallery');
     if (act === 'pull') pull(Number(btn.dataset.n));
     if (act === 'collect') collectChest();
+    if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
+    if (act === 'best') { pick.heroes = dungeon.heroes().slice(0, dungeon.MAX_HEROES).map((h) => h.id); renderDungeon(); }
+    if (act === 'dungeon-start') { dungeon.start(pick.level, pick.heroes); renderDungeon(); }
+    if (act === 'dungeon-abort') { dungeon.abort(); renderDungeon(); }
+    if (act === 'dungeon-collect') collectDungeon();
     if (act === 'leader') { exp.setLeader(btn.dataset.id); renderExpedition(); }
     if (act === 'leader-evolve') { exp.evolveLeader(); renderExpedition(); }
     if (act === 'evolve') { exp.evolve(getItem(btn.dataset.id)); renderExpedition(); }
@@ -370,6 +507,8 @@ export function createUI({ onToggle }) {
     toast,
     collectChest,
     updateChest,
+    updateDungeon,
+    openDungeon: () => show('dungeon'),
     openExpedition: () => show('expedition'),
     openWell: () => show('well'),
     openGallery: () => show('gallery'),

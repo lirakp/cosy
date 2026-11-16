@@ -13,7 +13,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Sammeln
@@ -51,6 +51,25 @@ und fünf Funde; geleert wird sie per Klick auf die Truhe, mit `E` oder im Menü
 
 Alle Werte stehen oben in `src/expedition.js`.
 
+## Dungeon
+
+Am Tor ganz links ziehen bis zu fünf Helden los. Die Dauer ist die
+Gefahrenstufe; es läuft immer eine Erkundung zur selben Zeit, auch bei
+geschlossenem Spiel. Erfolgschance = Team-Stärke ÷ nötige Stärke, begrenzt auf
+5–95 %. Stärke je Held: D 1 · C 2 · B 4 · A 7 · S 12 · SS 20. Scheitert die
+Erkundung, gibt es keine Beute.
+
+| Stufe | Dauer | Nötige Stärke | Gold | Sammelstücke |
+| --- | --- | --- | --- | --- |
+| D | 30 s | 2 | ~15 | 1× Zufall |
+| C | 1 min | 6 | ~35 | 3× D + 1× Zufall |
+| B | 5 min | 14 | ~150 | 3× D + 2× ab C |
+| A | 15 min | 28 | ~500 | 3× D + 3× ab C |
+| S | 30 min | 50 | ~1200 | 3× D + 4× ab B |
+| SS | 60 min | 85 | ~3000 | 3× D + 5× ab A |
+
+Alle Werte stehen oben in `src/dungeon.js`.
+
 Der Spielstand liegt im `localStorage` des Browsers.
 
 ## Aufbau
@@ -60,12 +79,13 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/config.js` | Auflösung (320×180), Weltbreite, Bodenlinien |
 | `src/palette.js` | Alle Farben an einem Ort |
 | `src/background.js` | Himmel, Sterne, Mond, Wolken, Berge, Hügel (Parallax) |
-| `src/world.js` | Wiese, Weg, Häuschen, Brunnen, Münzen, Rauch, Glühwürmchen |
+| `src/world.js` | Wiese, Weg, Häuschen, Brunnen, Lager, Dungeon-Tor, Münzen, Rauch, Glühwürmchen |
 | `src/items.js` | Katalog der Sammelstücke, Ränge, Chancen, Ziehen |
 | `src/art/` | Zeichner für die Sammelstücke (Kern + je Kategorie) |
 | `src/expedition.js` | Team, Ertrag, Truhe, Funde, Entwicklung, Leitung |
+| `src/dungeon.js` | Gefahrenstufen, Erfolgschance, Beute |
 | `src/state.js` | Gold, Sammlung, Verkaufen, Speichern |
-| `src/ui.js` | Menüs für Brunnen, Galerie und Expedition, Pop-ups |
+| `src/ui.js` | Menüs für Brunnen, Galerie, Expedition und Dungeon, Pop-ups |
 | `src/sprites.js` | Spielfigur als Text-Pixelraster |
 | `src/player.js` | Bewegung und Animation |
 | `src/input.js` | Tastatur und Touch |

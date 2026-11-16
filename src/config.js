@@ -18,3 +18,7 @@ export const WELL_RANGE = 24;
 export const CAMP_X = 545;
 export const CHEST_X = 560;
 export const CAMP_RANGE = 26;
+
+// Der Dungeon-Eingang.
+export const DUNGEON_X = 74;
+export const DUNGEON_RANGE = 22;

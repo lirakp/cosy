@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE } from './config.js';
+import * as dungeon from './dungeon.js';
 import * as expedition from './expedition.js';
 import { state } from './state.js';
 import { clamp } from './utils.js';
@@ -29,22 +30,25 @@ initInput(canvas);
 const ui = createUI({ onToggle: setBlocked });
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
-let near = null; // 'well' | 'camp'
+let near = null; // 'well' | 'camp' | 'dungeon'
 
 const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot > 0;
 
 function act() {
   if (near === 'well') ui.openWell();
+  if (near === 'dungeon') ui.openDungeon();
   if (near === 'camp') chestHasContent() ? ui.collectChest() : ui.openExpedition();
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
+document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
 actionButton.addEventListener('click', act);
 addEventListener('keydown', (e) => {
   if (ui.isOpen() || e.repeat) return;
   if (e.code === 'KeyG') ui.openGallery();
   if (e.code === 'KeyX') ui.openExpedition();
+  if (e.code === 'KeyF') ui.openDungeon();
   if (near && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) {
     e.preventDefault();
     act();
@@ -61,7 +65,13 @@ setTapHandler((x, y) => {
 
 // Die Expedition wird einmal pro Sekunde abgerechnet und regelmäßig gespeichert.
 let saveCountdown = 10;
+let dungeonWas = dungeon.status();
 function expeditionTick() {
+  const dungeonNow = dungeon.status();
+  if (dungeonNow === 'done' && dungeonWas === 'running' && !document.hidden) ui.toast('Deine Helden sind aus dem Dungeon zurück!');
+  dungeonWas = dungeonNow;
+  ui.updateDungeon();
+
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.');
   ui.updateChest();
@@ -91,10 +101,15 @@ function frame(now) {
   background.update(dt);
   world.update(dt, player);
 
-  near = Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well' : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp' : null;
+  near =
+    Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
+    : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
+    : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
+    : null;
   actionButton.hidden = !near || ui.isOpen();
   const label =
     near === 'well' ? '✦ Wunschbrunnen'
+    : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
   if (actionLabel.textContent !== label) actionLabel.textContent = label;

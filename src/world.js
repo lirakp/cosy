@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X } from './config.js';
+import * as dungeon from './dungeon.js';
 import { itemImage } from './items.js';
 import * as expedition from './expedition.js';
 import { state, COIN_VALUE } from './state.js';
@@ -154,6 +155,35 @@ function drawWell(ctx, x) {
   rect(ctx, x - 9, base - 11, 18, 1, PAL.magic);
 }
 
+function drawDungeonGate(ctx, x) {
+  const base = GROUND_Y + 4;
+  rect(ctx, x - 15, base - 25, 30, 25, PAL.stone);
+  rect(ctx, x - 13, base - 28, 26, 3, PAL.stone);
+  rect(ctx, x - 13, base - 28, 26, 1, PAL.stoneLight);
+  rect(ctx, x - 15, base - 25, 2, 1, PAL.stoneLight);
+  rect(ctx, x + 13, base - 25, 2, 1, PAL.stoneLight);
+  rect(ctx, x + 11, base - 27, 4, 27, 'rgba(42, 33, 64, 0.35)');
+  for (let row = 0; row < 8; row++) {
+    for (let bx = x - 15 + (row % 2) * 4; bx < x + 15; bx += 7) px(ctx, bx, base - 24 + row * 3, PAL.ink);
+  }
+  // Torbogen
+  rect(ctx, x - 9, base - 20, 18, 20, PAL.stoneLight);
+  rect(ctx, x - 7, base - 22, 14, 2, PAL.stoneLight);
+  rect(ctx, x - 7, base - 18, 14, 18, PAL.ink);
+  rect(ctx, x - 5, base - 20, 10, 2, PAL.ink);
+  rect(ctx, x - 1, base - 25, 2, 2, PAL.roof);
+  // Moos und Stufen
+  for (const [dx, dy] of [[-14, -26], [-12, -27], [-13, -24], [9, -28], [12, -26], [-15, -9], [13, -13], [-10, -21]]) {
+    px(ctx, x + dx, base + dy, PAL.leaf);
+    px(ctx, x + dx + 1, base + dy, PAL.leafLight);
+  }
+  rect(ctx, x - 9, base, 18, 1, PAL.stone);
+  rect(ctx, x - 11, base + 1, 22, 1, PAL.stoneLight);
+  // Fackelhalter
+  rect(ctx, x - 13, base - 14, 1, 5, PAL.woodDark);
+  rect(ctx, x + 12, base - 14, 1, 5, PAL.woodDark);
+}
+
 function drawTent(ctx, x) {
   const base = GROUND_Y + 4;
   rect(ctx, x, base - 24, 1, 6, PAL.woodDark);
@@ -212,13 +242,14 @@ function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [34, 118, 482, 612]) drawTree(ctx, x, r);
-  for (const x of [80, 300, 634]) drawBush(ctx, x, r);
+  for (const x of [22, 134, 482, 612]) drawTree(ctx, x, r);
+  for (const x of [300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
   drawLantern(ctx, LANTERN_X);
   drawWell(ctx, WELL_X);
   drawTent(ctx, CAMP_X - 30);
+  drawDungeonGate(ctx, DUNGEON_X);
   return c;
 }
 
@@ -366,6 +397,29 @@ export function createWorld() {
       }
 
       drawTeam(ctx, cam, time);
+
+      // Dungeon-Eingang: Fackeln, Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
+      const gx = DUNGEON_X - cam;
+      const gy = GROUND_Y + 4;
+      for (const tx of [gx - 13, gx + 12]) {
+        const tall = Math.floor(time * 8 + tx) % 3;
+        rect(ctx, tx - 1, gy - 17, 3, 3, PAL.roofLight);
+        rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
+        px(ctx, tx, gy - 16, PAL.glowLight);
+      }
+      const dungeonState = dungeon.status();
+      if (dungeonState !== 'idle') {
+        for (let i = 0; i < 5; i++) {
+          const t = Math.floor(time * 5 + i * 1.7);
+          px(ctx, gx - 5 + ((t * 7 + i * 3) % 11), gy - 3 - ((t * 5 + i * 4) % 14), i % 2 ? PAL.magic : '#b888f0');
+        }
+      }
+      if (dungeonState === 'done') {
+        const y = gy - 38 + Math.round(Math.sin(time * 5) * 1.5);
+        rect(ctx, gx - 2, y - 1, 4, 9, PAL.ink);
+        rect(ctx, gx - 1, y, 2, 4, PAL.coin);
+        rect(ctx, gx - 1, y + 5, 2, 2, PAL.coin);
+      }
 
       for (const c of coins) {
         const x = Math.round(c.x) - cam - 2;

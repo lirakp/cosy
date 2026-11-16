@@ -27,12 +27,13 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(KEY));
     if (saved && typeof saved.gold === 'number' && saved.owned) {
       saved.exp = { ...newExpedition(), ...saved.exp };
+      saved.dungeon = { run: null, ...saved.dungeon };
       return saved;
     }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition() };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null } };
 }
 
 function save() {
@@ -57,6 +58,9 @@ export const state = {
   },
   get exp() {
     return data.exp;
+  },
+  get dungeon() {
+    return data.dungeon;
   },
   save,
   changed,
