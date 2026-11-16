@@ -9,3 +9,7 @@ export const WORLD_W = 640;
 // Oberkante der Wiese und die Linie, auf der die Spielfigur läuft.
 export const GROUND_Y = 146;
 export const WALK_Y = 158;
+
+// Der Wunschbrunnen, an dem Sammelstücke gezogen werden.
+export const WELL_X = 428;
+export const WELL_RANGE = 24;

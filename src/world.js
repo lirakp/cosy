@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X } from './config.js';
+import { state, COIN_VALUE } from './state.js';
 import { PAL } from './palette.js';
 import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
 
@@ -129,15 +130,38 @@ function drawLantern(ctx, x) {
   rect(ctx, x - 5, base - 16, 3, 1, PAL.ink);
 }
 
+function drawWell(ctx, x) {
+  const base = GROUND_Y + 4;
+  rect(ctx, x - 9, base - 22, 2, 14, PAL.woodDark);
+  rect(ctx, x + 7, base - 22, 2, 14, PAL.woodDark);
+  rect(ctx, x - 7, base - 20, 14, 1, PAL.wood);
+  rect(ctx, x, base - 19, 1, 6, PAL.woodLight);
+  rect(ctx, x - 1, base - 13, 3, 3, PAL.wood);
+  for (let i = 0; i < 6; i++) {
+    rect(ctx, x - 4 - i * 2, base - 28 + i, 8 + i * 4, 1, i % 3 === 2 ? PAL.roofDark : PAL.roof);
+    px(ctx, x - 4 - i * 2, base - 28 + i, PAL.roofLight);
+  }
+  rect(ctx, x - 11, base - 9, 22, 9, PAL.stone);
+  rect(ctx, x + 7, base - 9, 4, 9, PAL.ink);
+  rect(ctx, x + 7, base - 9, 4, 9, 'rgba(122, 106, 122, 0.55)');
+  for (let row = 0; row < 3; row++) {
+    for (let bx = x - 11 + (row % 2) * 3; bx < x + 11; bx += 6) px(ctx, bx, base - 7 + row * 3, PAL.ink);
+    rect(ctx, x - 11, base - 6 + row * 3, 22, 1, 'rgba(42, 33, 64, 0.25)');
+  }
+  rect(ctx, x - 12, base - 11, 24, 2, PAL.stoneLight);
+  rect(ctx, x - 9, base - 11, 18, 1, PAL.magic);
+}
+
 function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [34, 118, 468, 566]) drawTree(ctx, x, r);
+  for (const x of [34, 118, 482, 572]) drawTree(ctx, x, r);
   for (const x of [80, 300, 520, 620]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
   drawLantern(ctx, LANTERN_X);
+  drawWell(ctx, WELL_X);
   return c;
 }
 
@@ -158,8 +182,8 @@ function makeForeground() {
 }
 
 // Gerasterter Lichtschein: innen dichter, außen lockerer.
-function glow(ctx, cx, cy, radius, alpha) {
-  ctx.fillStyle = PAL.glow;
+function glow(ctx, cx, cy, radius, alpha, color = PAL.glow) {
+  ctx.fillStyle = color;
   ctx.globalAlpha = alpha;
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
@@ -185,8 +209,30 @@ export function createWorld() {
     speed: 0.4 + r() * 0.6,
   }));
 
+  // Münzen erscheinen nach und nach auf dem Weg und werden im Vorbeigehen eingesammelt.
+  const coins = [];
+  const pops = [];
+  let coinTimer = 1;
+
   return {
-    update(dt) {
+    update(dt, player) {
+      coinTimer -= dt;
+      if (coinTimer <= 0) {
+        coinTimer = 2.5 + r() * 2;
+        const x = 16 + r() * (WORLD_W - 32);
+        if (coins.length < 7 && Math.abs(x - player.x) > 40) coins.push({ x, age: 0 });
+      }
+      for (let i = coins.length - 1; i >= 0; i--) {
+        coins[i].age += dt;
+        if (Math.abs(coins[i].x - player.x) < 8) {
+          pops.push({ x: coins[i].x, age: 0 });
+          coins.splice(i, 1);
+          state.addGold(COIN_VALUE);
+        }
+      }
+      for (const p of pops) p.age += dt;
+      while (pops.length && pops[0].age > 0.5) pops.shift();
+
       smokeTimer -= dt;
       if (smokeTimer <= 0) {
         smokeTimer = 0.55 + r() * 0.35;
@@ -207,6 +253,31 @@ export function createWorld() {
       const flicker = Math.sin(time * 9) > 0.4 ? 1 : 0;
       glow(ctx, COTTAGE_X + 33 - cam, GROUND_Y - 9, 15 + flicker, 0.3);
       glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker, 0.35);
+
+      glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
+      for (let i = 0; i < 4; i++) {
+        const t = (time * 0.35 + i / 4) % 1;
+        if (t > 0.85) continue;
+        px(ctx, WELL_X - cam + Math.round(Math.sin(time * 1.3 + i * 2.1) * 6), GROUND_Y - 8 - Math.round(t * 22), i % 2 ? PAL.magic : PAL.glowLight);
+      }
+
+      for (const c of coins) {
+        const x = Math.round(c.x) - cam - 2;
+        const y = WALK_Y - 8 + Math.round(Math.sin(c.age * 3 + c.x) * 1.5);
+        const thin = Math.floor(c.age * 4 + c.x) % 4 === 3;
+        rect(ctx, x + (thin ? 1 : 0), y, thin ? 2 : 4, 5, PAL.ink);
+        rect(ctx, x - 1 + (thin ? 2 : 0), y + 1, thin ? 2 : 6, 3, PAL.ink);
+        rect(ctx, x + (thin ? 1 : 0), y + 1, thin ? 2 : 4, 3, PAL.coin);
+        if (!thin) {
+          rect(ctx, x + 1, y + 1, 2, 3, PAL.glowLight);
+          px(ctx, x + 3, y + 3, PAL.coinDark);
+        }
+      }
+      for (const p of pops) {
+        const d = 2 + Math.round(p.age * 12);
+        const x = Math.round(p.x) - cam, y = WALK_Y - 6;
+        for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) px(ctx, x + dx, y + dy, PAL.glowLight);
+      }
 
       for (const s of smoke) {
         const life = s.age / 5;
