@@ -19,7 +19,7 @@ auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antipp
 ## Sammeln
 
 Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
-50 Gold, zehn Züge 450 Gold. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
+65 Gold, zehn Züge 585 Gold. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
 × 50 Stück. Die Bilder werden nicht einzeln gespeichert, sondern aus Bauplänen
 in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
@@ -31,6 +31,20 @@ in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 | A | 7,4 % | 100 Gold |
 | S | 1,5 % | 500 Gold |
 | SS | 0,1 % | 5000 Gold |
+
+## Anlagen
+
+Expeditionslager und Dungeon-Tor müssen erst gebaut werden (250 bzw. 400 Gold)
+und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
+
+| Ausbau auf | C | B | A | S | SS |
+| --- | --- | --- | --- | --- | --- |
+| Expeditionslager | 1000 | 3000 | 8000 | 20000 | 50000 |
+| Dungeon-Tor | 800 | 2500 | 7000 | 18000 | 45000 |
+
+Der Lager-Rang begrenzt, bis zu welcher Stufe Lebewesen und Leitung entwickelt
+werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen. Die
+Preise stehen in `src/buildings.js`.
 
 ## Expedition
 
@@ -83,6 +97,7 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/items.js` | Katalog der Sammelstücke, Ränge, Chancen, Ziehen |
 | `src/art/` | Zeichner für die Sammelstücke (Kern + je Kategorie) |
 | `src/expedition.js` | Team, Ertrag, Truhe, Funde, Entwicklung, Leitung |
+| `src/buildings.js` | Bau und Ausbau von Lager und Dungeon-Tor |
 | `src/dungeon.js` | Gefahrenstufen, Erfolgschance, Beute |
 | `src/state.js` | Gold, Sammlung, Verkaufen, Speichern |
 | `src/ui.js` | Menüs für Brunnen, Galerie, Expedition und Dungeon, Pop-ups |

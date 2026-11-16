@@ -377,6 +377,9 @@ td b { color: var(--rc); }
 }
 .level b { font-size: 13px; color: #fdf6e3; }
 .level b i { font-style: normal; color: var(--rc); margin-right: 4px; }
+.level:disabled { opacity: 0.55; }
+.lock { color: #ff9a8a; }
+.upgrade { box-shadow: 0 0 0 2px var(--rc); }
 .level.on { background: #3a3170; box-shadow: 0 0 0 2px #fdf6e3, 0 0 0 4px var(--rc); }
 .odds { font-size: 16px; }
 .odds b.good { color: #8fe08a; }

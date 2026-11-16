@@ -5,8 +5,8 @@ import { ITEMS, getItem } from './items.js';
 const KEY = 'cosy-save-v1';
 const START_GOLD = 500;
 
-export const PULL_COST = 50;
-export const PULL_10_COST = 450; // zehn Züge zum Preis von neun
+export const PULL_COST = 65;
+export const PULL_10_COST = 585; // zehn Züge zum Preis von neun
 export const COIN_VALUE = 10;
 
 const newExpedition = () => ({
@@ -28,12 +28,13 @@ function load() {
     if (saved && typeof saved.gold === 'number' && saved.owned) {
       saved.exp = { ...newExpedition(), ...saved.exp };
       saved.dungeon = { run: null, ...saved.dungeon };
+      saved.buildings = { camp: -1, dungeon: -1, ...saved.buildings };
       return saved;
     }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null } };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1 } };
 }
 
 function save() {
@@ -61,6 +62,9 @@ export const state = {
   },
   get dungeon() {
     return data.dungeon;
+  },
+  get buildings() {
+    return data.buildings;
   },
   save,
   changed,

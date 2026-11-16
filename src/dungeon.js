@@ -1,5 +1,6 @@
 import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
 import { state } from './state.js';
+import * as buildings from './buildings.js';
 
 // Dungeon: Bis zu fünf Helden ziehen für eine feste Zeit los. Die Dauer ist
 // zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber schwerer.
@@ -38,6 +39,9 @@ export function chance(level, ids) {
   return Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power(ids) / LEVELS[level].need));
 }
 
+// Der Rang des Tors bestimmt, welche Gefahrenstufen offen sind.
+export const unlocked = (level) => level <= buildings.tier('dungeon');
+
 export const run = () => d().run;
 
 export function status(now = Date.now()) {
@@ -50,7 +54,7 @@ export const remaining = (now = Date.now()) => (run() ? Math.max(0, Math.ceil((r
 
 export function start(level, ids, now = Date.now()) {
   ids = ids.filter((id) => state.count(id) && getItem(id)?.cat === 'helden').slice(0, MAX_HEROES);
-  if (run() || !LEVELS[level] || !ids.length) return false;
+  if (run() || !LEVELS[level] || !unlocked(level) || !ids.length) return false;
   d().run = { level, heroes: ids, start: now, end: now + LEVELS[level].seconds * 1000 };
   state.changed();
   return true;

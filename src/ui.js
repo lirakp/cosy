@@ -2,6 +2,7 @@ import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getIt
 import { state, PULL_COST, PULL_10_COST } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
+import * as buildings from './buildings.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
 
@@ -158,9 +159,44 @@ export function createUI({ onToggle }) {
     onToggle(true);
   }
 
+  // ------------------------------------------------------------ Anlagen bauen und ausbauen
+
+  // Kaufbildschirm für eine Anlage, die noch nicht steht.
+  function renderPurchase(id, title) {
+    const b = buildings.BUILDINGS[id];
+    overlay.innerHTML = `
+      <section class="panel">
+        ${head(title)}
+        <p class="lead">${b.pitch}</p>
+        <div class="chest">
+          <p><b>${b.name}</b> – noch nicht gebaut. Nach dem Bau hat die Anlage Rang <b class="r-D evo">D</b>;
+          jeder Ausbau schaltet den nächsten Rang frei.</p>
+          <p class="muted">${b.unlocks}</p>
+          <div class="line"><button class="big" data-act="build" data-id="${id}" ${state.gold >= b.buy ? '' : 'disabled'}>Bauen<small>${fmt(b.buy)} Gold</small></button></div>
+        </div>
+      </section>`;
+  }
+
+  // Zeile mit aktuellem Rang und Ausbau-Knopf.
+  function upgradeBar(id) {
+    const b = buildings.BUILDINGS[id];
+    const t = buildings.tier(id);
+    const cost = buildings.nextCost(id);
+    return `<div class="chest upgrade r-${RARITIES[t].id}">
+      <div class="line">
+        <span>${b.name} · Rang <b class="evo">${RARITIES[t].id}</b></span>
+        ${cost === null
+          ? '<span class="muted">voll ausgebaut</span>'
+          : `<button data-act="build" data-id="${id}" ${state.gold >= cost ? '' : 'disabled'}>Auf Rang ${RARITIES[t + 1].id} ausbauen · ${fmt(cost)} Gold</button>`}
+      </div>
+      <p class="muted">${b.unlocks}</p>
+    </div>`;
+  }
+
   // ------------------------------------------------------------ Dungeon
 
   function renderDungeon() {
+    if (!buildings.owned('dungeon')) return renderPurchase('dungeon', 'Dungeon');
     const status = dungeon.status();
     const run = dungeon.run();
 
@@ -187,20 +223,23 @@ export function createUI({ onToggle }) {
 
     const owned = dungeon.heroes();
     pick.heroes = pick.heroes.filter((id) => state.count(id));
+    if (!dungeon.unlocked(pick.level)) pick.level = buildings.tier('dungeon');
     const odds = dungeon.chance(pick.level, pick.heroes);
     const level = dungeon.LEVELS[pick.level];
     const levels = dungeon.LEVELS.map((l, i) => `
-      <button class="level r-${l.rank}${i === pick.level ? ' on' : ''}" data-act="level" data-v="${i}">
+      <button class="level r-${l.rank}${i === pick.level ? ' on' : ''}" data-act="level" data-v="${i}" ${dungeon.unlocked(i) ? '' : 'disabled'}>
         <b><i>${l.rank}</i>${l.name}</b>
         <span>${duration(l.seconds)} · Stärke ${l.need}</span>
         <span class="gold-text">~${fmt(l.gold)} Gold</span>
         <span>${l.standard ? `${l.standard}× D + ` : ''}${l.bonus}× ${l.minTier ? `ab ${dungeon.rankOf(l.minTier)}` : 'Zufall'}</span>
+        ${dungeon.unlocked(i) ? '' : `<span class="lock">Tor-Rang ${l.rank} nötig</span>`}
       </button>`).join('');
 
     overlay.innerHTML = `
       <section class="panel dungeon">
         ${head('Dungeon')}
         <p class="lead">Schicke bis zu ${dungeon.MAX_HEROES} Helden los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
+        ${upgradeBar('dungeon')}
         <h4>Gefahrenstufe</h4>
         <div class="levels">${levels}</div>
         <h4>Helden (${pick.heroes.length}/${dungeon.MAX_HEROES})</h4>
@@ -293,6 +332,7 @@ export function createUI({ onToggle }) {
   }
 
   function renderExpedition() {
+    if (!buildings.owned('camp')) return renderPurchase('camp', 'Expedition');
     exp.tick();
     const roster = exp.roster();
     const team = roster.slice(0, exp.TEAM_SIZE);
@@ -327,7 +367,7 @@ export function createUI({ onToggle }) {
       const tier = exp.evoOf(item.id);
       const cost = exp.evolveCost(item);
       const button = cost === null
-        ? '<button disabled>Maximal</button>'
+        ? `<button disabled>${exp.capped(tier) ? 'Lager-Rang nötig' : 'Maximal'}</button>`
         : `<button data-act="evolve" data-id="${item.id}" ${material >= cost ? '' : 'disabled'}>→ ${RARITIES[tier + 1].id} · ${fmt(cost)}</button>`;
       return `<div class="crow r-${RARITIES[tier].id}" data-sprite="${item.id}">
         <div class="info">
@@ -341,6 +381,7 @@ export function createUI({ onToggle }) {
       <section class="panel expedition">
         ${head('Expedition')}
         <p class="lead">Deine vier stärksten Lebewesen ziehen los und füllen die Truhe im Lager.</p>
+        ${upgradeBar('camp')}
         <div class="team">${slots}</div>
         <div class="chest">
           <div class="line"><span>Truhe: <b class="gold-text" id="chest-gold"></b></span><span id="chest-loot"></span></div>
@@ -354,7 +395,7 @@ export function createUI({ onToggle }) {
         <div class="leaders">${leaders}</div>
         <div class="leader-actions">
           ${lCost === null
-            ? '<span class="muted">Höchste Stufe erreicht.</span>'
+            ? `<span class="muted">${exp.capped(lTier) ? 'Für die nächste Stufe muss das Lager ausgebaut werden.' : 'Höchste Stufe erreicht.'}</span>`
             : `<button data-act="leader-evolve" ${state.gold >= lCost ? '' : 'disabled'}>${active.name.split(' ')[1]} auf ${RARITIES[lTier + 1].id} entwickeln · ${fmt(lCost)} Gold</button><span class="muted">dann ${lNext}</span>`}
         </div>
         <h4>Lebewesen entwickeln</h4>
@@ -477,6 +518,14 @@ export function createUI({ onToggle }) {
     if (act === 'close') show(null);
     if (act === 'gallery') show('gallery');
     if (act === 'pull') pull(Number(btn.dataset.n));
+    if (act === 'build') {
+      if (buildings.advance(btn.dataset.id)) {
+        const b = buildings.BUILDINGS[btn.dataset.id];
+        toast(`${b.name}: Rang ${buildings.rank(btn.dataset.id)}`);
+        exp.rebuilt();
+      }
+      show(view);
+    }
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'best') { pick.heroes = dungeon.heroes().slice(0, dungeon.MAX_HEROES).map((h) => h.id); renderDungeon(); }

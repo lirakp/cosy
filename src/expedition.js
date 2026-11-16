@@ -2,6 +2,7 @@ import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
 import { state } from './state.js';
 import { render } from './art/core.js';
 import { LEADER_ART } from './art/leaders.js';
+import * as buildings from './buildings.js';
 
 // Expedition: Die vier stärksten Lebewesen sammeln laufend Gold in eine Truhe
 // und finden ab und zu ein Sammelstück. Ein Expeditionsleiter verstärkt beides.
@@ -36,21 +37,26 @@ const e = () => state.exp;
 
 // ---------------------------------------------------------------- Lebewesen
 
-export const evoOf = (id) => e().evo[id] || 0;
+// Der Rang des Lagers begrenzt, wie weit entwickelt werden kann (und was davon zählt).
+const campTier = () => buildings.tier('camp');
+const rawEvo = (id) => e().evo[id] || 0;
+export const evoOf = (id) => Math.max(0, Math.min(rawEvo(id), campTier()));
+// true, wenn nur noch der Lager-Rang die nächste Entwicklung verhindert
+export const capped = (tier) => tier < MAX_TIER && tier >= campTier();
 export const rateOf = (item, tier = evoOf(item.id)) => BASE_RATE[item.tier] * EVO_MULT[tier];
 
 // Alle eigenen Lebewesen, die stärksten zuerst.
 export function roster() {
   return CREATURES.filter((item) => state.count(item.id)).sort((a, b) => rateOf(b) - rateOf(a) || b.tier - a.tier);
 }
-export const team = () => roster().slice(0, TEAM_SIZE);
+export const team = () => (buildings.owned('camp') ? roster().slice(0, TEAM_SIZE) : []);
 
 // Wert aller Lebewesen-Duplikate – das Material für Entwicklungen.
 export function material() {
   return CREATURES.reduce((sum, item) => sum + state.duplicates(item.id) * item.sell, 0);
 }
 
-export const evolveCost = (item) => (evoOf(item.id) < MAX_TIER ? EVO_COST[evoOf(item.id)] : null);
+export const evolveCost = (item) => (rawEvo(item.id) < MAX_TIER && rawEvo(item.id) < campTier() ? EVO_COST[rawEvo(item.id)] : null);
 
 export function evolve(item) {
   const cost = evolveCost(item);
@@ -74,7 +80,7 @@ export function evolve(item) {
     } else i++;
   }
   for (const c of used) state.useDuplicate(c.id);
-  e().evo[item.id] = evoOf(item.id) + 1;
+  e().evo[item.id] = rawEvo(item.id) + 1;
   refresh();
   // Ein Überschuss wird wie ein Verkauf in Gold ausgezahlt, damit nichts verloren geht.
   state.addGold(sum - cost);
@@ -84,10 +90,11 @@ export function evolve(item) {
 // ---------------------------------------------------------------- Leiter
 
 export const leader = () => LEADERS.find((l) => l.id === e().leader) || LEADERS[0];
-export const leaderTier = (id = leader().id) => e().leaderEvo[id] || 0;
+const rawLeader = (id) => e().leaderEvo[id] || 0;
+export const leaderTier = (id = leader().id) => Math.max(0, Math.min(rawLeader(id), campTier()));
 export const goldBonus = (l = leader(), tier = leaderTier(l.id)) => LEADER_STEP[tier] * l.gold;
 export const lootBonus = (l = leader(), tier = leaderTier(l.id)) => LEADER_STEP[tier] * l.loot;
-export const leaderCost = (id = leader().id) => (leaderTier(id) < MAX_TIER ? LEADER_COST[leaderTier(id)] : null);
+export const leaderCost = (id = leader().id) => (rawLeader(id) < MAX_TIER && rawLeader(id) < campTier() ? LEADER_COST[rawLeader(id)] : null);
 
 const leaderCache = new Map();
 export function leaderImage(l = leader(), tier = leaderTier(l.id)) {
@@ -108,7 +115,7 @@ export function evolveLeader(id = leader().id) {
   if (cost === null) return false;
   tick();
   if (!state.spend(cost)) return false;
-  e().leaderEvo[id] = leaderTier(id) + 1;
+  e().leaderEvo[id] = rawLeader(id) + 1;
   refresh();
   state.changed();
   return true;
@@ -153,6 +160,11 @@ export function tick(now = Date.now()) {
   }
   refresh();
   return found;
+}
+
+// Nach Bau oder Ausbau des Lagers neu rechnen.
+export function rebuilt() {
+  tick();
 }
 
 // Leert die Truhe: Gold aufs Konto, Funde in die Sammlung.

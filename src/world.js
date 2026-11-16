@@ -1,5 +1,6 @@
 import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X } from './config.js';
 import * as dungeon from './dungeon.js';
+import * as buildings from './buildings.js';
 import { itemImage } from './items.js';
 import * as expedition from './expedition.js';
 import { state, COIN_VALUE } from './state.js';
@@ -184,6 +185,23 @@ function drawDungeonGate(ctx, x) {
   rect(ctx, x + 12, base - 14, 1, 5, PAL.woodDark);
 }
 
+// Bauplatz für eine Anlage, die noch nicht gekauft wurde.
+function drawSite(ctx, x) {
+  const base = GROUND_Y + 4;
+  rect(ctx, x - 1, base - 14, 2, 14, PAL.woodDark);
+  rect(ctx, x - 8, base - 17, 16, 9, PAL.ink);
+  rect(ctx, x - 7, base - 16, 14, 7, PAL.woodLight);
+  rect(ctx, x - 7, base - 10, 14, 1, PAL.wood);
+  rect(ctx, x - 5, base - 14, 10, 1, PAL.woodDark);
+  rect(ctx, x - 5, base - 12, 7, 1, PAL.woodDark);
+  for (const [dx, w] of [[-16, 5], [-13, 4], [10, 6], [12, 3]]) {
+    rect(ctx, x + dx, base - (w > 4 ? 3 : 5), w, 3, PAL.stone);
+    rect(ctx, x + dx, base - (w > 4 ? 3 : 5), w, 1, PAL.stoneLight);
+  }
+  rect(ctx, x - 20, base - 1, 9, 1, PAL.wood);
+  rect(ctx, x - 19, base - 2, 9, 1, PAL.woodLight);
+}
+
 function drawTent(ctx, x) {
   const base = GROUND_Y + 4;
   rect(ctx, x, base - 24, 1, 6, PAL.woodDark);
@@ -248,8 +266,6 @@ function makeGround() {
   drawCottage(ctx, COTTAGE_X);
   drawLantern(ctx, LANTERN_X);
   drawWell(ctx, WELL_X);
-  drawTent(ctx, CAMP_X - 30);
-  drawDungeonGate(ctx, DUNGEON_X);
   return c;
 }
 
@@ -282,8 +298,18 @@ function glow(ctx, cx, cy, radius, alpha, color = PAL.glow) {
   ctx.globalAlpha = 1;
 }
 
+// Eine Anlage als eigenes Bild, damit sie je nach Baustand ein- oder ausgeblendet werden kann.
+function prop(draw) {
+  const [c, ctx] = makeCanvas(48, VIEW_H);
+  draw(ctx, 24);
+  return c;
+}
+
 export function createWorld() {
   const ground = makeGround();
+  const tent = prop(drawTent);
+  const gate = prop(drawDungeonGate);
+  const site = prop(drawSite);
   const foreground = makeForeground();
   const r = rng(1234);
 
@@ -329,6 +355,8 @@ export function createWorld() {
   }
 
   function drawTeam(ctx, cam, time) {
+    ctx.drawImage(buildings.owned('camp') ? tent : site, CAMP_X - 30 - 24 - cam, 0);
+    if (!buildings.owned('camp')) return;
     ctx.drawImage(expedition.leaderImage(), CAMP_X - 6 - cam, GROUND_Y - 10);
     for (const a of [...actors.values()].sort((p, q) => p.slot - q.slot)) {
       let y = GROUND_Y - 9 + (a.slot % 2) * 3;
@@ -401,13 +429,15 @@ export function createWorld() {
       // Dungeon-Eingang: Fackeln, Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
       const gx = DUNGEON_X - cam;
       const gy = GROUND_Y + 4;
-      for (const tx of [gx - 13, gx + 12]) {
+      const hasGate = buildings.owned('dungeon');
+      ctx.drawImage(hasGate ? gate : site, gx - 24, 0);
+      for (const tx of hasGate ? [gx - 13, gx + 12] : []) {
         const tall = Math.floor(time * 8 + tx) % 3;
         rect(ctx, tx - 1, gy - 17, 3, 3, PAL.roofLight);
         rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
         px(ctx, tx, gy - 16, PAL.glowLight);
       }
-      const dungeonState = dungeon.status();
+      const dungeonState = hasGate ? dungeon.status() : 'idle';
       if (dungeonState !== 'idle') {
         for (let i = 0; i < 5; i++) {
           const t = Math.floor(time * 5 + i * 1.7);

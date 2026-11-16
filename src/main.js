@@ -1,5 +1,6 @@
 import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE } from './config.js';
 import * as dungeon from './dungeon.js';
+import * as buildings from './buildings.js';
 import * as expedition from './expedition.js';
 import { state } from './state.js';
 import { clamp } from './utils.js';
@@ -37,7 +38,7 @@ const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot >
 function act() {
   if (near === 'well') ui.openWell();
   if (near === 'dungeon') ui.openDungeon();
-  if (near === 'camp') chestHasContent() ? ui.collectChest() : ui.openExpedition();
+  if (near === 'camp') buildings.owned('camp') && chestHasContent() ? ui.collectChest() : ui.openExpedition();
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
@@ -58,7 +59,7 @@ addEventListener('keydown', (e) => {
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
   const chestX = CHEST_X - Math.round(camX);
-  if (Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
+  if (!buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
   ui.collectChest();
   return true;
 });
@@ -109,6 +110,7 @@ function frame(now) {
   actionButton.hidden = !near || ui.isOpen();
   const label =
     near === 'well' ? '✦ Wunschbrunnen'
+    : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
