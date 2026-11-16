@@ -92,19 +92,18 @@ export function itemImage(item) {
 // Ein Zug: erst den Rang auswürfeln, dann ein zufälliges Stück dieses Rangs.
 // `tier` legt den Rang fest, `minTier` schließt alle niedrigeren Ränge aus
 // (die übrigen behalten ihr Verhältnis zueinander).
-export function rollItem({ tier = null, minTier = 0, random = Math.random } = {}) {
-  if (tier === null) {
-    const pool = RARITIES.slice(minTier);
-    let u = random() * pool.reduce((sum, r) => sum + r.chance, 0);
-    tier = RARITIES.length - 1;
-    for (let t = 0; t < pool.length; t++) {
-      u -= pool[t].chance;
-      if (u < 0) {
-        tier = minTier + t;
-        break;
-      }
-    }
+export function rollTier(minTier = 0, random = Math.random) {
+  const pool = RARITIES.slice(minTier);
+  let u = random() * pool.reduce((sum, r) => sum + r.chance, 0);
+  for (let t = 0; t < pool.length; t++) {
+    u -= pool[t].chance;
+    if (u < 0) return minTier + t;
   }
+  return RARITIES.length - 1;
+}
+
+export function rollItem({ tier = null, minTier = 0, random = Math.random } = {}) {
+  if (tier === null) tier = rollTier(minTier, random);
   const cat = CATEGORIES[Math.floor(random() * CATEGORIES.length)];
   return getGroup(cat.id, RARITIES[tier].id)[Math.floor(random() * PER_GROUP)];
 }

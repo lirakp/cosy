@@ -19,6 +19,14 @@ const newExpedition = () => ({
   loot: [], // gefundene Stücke in der Truhe
 });
 
+const newArena = () => ({
+  team: Array.from({ length: 3 }, () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null } })),
+  lvl: {}, // Stufe je Ausrüstungsstück (0 = D … 5 = SS)
+  boss: null, // wartender Boss: { tier, kind }
+  mats: { stoff: [0, 0, 0, 0, 0, 0], seide: [0, 0, 0, 0, 0, 0] },
+  wins: 0,
+});
+
 const listeners = new Set();
 const data = load();
 
@@ -28,13 +36,14 @@ function load() {
     if (saved && typeof saved.gold === 'number' && saved.owned) {
       saved.exp = { ...newExpedition(), ...saved.exp };
       saved.dungeon = { run: null, ...saved.dungeon };
-      saved.buildings = { camp: -1, dungeon: -1, ...saved.buildings };
+      saved.buildings = { camp: -1, dungeon: -1, arena: -1, ...saved.buildings };
+      saved.arena = { ...newArena(), ...saved.arena };
       return saved;
     }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1 } };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1 }, arena: newArena() };
 }
 
 function save() {
@@ -62,6 +71,9 @@ export const state = {
   },
   get dungeon() {
     return data.dungeon;
+  },
+  get arena() {
+    return data.arena;
   },
   get buildings() {
     return data.buildings;

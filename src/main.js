@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE } from './config.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import * as expedition from './expedition.js';
@@ -31,17 +31,19 @@ initInput(canvas);
 const ui = createUI({ onToggle: setBlocked });
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
-let near = null; // 'well' | 'camp' | 'dungeon'
+let near = null; // 'well' | 'camp' | 'dungeon' | 'arena'
 
 const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot > 0;
 
 function act() {
   if (near === 'well') ui.openWell();
   if (near === 'dungeon') ui.openDungeon();
+  if (near === 'arena') ui.openArena();
   if (near === 'camp') buildings.owned('camp') && chestHasContent() ? ui.collectChest() : ui.openExpedition();
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
+document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
 document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
 actionButton.addEventListener('click', act);
@@ -50,6 +52,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyG') ui.openGallery();
   if (e.code === 'KeyX') ui.openExpedition();
   if (e.code === 'KeyF') ui.openDungeon();
+  if (e.code === 'KeyB') ui.openArena();
   if (near && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) {
     e.preventDefault();
     act();
@@ -106,11 +109,13 @@ function frame(now) {
     Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
+    : Math.abs(player.x - ARENA_X) < ARENA_RANGE ? 'arena'
     : null;
   actionButton.hidden = !near || ui.isOpen();
   const label =
     near === 'well' ? '✦ Wunschbrunnen'
     : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
+    : near === 'arena' ? 'Bossarena'
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;

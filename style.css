@@ -408,3 +408,49 @@ td b { color: var(--rc); }
 @media (max-width: 520px) { .levels { grid-template-columns: repeat(2, 1fr); } }
 .panel > * { flex-shrink: 0; }
 .reveal.result.fail .rank-big { animation: none; }
+
+/* ---------------------------------------------------------------- Bossarena */
+
+.members { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.member {
+  background: #1b1730;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  min-width: 0;
+}
+.hero-slot .tile { width: 64px; }
+.gear-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 100%; max-width: 200px; }
+.gear-slots .tile { padding: 3px; }
+.empty-slot {
+  aspect-ratio: 1;
+  font-size: 9px;
+  color: #8a7aa8;
+  box-shadow: 0 0 0 2px #3a3170;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.hero-slot .empty-slot { font-size: 12px; }
+.tile.sel { background: #4b3b78; }
+.empty-slot.sel { box-shadow: 0 0 0 2px #fdf6e3; }
+.picker { box-shadow: 0 0 0 2px #6a549e; }
+.boss-row { display: flex; gap: 14px; align-items: center; }
+.boss .frame { width: 96px; }
+.boss .info { gap: 4px; }
+.level.mat { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.level.mat .sprite { width: 36px; flex: none; }
+.level.mat b { flex: 1; }
+.level.mat span { flex-basis: 100%; }
+.result .frame { width: min(144px, 40vw); }
+.result .frame.beaten .sprite { filter: grayscale(1) brightness(0.6); transform: rotate(12deg); }
+.result.fail .frame { box-shadow: 0 0 0 4px #1b1730, 0 0 0 8px #ff9a8a; }
+
+@media (max-width: 520px) {
+  .members { grid-template-columns: 1fr; }
+  .member { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+}

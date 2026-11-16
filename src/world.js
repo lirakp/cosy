@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X } from './config.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import { itemImage } from './items.js';
@@ -202,6 +202,36 @@ function drawSite(ctx, x) {
   rect(ctx, x - 19, base - 2, 9, 1, PAL.woodLight);
 }
 
+function drawArena(ctx, x) {
+  const base = GROUND_Y + 4;
+  for (const [px0, dir] of [[x - 21, 1], [x + 20, -1]]) {
+    rect(ctx, px0, base - 36, 1, 14, PAL.woodDark);
+    rect(ctx, px0 + (dir > 0 ? 1 : -5), base - 36, 5, 3, PAL.roof);
+    rect(ctx, px0 + (dir > 0 ? 1 : -3), base - 33, 3, 1, PAL.roofDark);
+  }
+  rect(ctx, x - 22, base - 22, 44, 22, PAL.stone);
+  for (let i = 0; i < 8; i++) {
+    rect(ctx, x - 22 + i * 6, base - 25, 3, 3, PAL.stone);
+    rect(ctx, x - 22 + i * 6, base - 25, 3, 1, PAL.stoneLight);
+  }
+  rect(ctx, x - 22, base - 22, 44, 1, PAL.stoneLight);
+  rect(ctx, x - 22, base - 15, 44, 1, PAL.stoneLight);
+  for (let row = 0; row < 7; row++) {
+    for (let bx = x - 22 + (row % 2) * 4; bx < x + 22; bx += 7) px(ctx, bx, base - 20 + row * 3, PAL.ink);
+  }
+  rect(ctx, x + 16, base - 22, 6, 22, 'rgba(42, 33, 64, 0.35)');
+  for (const ax of [x - 17, x + 11]) {
+    rect(ctx, ax, base - 10, 6, 10, PAL.ink);
+    rect(ctx, ax + 1, base - 12, 4, 2, PAL.ink);
+  }
+  rect(ctx, x - 6, base - 13, 12, 13, PAL.stoneLight);
+  rect(ctx, x - 5, base - 12, 10, 12, PAL.ink);
+  rect(ctx, x - 3, base - 14, 6, 2, PAL.ink);
+  for (let gx = x - 4; gx < x + 5; gx += 2) rect(ctx, gx, base - 12, 1, 7, PAL.stone);
+  rect(ctx, x - 2, base - 19, 4, 3, PAL.coin);
+  px(ctx, x - 1, base - 18, PAL.coinDark);
+}
+
 function drawTent(ctx, x) {
   const base = GROUND_Y + 4;
   rect(ctx, x, base - 24, 1, 6, PAL.woodDark);
@@ -260,7 +290,7 @@ function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [22, 134, 482, 612]) drawTree(ctx, x, r);
+  for (const x of [22, 134, 482, 612, 664, 778]) drawTree(ctx, x, r);
   for (const x of [300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
@@ -310,6 +340,7 @@ export function createWorld() {
   const tent = prop(drawTent);
   const gate = prop(drawDungeonGate);
   const site = prop(drawSite);
+  const arenaProp = prop(drawArena);
   const foreground = makeForeground();
   const r = rng(1234);
 
@@ -437,6 +468,8 @@ export function createWorld() {
         rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
         px(ctx, tx, gy - 16, PAL.glowLight);
       }
+      ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
+
       const dungeonState = hasGate ? dungeon.status() : 'idle';
       if (dungeonState !== 'idle') {
         for (let i = 0; i < 5; i++) {

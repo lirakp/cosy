@@ -3,6 +3,7 @@ import { state, PULL_COST, PULL_10_COST } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
+import * as arena from './arena.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
 
@@ -42,6 +43,8 @@ export function createUI({ onToggle }) {
   let selected = null;
   let lastPull = [];
   const pick = { level: 0, heroes: [] }; // Auswahl im Dungeon-Menü
+  let arenaTab = 'fight';
+  let arenaSel = null; // angetippter Platz im Arena-Team: { i, key }
   const reveals = [];
 
   const refreshGold = () => {
@@ -60,6 +63,7 @@ export function createUI({ onToggle }) {
     if (view === 'gallery') renderGallery();
     if (view === 'expedition') renderExpedition();
     if (view === 'dungeon') renderDungeon();
+    if (view === 'arena') renderArena();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -140,6 +144,7 @@ export function createUI({ onToggle }) {
     const next = reveals.shift();
     if (!next) return onToggle(busy());
     if (next.result) return showResult(next.result);
+    if (next.fight) return showFight(next.fight);
     const { item, isNew, source } = next;
     const el = document.createElement('div');
     el.className = `reveal r-${item.rank}`;
@@ -156,6 +161,188 @@ export function createUI({ onToggle }) {
     $('.frame', el).append(sprite(item));
     document.body.append(el);
     $('button', el).focus();
+    onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Bossarena
+
+  const slotLabel = (key) => (key === 'hero' ? 'Held' : arena.SLOTS.find((s) => s.cat === key).name);
+  const levelBadge = (id) => `<span class="count">${RARITIES[arena.levelOf(id)].id}</span>`;
+
+  // Ein Platz im Team: belegt als Kachel, sonst als leeres Feld mit Beschriftung.
+  function slotButton(i, key, id) {
+    const on = arenaSel && arenaSel.i === i && arenaSel.key === key ? ' sel' : '';
+    const item = id && getItem(id);
+    if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-i="${i}" data-k="${key}">${slotLabel(key)}</button>`;
+    return `<button class="tile r-${item.rank}${on}" data-act="slot" data-i="${i}" data-k="${key}" data-sprite="${id}" title="${item.name}">
+      <span class="rank">${item.rank}</span>${key === 'hero' ? '' : levelBadge(id)}</button>`;
+  }
+
+  function renderArena() {
+    if (!buildings.owned('arena')) return renderPurchase('arena', 'Bossarena');
+    arena.clean();
+    const tabs = `<nav class="tabs">
+      <button class="tab${arenaTab === 'fight' ? ' on' : ''}" data-act="arena-tab" data-v="fight">Arena</button>
+      <button class="tab${arenaTab === 'shop' ? ' on' : ''}" data-act="arena-tab" data-v="shop">Händler</button>
+    </nav>`;
+    const body = arenaTab === 'shop' ? shopHtml() : fightHtml();
+    overlay.innerHTML = `<section class="panel arena">${head('Bossarena')}${tabs}${body}</section>`;
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-mat]')) {
+      const [kind, tier] = el.dataset.mat.split(':');
+      el.prepend(picture(arena.materialImage(kind, Number(tier))));
+    }
+    const boss = arena.bossInfo();
+    if (boss) $('#boss-frame')?.append(picture(boss.image));
+  }
+
+  function fightHtml() {
+    const team = arena.team();
+    const members = team.map((m, i) => `
+      <div class="member">
+        <div class="hero-slot">${slotButton(i, 'hero', m.hero)}</div>
+        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(i, s.cat, m.gear[s.cat])).join('')}</div>
+        <span>Stärke <b class="gold-text">${fmt(arena.memberPower(m))}</b></span>
+      </div>`).join('');
+
+    return `
+      ${upgradeBar('arena')}
+      <h4>Team · Stärke ${fmt(arena.teamPower())}</h4>
+      <div class="members">${members}</div>
+      <div class="leader-actions">
+        <button data-act="auto-equip">Automatisch ausrüsten</button>
+        <span class="muted">Tippe einen Platz an, um ihn zu besetzen. Ausrüstung zählt nur an einem Helden.</span>
+      </div>
+      ${pickerHtml()}
+      <h4>Boss</h4>
+      ${bossHtml()}
+      <p class="muted">Vorrat: ${matSummary() || 'noch kein Stoff und keine Seide'}</p>`;
+  }
+
+  function matSummary() {
+    return Object.keys(arena.MATERIALS).flatMap((kind) =>
+      RARITIES.map((r, t) => (arena.have(kind, t) ? `${arena.MATERIALS[kind].name} ${r.id} ×${arena.have(kind, t)}` : null)).filter(Boolean)
+    ).join(' · ');
+  }
+
+  function pickerHtml() {
+    if (!arenaSel) return '';
+    const { i, key } = arenaSel;
+    const m = arena.team()[i];
+    const current = key === 'hero' ? m.hero : m.gear[key];
+    const list = arena.candidates(key).slice(0, 44);
+    let detail = '';
+    if (current && key !== 'hero') {
+      const item = getItem(current);
+      const level = arena.levelOf(current);
+      const cost = arena.levelCost(item);
+      detail = `<div class="crow r-${RARITIES[level].id}">
+        <div class="info"><b>${item.name}</b>
+          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> · Stärke <span class="gold-text">${arena.gearPower(item)}</span>
+          ${cost === null ? '' : `→ ${arena.gearPower(item, level + 1)}`}</span></div>
+        ${cost === null
+          ? `<button disabled>${arena.capped(level) ? 'Arena-Rang nötig' : 'Maximal'}</button>`
+          : `<button data-act="gear-up" data-id="${current}" ${arena.material() >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
+      </div>
+      <p class="muted">Verbessert wird mit Duplikaten von Waffen, Rüstung, Relikten und Artefakten (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(arena.material())}</b>.</p>`;
+    }
+    const tiles = list.map((item) => {
+      const at = arena.equippedAt(item.id);
+      return `<button class="tile r-${item.rank}${item.id === current ? ' picked' : ''}" data-act="equip" data-id="${item.id}" data-sprite="${item.id}" title="${item.name}">
+        <span class="rank">${item.rank}</span>${key === 'hero' ? '' : levelBadge(item.id)}${at >= 0 && item.id !== current ? `<span class="new">${at + 1}</span>` : ''}</button>`;
+    }).join('');
+    return `<div class="chest picker">
+      <div class="line"><span>${slotLabel(key)} für Platz ${i + 1} wählen</span>
+        <span><button data-act="equip" data-id="" ${current ? '' : 'disabled'}>Ablegen</button> <button data-act="slot-close">Fertig</button></span></div>
+      ${detail}
+      ${list.length ? `<div class="grid heroes">${tiles}</div>` : '<p class="muted">Davon besitzt du noch nichts – ziehe am Wunschbrunnen.</p>'}
+    </div>`;
+  }
+
+  function bossHtml() {
+    const boss = arena.bossInfo();
+    if (boss) {
+      const odds = arena.winChance();
+      return `<div class="chest boss r-${boss.rank}">
+        <div class="boss-row">
+          <div class="frame" id="boss-frame"></div>
+          <div class="info">
+            <h3>${boss.name}</h3>
+            <span><b class="evo">Rang ${boss.rank}</b> · Stärke ${fmt(boss.power)} · dein Team ${fmt(arena.teamPower())}</span>
+            <span class="odds">Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${arena.teamPower() ? percent(odds) : '–'}</b></span>
+            <span class="muted">Sieg: ${arena.WIN_CLOTH}× Stoff ${boss.rank}, mit ${percent(arena.SILK_CHANCE)} zusätzlich 1× Seide ${boss.rank}. Bei einer Niederlage zieht der Boss ab.</span>
+          </div>
+        </div>
+        <div class="line"><button class="big" data-act="fight" ${arena.teamPower() ? '' : 'disabled'}>Kämpfen!</button></div>
+      </div>`;
+    }
+    const direct = RARITIES.map((r, t) => `
+      <button class="level r-${r.id}" data-act="boss" data-v="${t}" ${arena.canChallenge(t) && state.gold >= arena.BOSS_PRICE[t] ? '' : 'disabled'}>
+        <b><i>${r.id}</i>Boss</b><span>Stärke ${fmt(arena.BOSS_POWER[t])}</span>
+        <span class="gold-text">${fmt(arena.BOSS_PRICE[t])} Gold</span>
+        ${arena.canChallenge(t) ? '' : `<span class="lock">Arena-Rang ${r.id} nötig</span>`}
+      </button>`).join('');
+    return `<div class="chest">
+      <div class="line">
+        <span><b>Zufallsboss</b> – der Rang wird wie am Brunnen gewürfelt<br><span class="muted">${RARITIES.map((r) => `${r.id} ${percent(r.chance)}`).join(' · ')}</span></span>
+        <button class="big" data-act="boss-random" ${state.gold >= arena.RANDOM_PRICE ? '' : 'disabled'}>Würfeln<small>${arena.RANDOM_PRICE} Gold</small></button>
+      </div>
+    </div>
+    <p class="muted">Oder der sichere Weg – einen Boss des gewünschten Rangs gegen Gold herausfordern:</p>
+    <div class="levels">${direct}</div>`;
+  }
+
+  function shopHtml() {
+    const rows = Object.entries(arena.MATERIALS).map(([kind, m]) => `
+      <h4>${m.name} · ${m.cost} Stück je Tausch</h4>
+      <div class="levels">${RARITIES.map((r, t) => {
+        const n = arena.have(kind, t);
+        const up = RARITIES[arena.upTier(t)].id;
+        const odds = up === r.id ? `100 % Rang ${r.id}` : `${percent(1 - m.up)} Rang ${r.id} · ${percent(m.up)} Rang ${up}`;
+        return `<button class="level mat r-${r.id}" data-act="trade" data-k="${kind}" data-v="${t}" data-mat="${kind}:${t}" ${n >= m.cost ? '' : 'disabled'}>
+          <b><i>${r.id}</i>${m.name} ×${n}</b><span>${odds}</span></button>`;
+      }).join('')}</div>`).join('');
+    return `<p class="lead">Der Arena-Händler nimmt kein Gold, nur Stoff und Seide. Dafür gibt es ein zufälliges Sammelstück –
+      im Rang des Materials oder mit Glück einen Rang höher.</p>${rows}`;
+  }
+
+  function fightBoss() {
+    const result = arena.fight();
+    if (!result) return;
+    reveals.push({ fight: result });
+    renderArena();
+    nextReveal();
+  }
+
+  function showFight({ boss, win, odds, stoff, seide }) {
+    const el = document.createElement('div');
+    el.className = `reveal result r-${boss.rank}${win ? '' : ' fail'}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">BOSSKAMPF · RANG ${boss.rank}</div>
+        <div class="rank-big">${win ? 'SIEG!' : 'NIEDERLAGE'}</div>
+        <div class="frame${win ? ' beaten' : ''}"></div>
+        <h3>${boss.name}</h3>
+        ${win
+          ? `<div class="grid" id="loot"></div><p>${stoff}× Stoff ${boss.rank}${seide ? ` und ${seide}× Seide ${boss.rank}` : ''} erbeutet</p>`
+          : `<p>Der Boss war zu stark und ist weitergezogen.<br>Die Siegchance lag bei ${percent(odds)}.</p>`}
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(boss.image));
+    const loot = $('#loot', el);
+    if (loot) {
+      for (const [kind, n] of [['stoff', stoff], ['seide', seide]]) {
+        if (!n) continue;
+        const t = document.createElement('div');
+        t.className = `tile r-${boss.rank}`;
+        t.append(picture(arena.materialImage(kind, boss.tier)));
+        t.insertAdjacentHTML('beforeend', `<span class="rank">${boss.rank}</span><span class="count">×${n}</span>`);
+        loot.append(t);
+      }
+    }
+    document.body.append(el);
+    $('button[data-act]', el).focus();
     onToggle(true);
   }
 
@@ -526,6 +713,27 @@ export function createUI({ onToggle }) {
       }
       show(view);
     }
+    if (act === 'arena-tab') { arenaTab = btn.dataset.v; renderArena(); }
+    if (act === 'slot') {
+      const sel = { i: Number(btn.dataset.i), key: btn.dataset.k };
+      arenaSel = arenaSel && arenaSel.i === sel.i && arenaSel.key === sel.key ? null : sel;
+      renderArena();
+    }
+    if (act === 'slot-close') { arenaSel = null; renderArena(); }
+    if (act === 'equip' && arenaSel) { arena.equip(arenaSel.i, arenaSel.key, btn.dataset.id || null); renderArena(); }
+    if (act === 'auto-equip') { arena.autoEquip(); arenaSel = null; renderArena(); }
+    if (act === 'gear-up') { arena.levelUp(getItem(btn.dataset.id)); renderArena(); }
+    if (act === 'boss-random') { arena.challengeRandom(); renderArena(); }
+    if (act === 'boss') { arena.challenge(Number(btn.dataset.v)); renderArena(); }
+    if (act === 'fight') fightBoss();
+    if (act === 'trade') {
+      const got = arena.trade(btn.dataset.k, Number(btn.dataset.v));
+      if (got) {
+        reveals.push({ ...got, source: 'ARENA-HÄNDLER' });
+        renderArena();
+        nextReveal();
+      }
+    }
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'best') { pick.heroes = dungeon.heroes().slice(0, dungeon.MAX_HEROES).map((h) => h.id); renderDungeon(); }
@@ -558,6 +766,7 @@ export function createUI({ onToggle }) {
     updateChest,
     updateDungeon,
     openDungeon: () => show('dungeon'),
+    openArena: () => show('arena'),
     openExpedition: () => show('expedition'),
     openWell: () => show('well'),
     openGallery: () => show('gallery'),

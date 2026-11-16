@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Sammeln
@@ -54,16 +54,18 @@ in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
 ## Anlagen
 
-Expeditionslager und Dungeon-Tor müssen erst gebaut werden (250 bzw. 400 Gold)
-und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
+Expeditionslager, Dungeon-Tor und Bossarena müssen erst gebaut werden (250, 400
+und 600 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
 
 | Ausbau auf | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- |
 | Expeditionslager | 1000 | 3000 | 8000 | 20000 | 50000 |
 | Dungeon-Tor | 800 | 2500 | 7000 | 18000 | 45000 |
+| Bossarena | 1200 | 3500 | 9000 | 22000 | 55000 |
 
 Der Lager-Rang begrenzt, bis zu welcher Stufe Lebewesen und Leitung entwickelt
-werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen. Die
+werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen; der Arena-Rang die
+gezielt wählbaren Boss-Ränge und die höchste Ausrüstungsstufe. Die
 Preise stehen in `src/buildings.js`.
 
 ## Expedition
@@ -104,6 +106,32 @@ Erkundung, gibt es keine Beute.
 
 Alle Werte stehen oben in `src/dungeon.js`.
 
+## Bossarena
+
+Drei Helden treten gemeinsam an; jeder trägt Waffe, Rüstung, Relikt und
+Artefakt. Jedes Stück kann nur einmal getragen werden.
+
+| | D | C | B | A | S | SS |
+| --- | --- | --- | --- | --- | --- | --- |
+| Stärke Held | 10 | 20 | 40 | 70 | 120 | 200 |
+| Stärke Ausrüstung (nach Rang) | 4 | 7 | 12 | 20 | 35 | 60 |
+| Faktor nach Ausrüstungsstufe | 1 | 1,3 | 1,7 | 2,2 | 3 | 4 |
+| Kosten bis zu dieser Stufe (Duplikat-Wert) | – | 30 | 80 | 200 | 600 | 2000 |
+| Stärke Boss | 40 | 100 | 220 | 500 | 1100 | 2400 |
+| Preis Boss gezielt (Gold) | 50 | 120 | 300 | 800 | 2500 | 8000 |
+
+- **Zufallsboss:** 30 Gold, der Rang wird mit den Chancen des Brunnens gewürfelt.
+- **Siegchance:** Team-Stärke ÷ Boss-Stärke, begrenzt auf 5–95 %. Nach dem
+  Kampf ist der Boss weg, auch bei einer Niederlage.
+- **Beute:** 3× Stoff im Rang des Bosses, mit 35 % zusätzlich 1× Seide.
+- **Arena-Händler:** 3 Stoff → Sammelstück im selben Rang (75 %) oder einen
+  Rang höher (25 %). 1 Seide → einen Rang höher (70 %) oder selber Rang (30 %).
+  Rang SS ergibt immer SS.
+- **Ausrüstung verbessern:** mit Duplikaten von Waffen, Rüstung, Relikten und
+  Artefakten, wie bei der Expedition.
+
+Alle Werte stehen oben in `src/arena.js`.
+
 Der Spielstand liegt im `localStorage` des Browsers.
 
 ## Aufbau
@@ -117,7 +145,9 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/items.js` | Katalog der Sammelstücke, Ränge, Chancen, Ziehen |
 | `src/art/` | Zeichner für die Sammelstücke (Kern + je Kategorie) |
 | `src/expedition.js` | Team, Ertrag, Truhe, Funde, Entwicklung, Leitung |
-| `src/buildings.js` | Bau und Ausbau von Lager und Dungeon-Tor |
+| `src/arena.js` | Bossarena: Team, Ausrüstung, Bosse, Beute, Händler |
+| `src/dupes.js` | Bezahlen mit Duplikaten |
+| `src/buildings.js` | Bau und Ausbau von Lager, Dungeon-Tor und Bossarena |
 | `src/dungeon.js` | Gefahrenstufen, Erfolgschance, Beute |
 | `src/state.js` | Gold, Sammlung, Verkaufen, Speichern |
 | `src/ui.js` | Menüs für Brunnen, Galerie, Expedition und Dungeon, Pop-ups |

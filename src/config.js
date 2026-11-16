@@ -4,7 +4,7 @@ export const VIEW_W = 320;
 export const VIEW_H = 180;
 
 // Breite der begehbaren Welt (die Kamera scrollt darüber).
-export const WORLD_W = 640;
+export const WORLD_W = 800;
 
 // Oberkante der Wiese und die Linie, auf der die Spielfigur läuft.
 export const GROUND_Y = 146;
@@ -22,3 +22,7 @@ export const CAMP_RANGE = 26;
 // Der Dungeon-Eingang.
 export const DUNGEON_X = 74;
 export const DUNGEON_RANGE = 22;
+
+// Die Bossarena.
+export const ARENA_X = 716;
+export const ARENA_RANGE = 26;

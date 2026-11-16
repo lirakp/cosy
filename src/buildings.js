@@ -19,6 +19,13 @@ export const BUILDINGS = {
     pitch: 'Schicke bis zu fünf Helden auf Erkundung, um Gold und Sammelstücke zu erbeuten.',
     unlocks: 'Gefahrenstufen sind bis zum Rang des Tors zugänglich.',
   },
+  arena: {
+    name: 'Bossarena',
+    buy: 600,
+    upgrades: [1200, 3500, 9000, 22000, 55000],
+    pitch: 'Rüste drei Helden aus und lass sie gegen Bosse kämpfen. Siege bringen Stoff und Seide für den Arena-Händler.',
+    unlocks: 'Bosse lassen sich bis zum Rang der Arena gezielt herausfordern, Ausrüstung bis zu diesem Rang verbessern.',
+  },
 };
 
 const MAX_TIER = RARITIES.length - 1;
