@@ -2,6 +2,7 @@ import { RARITIES, getItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as mine from './mine.js';
+import * as sets from './sets.js';
 
 // Schmiede: gezielt ein eigenes Sammelstück kopieren – für Gold, Erz und Glut.
 //
@@ -24,7 +25,7 @@ const f = () => state.forge;
 const tier = () => buildings.tier('forge');
 
 export const maxGlut = () => (tier() >= 0 ? GLUT_MAX[tier()] : 0);
-export const glutMinutes = () => (tier() >= 0 ? GLUT_MINUTES[tier()] : GLUT_MINUTES[0]);
+export const glutMinutes = () => (tier() >= 0 ? GLUT_MINUTES[tier()] : GLUT_MINUTES[0]) / (1 + sets.bonus('glut'));
 
 // lädt die Glut nach der vergangenen Zeit auf
 export function tick(now = Date.now()) {

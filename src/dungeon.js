@@ -2,6 +2,7 @@ import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
+import * as sets from './sets.js';
 
 // Dungeon: Bis zu fünf Helden ziehen für eine feste Zeit los. Die Dauer ist
 // zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber schwerer.
@@ -32,7 +33,7 @@ const d = () => state.dungeon;
 // Alle eigenen Helden, die stärksten zuerst.
 export const heroes = () => HEROES.filter((h) => state.count(h.id)).sort((a, b) => b.tier - a.tier);
 
-export const power = (ids) => ids.reduce((sum, id) => sum + (HERO_POWER[getItem(id)?.tier] || 0), 0);
+export const power = (ids) => Math.round(ids.reduce((sum, id) => sum + (HERO_POWER[getItem(id)?.tier] || 0), 0) * (1 + sets.bonus('dungeonPower')));
 
 // Erfolgschance: Team-Stärke im Verhältnis zur Anforderung, nie ganz sicher, nie ganz aussichtslos.
 export function chance(level, ids) {

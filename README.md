@@ -36,6 +36,24 @@ Dann <http://localhost:8000> öffnen.
 **Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
+## Sammel-Sets
+
+Wer alle 50 Stücke einer Kategorie in einem Rang besitzt, schließt ein Set ab
+und bekommt einen dauerhaften Bonus (Pop-up beim Abschluss, Fortschritt in der
+Galerie). Je Set nach Rang D · C · B · A · S · SS:
+
+| Kategorie | Bonus je Set |
+| --- | --- |
+| Lebewesen | +2 · 3 · 4 · 6 · 8 · 12 % Expeditionsgold |
+| Monster | +2 · 3 · 4 · 6 · 8 · 12 % Erz in der Mine |
+| Waffen | +2 · 3 · 4 · 6 · 8 · 12 % Team-Stärke in der Bossarena |
+| Rüstung | +2 · 3 · 4 · 6 · 8 · 12 % Team-Stärke im Dungeon |
+| Relikte | +1 · 1 · 2 · 3 · 4 · 6 Gold pro Münze auf dem Weg |
+| Artefakte | +2 · 3 · 4 · 6 · 8 · 12 % schnellere Schmiedeglut |
+| Helden | +2 · 3 · 4 · 6 · 8 · 12 % Rabatt am Wunschbrunnen |
+
+Boni einer Kategorie addieren sich. Werte in `src/sets.js`.
+
 ## Tag und Nacht
 
 Ein ganzer Tag dauert 12 Minuten (`DAY_LENGTH` in `src/config.js`): Morgen,
@@ -247,5 +265,6 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/mine.js` | Mine: Ebenen, Arbeiter, Erz |
 | `src/minescene.js` | Darstellung der Mine mit hackenden Monstern |
 | `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
+| `src/sets.js` | Sammel-Sets und ihre Boni |
 | `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

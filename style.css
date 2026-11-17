@@ -610,3 +610,8 @@ button.danger:hover:not(:disabled) { background: #a8505a; }
 table.stats { max-width: none; font-size: 12px; }
 table.stats td:not(:first-child), table.stats th { text-align: right; }
 table.stats td { border-top: 1px solid #3a3170; }
+
+.setpanel { box-shadow: 0 0 0 2px var(--rc); }
+.setpanel.done { background: color-mix(in srgb, var(--rc) 18%, #1b1730); }
+.set-grid { grid-template-columns: repeat(5, 40px) !important; gap: 4px; justify-content: center; }
+.set-grid .sprite { width: 40px; }

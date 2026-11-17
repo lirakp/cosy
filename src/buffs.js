@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { render } from './art/core.js';
 import { goldIcon, luckIcon, gladiatorIcon } from './art/buffs.js';
+import * as sets from './sets.js';
 
 // Rausch-Effekte, die man mit etwas Glück beim Schlafen bekommt.
 
@@ -59,7 +60,7 @@ export function rollSleep(random = Math.random) {
   return id;
 }
 
-export const coinValue = () => (active('gold') ? COIN_GOLD_RUSH : COIN_NORMAL);
+export const coinValue = () => (active('gold') ? COIN_GOLD_RUSH : COIN_NORMAL) + sets.bonus('coins');
 export const expeditionFactor = () => (active('gold') ? 1 + EXPEDITION_BONUS : 1);
 export const lucky = () => active('luck');
 // verschiebt eine Erfolgschance unter Gladiatorrausch nach oben

@@ -1,5 +1,6 @@
 import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE } from './config.js';
 import * as forge from './forge.js';
+import * as sets from './sets.js';
 import * as mine from './mine.js';
 import * as trader from './trader.js';
 import { createMineScene, zoneAt as mineZoneAt, MINE_BOUNDS, LIFT_SPAWN } from './minescene.js';
@@ -134,6 +135,8 @@ document.getElementById('btn-reset').addEventListener('click', () => {
   state.reset();
   location.reload();
 });
+
+sets.onComplete((cat, tier) => ui.setComplete(cat, tier));
 
 document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
 document.getElementById('btn-resume').addEventListener('click', () => setPaused(false));

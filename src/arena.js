@@ -3,6 +3,7 @@ import { state } from './state.js';
 import * as buildings from './buildings.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
 import * as buffs from './buffs.js';
+import * as sets from './sets.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
@@ -125,7 +126,7 @@ export function memberPower(m) {
   if (!m.hero || !getItem(m.hero)) return 0;
   return HERO_POWER[getItem(m.hero).tier] + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0);
 }
-export const teamPower = () => a().team.reduce((sum, m) => sum + memberPower(m), 0);
+export const teamPower = () => Math.round(a().team.reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus('arenaPower')));
 
 // ---------------------------------------------------------------- Bosse
 

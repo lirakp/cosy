@@ -9,6 +9,7 @@ import * as buffs from './buffs.js';
 import * as mine from './mine.js';
 import * as trader from './trader.js';
 import * as forgeMod from './forge.js';
+import * as sets from './sets.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -111,8 +112,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <p class="lead">Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.</p>
         ${buffs.lucky() ? '<p class="buff-note">✦ Glücksrausch aktiv: seltene Ränge um 10 % wahrscheinlicher.</p>' : ''}
         <div class="actions">
-          <button class="big" data-act="pull" data-n="1">1× wünschen<small>${PULL_COST} Gold</small></button>
-          <button class="big" data-act="pull" data-n="10">10× wünschen<small>${PULL_10_COST} Gold</small></button>
+          <button class="big" data-act="pull" data-n="1">1× wünschen<small>${fmt(sets.pullCost(PULL_COST))} Gold</small></button>
+          <button class="big" data-act="pull" data-n="10">10× wünschen<small>${fmt(sets.pullCost(PULL_10_COST))} Gold</small></button>
         </div>
         <p class="note" id="well-note"></p>
         <div class="grid results" id="results"></div>
@@ -134,7 +135,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   }
 
   function pull(n) {
-    const cost = n === 10 ? PULL_10_COST : PULL_COST;
+    const cost = sets.pullCost(n === 10 ? PULL_10_COST : PULL_COST);
     const note = $('#well-note');
     if (state.gold < cost) {
       note.textContent = 'Nicht genug Gold. Sammle Münzen auf dem Weg oder verkaufe Duplikate in der Galerie.';
@@ -165,6 +166,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (!next) return onToggle(busy());
     if (next.result) return showResult(next.result);
     if (next.fight) return showFight(next.fight);
+    if (next.setDone) return showSetComplete(next.setDone);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -540,7 +542,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     const g = forgeMod.glut();
     dots.innerHTML = Array.from({ length: max }, (_, i) => `<i class="ember${i < g ? ' on' : ''}"></i>`).join('') + ` <b>${g}/${max}</b>`;
     const sec = forgeMod.nextGlutIn();
-    $('#glut-next').textContent = sec ? `nächste Glut in ${clock(sec)} · alle ${forgeMod.glutMinutes()} min` : 'voll';
+    $('#glut-next').textContent = sec ? `nächste Glut in ${clock(sec)} · alle ${fmt1(forgeMod.glutMinutes())} min` : 'voll';
   }
 
   // ------------------------------------------------------------ Mine
@@ -944,14 +946,51 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
 
   // ------------------------------------------------------------ Galerie
 
+  // Set-Fortschritt der gewählten Gruppe und alle aktiven Set-Boni
+  function setPanel() {
+    const t = RARITIES.findIndex((r) => r.id === filter.rank);
+    const have = sets.progress(filter.cat, t);
+    const done = have >= PER_GROUP;
+    const active = sets.activeBonuses();
+    const cat = CATEGORIES.find((c) => c.id === filter.cat).name;
+    return `<div class="chest setpanel r-${filter.rank}${done ? ' done' : ''}">
+      <div class="line"><span><b>Set ${cat} · Rang ${filter.rank}</b> ${done ? '✓ vollständig' : `${have}/${PER_GROUP}`}</span>
+        <span class="${done ? 'gold-text' : 'muted'}">Bonus: ${sets.describe(filter.cat, t)}</span></div>
+      <div class="bar"><i style="width:${(have / PER_GROUP) * 100}%"></i></div>
+      ${active.length ? `<p class="muted">Aktive Set-Boni: ${active.join(' · ')}</p>` : ''}
+    </div>`;
+  }
+
+  function showSetComplete({ cat, tier }) {
+    const name = CATEGORIES.find((c) => c.id === cat).name;
+    const rank = RARITIES[tier].id;
+    const el = document.createElement('div');
+    el.className = `reveal r-${rank}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">SAMMEL-SET VOLLSTÄNDIG</div>
+        <div class="rank-big">${name.toUpperCase()} · ${rank}</div>
+        <div class="grid set-grid"></div>
+        <h3>${sets.describe(cat, tier)}</h3>
+        <p>Alle ${PER_GROUP} Stücke gesammelt – der Bonus gilt ab sofort dauerhaft.</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.set-grid', el).replaceChildren(...getGroup(cat, rank).slice(0, 10).map((item) => sprite(item)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', 5);
+    onToggle(true);
+  }
+
   function renderGallery() {
     const cats = CATEGORIES.map((c) => {
       const mine = state.collected(ITEMS.filter((i) => i.cat === c.id));
       return `<button class="tab${c.id === filter.cat ? ' on' : ''}" data-act="cat" data-v="${c.id}">${c.name}<small>${mine}/${PER_GROUP * RARITIES.length}</small></button>`;
     }).join('');
     const ranks = RARITIES.map((r) => {
-      const mine = state.collected(getGroup(filter.cat, r.id));
-      return `<button class="tab r-${r.id}${r.id === filter.rank ? ' on' : ''}" data-act="rank" data-v="${r.id}"><b>${r.id}</b><small>${mine}/${PER_GROUP}</small></button>`;
+      const have = state.collected(getGroup(filter.cat, r.id));
+      return `<button class="tab r-${r.id}${r.id === filter.rank ? ' on' : ''}" data-act="rank" data-v="${r.id}"><b>${r.id}</b><small>${have >= PER_GROUP ? '✓ Set' : `${have}/${PER_GROUP}`}</small></button>`;
     }).join('');
     const dupes = state.duplicateValue();
 
@@ -961,6 +1000,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <p class="lead">${fmt(state.collected())} von ${fmt(ITEMS.length)} Sammelstücken entdeckt</p>
         <nav class="tabs">${cats}</nav>
         <nav class="tabs ranks">${ranks}</nav>
+        ${setPanel()}
         <div class="grid" id="gallery-grid"></div>
         <div class="detail" id="detail"></div>
         <footer>
@@ -1165,6 +1205,13 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openMine: () => show('mine'),
     openForge: () => show('forge'),
     openStats: () => show('stats'),
+    setComplete(cat, tier) {
+      reveals.push({ setDone: { cat, tier } });
+      // erst nach dem laufenden Ereignis anzeigen, damit es keine anderen Pop-ups verdrängt
+      setTimeout(() => {
+        if (!$('.reveal')) nextReveal();
+      }, 0);
+    },
     updateForge,
     openTrader: () => show('trader'),
     updateTrader,
