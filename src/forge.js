@@ -78,11 +78,11 @@ export function forge(id) {
   const c = cost(item);
   const wasFull = f().glut >= maxGlut();
   if (!mine.spendOre(item.tier, c.ore)) return null;
-  state.spend(c.gold);
+  state.spend(c.gold, 'schmiede');
   f().glut -= c.glut;
   if (wasFull) f().last = Date.now(); // Aufladen beginnt erst jetzt
   f().made++;
-  state.addItems([item]);
+  state.addItems([item], 'schmiede');
   return { item, isNew: false };
 }
 

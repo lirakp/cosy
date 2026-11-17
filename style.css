@@ -595,3 +595,18 @@ td b { color: var(--rc); }
 .forge-cost { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .glut-cost { color: #ff9a4a; }
 .tab small { color: #ff9a8a; }
+
+/* ---------------------------------------------------------------- Spielstand */
+
+.save-tools { display: flex; flex-direction: column; gap: 8px; text-align: left; border-top: 2px solid #4b3b78; padding-top: 12px; }
+.save-tools h3 { margin: 0; font-size: 13px; color: #b9a6c9; font-weight: normal; text-transform: uppercase; letter-spacing: 1px; }
+.save-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.save-buttons button { flex: 1 1 auto; font-size: 13px; padding: 7px 10px; }
+.save-tools .muted { opacity: 0.65; font-size: 12px; }
+button.danger { background: #8a3c44; }
+button.danger:hover:not(:disabled) { background: #a8505a; }
+.pause-card { max-width: 400px; }
+
+table.stats { max-width: none; font-size: 12px; }
+table.stats td:not(:first-child), table.stats th { text-align: right; }
+table.stats td { border-top: 1px solid #3a3170; }

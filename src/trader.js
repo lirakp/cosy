@@ -76,7 +76,7 @@ export function buyOffer(index) {
   o.sold = true;
   const item = ITEMS.find((i) => i.id === o.id);
   const isNew = !state.count(item.id);
-  state.addItems([item]);
+  state.addItems([item], 'erzhaendler');
   return { item, isNew };
 }
 
@@ -85,7 +85,7 @@ export function surprise(tier) {
   t().surprise--;
   const item = rollItem({ tier });
   const isNew = !state.count(item.id);
-  state.addItems([item]);
+  state.addItems([item], 'erzhaendler');
   return { item, isNew };
 }
 

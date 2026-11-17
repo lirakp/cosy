@@ -43,6 +43,17 @@
         <label>Effekte <input type="range" id="vol-sfx" min="0" max="100" step="5"></label>
         <p class="muted">Ton an/aus: Knopf ♪ oder Taste <kbd>M</kbd></p>
       </div>
+      <div class="save-tools">
+        <h3>Spielstand</h3>
+        <div class="save-buttons">
+          <button id="btn-export">Sichern</button>
+          <button id="btn-import">Laden</button>
+          <button id="btn-stats">Statistik</button>
+          <button id="btn-reset" class="danger">Neu anfangen</button>
+        </div>
+        <p class="muted" id="save-note">Sichert den Spielstand als Datei – z. B. zum Übertragen zwischen Browser und PC-Programm.</p>
+        <input type="file" id="file-import" accept=".json,application/json" hidden>
+      </div>
       <button class="big" id="btn-resume">Weiter <kbd>P</kbd></button>
     </div>
   </div>

@@ -88,6 +88,53 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !e.repeat) audio.toggleMute();
 });
 
+// ---------------------------------------------------------------- Spielstand sichern und laden
+
+const saveNote = document.getElementById('save-note');
+const fileInput = document.getElementById('file-import');
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  state.save();
+  const blob = new Blob([state.exportSave()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cosy-spielstand-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  saveNote.textContent = 'Gesichert. Die Datei liegt in deinem Download-Ordner.';
+});
+
+document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  fileInput.value = '';
+  if (!file) return;
+  try {
+    const loaded = state.parseSave(await file.text());
+    const owned = Object.keys(loaded.owned).length;
+    if (!confirm(`Spielstand laden? ${loaded.gold.toLocaleString('de-DE')} Gold, ${owned} verschiedene Sammelstücke.\nDer aktuelle Spielstand wird ersetzt.`)) return;
+    state.replace(loaded);
+    location.reload();
+  } catch (e) {
+    saveNote.textContent = e.message;
+    audio.play('error');
+  }
+});
+
+document.getElementById('btn-stats').addEventListener('click', () => {
+  setPaused(false);
+  ui.openStats();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!confirm('Wirklich neu anfangen? Gold, Sammlung und alle Anlagen gehen verloren.')) return;
+  if (!confirm('Ganz sicher? Das lässt sich nur mit einer gesicherten Datei rückgängig machen.')) return;
+  state.reset();
+  location.reload();
+});
+
 document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
 document.getElementById('btn-resume').addEventListener('click', () => setPaused(false));
 addEventListener('keydown', (e) => {
@@ -227,6 +274,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') ui.openArena();
   if (e.code === 'KeyN') ui.openMine();
   if (e.code === 'KeyH') ui.openForge();
+  if (e.code === 'KeyI') ui.openStats();
   // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
   if (place === 'mine' && (e.code === 'ArrowUp' || e.code === 'KeyW')) travel(mineLevel - 1);
   if (place === 'mine' && (e.code === 'ArrowDown' || e.code === 'KeyS') && mine.unlocked(mineLevel + 1)) travel(mineLevel + 1);
@@ -300,6 +348,7 @@ function expeditionTick() {
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
   ui.updateChest();
   showBuff();
+  if (!document.hidden) state.addPlayed(1);
   if (--saveCountdown <= 0 || found) {
     saveCountdown = 10;
     state.save();

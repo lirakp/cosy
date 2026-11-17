@@ -27,6 +27,6 @@ export function payWithDuplicates(items, cost) {
   }
   for (const c of used) state.useDuplicate(c.id);
   // Ein Überschuss wird wie ein Verkauf in Gold ausgezahlt, damit nichts verloren geht.
-  state.addGold(sum - cost);
+  state.addGold(sum - cost, 'verkauf');
   return true;
 }

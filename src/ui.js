@@ -78,6 +78,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'wardrobe') renderWardrobe();
     if (view === 'mine') renderMine();
     if (view === 'forge') renderForge();
+    if (view === 'stats') renderStats();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -419,6 +420,54 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     $('button[data-act]', el).focus();
     if (b) audio.play('reveal', 4);
     onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Statistik
+
+  const SOURCES = {
+    muenzen: 'Münzen auf dem Weg',
+    expedition: 'Expedition',
+    dungeon: 'Dungeon',
+    arena: 'Bossarena',
+    'arena-haendler': 'Arena-Händler',
+    brunnen: 'Wunschbrunnen',
+    erzhaendler: 'Erzhändler',
+    schmiede: 'Schmiede',
+    verkauf: 'Duplikate verkauft',
+    anlagen: 'Anlagen bauen und ausbauen',
+    leitung: 'Expeditionsleitung',
+    garten: 'Garten (Saatgut)',
+    sonstiges: 'Sonstiges',
+  };
+
+  function renderStats() {
+    const st = state.stats;
+    const realH = (Date.now() - st.since) / 3600000;
+    const playH = st.played / 3600;
+    const perH = (n, h) => (h >= 1 / 12 ? fmt(Math.round(n / h)) : '–');
+    const table = (title, rows, head2) => `
+      <h4>${title}</h4>
+      ${rows.length
+        ? `<table class="stats"><tr><th></th>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`
+        : '<p class="muted">Noch nichts aufgezeichnet.</p>'}`;
+    const goldRows = (group) => Object.entries(st[group])
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `<tr><td>${SOURCES[k] || k}</td><td>${fmt(Math.round(v))}</td><td>${perH(v, realH)}</td><td>${perH(v, playH)}</td></tr>`);
+    const itemRows = Object.entries(st.items)
+      .sort((a, b) => b[1].n - a[1].n)
+      .map(([k, v]) => `<tr><td>${SOURCES[k] || k}</td><td>${fmt(v.n)}</td><td>${fmt(v.dupes)}</td><td>${fmt(v.dupValue)}</td><td>${perH(v.dupValue, realH)}</td></tr>`);
+    const since = new Date(st.since).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+    overlay.innerHTML = `
+      <section class="panel statspanel">
+        ${head('Statistik')}
+        <p class="lead">Seit ${since}: ${fmt1(realH)} h echte Zeit, davon ${fmt1(playH)} h gespielt.
+          „Pro Stunde“ rechnet mit der echten Zeit (Expedition und Mine laufen auch offline), „pro Spielstunde“ nur mit der Zeit im Spiel.</p>
+        ${table('Gold eingenommen', goldRows('gold'), ['Gesamt', 'pro Stunde', 'pro Spielstunde'])}
+        ${table('Gold ausgegeben', goldRows('spent'), ['Gesamt', 'pro Stunde', 'pro Spielstunde'])}
+        ${table('Sammelstücke erhalten', itemRows, ['Stücke', 'davon Duplikate', 'Duplikat-Wert', 'Wert pro Stunde'])}
+        <p class="muted">Der Duplikat-Wert ist das Material für Entwicklungen und Verbesserungen (Verkaufswert der Duplikate).</p>
+        <footer><button data-act="stats-reset" class="danger">Statistik zurücksetzen</button></footer>
+      </section>`;
   }
 
   // ------------------------------------------------------------ Schmiede
@@ -1008,6 +1057,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       audio.play('levelUp');
       renderWardrobe();
     }
+    if (act === 'stats-reset') {
+      if (confirm('Statistik zurücksetzen? Der Spielstand bleibt erhalten.')) {
+        state.resetStats();
+        renderStats();
+      }
+    }
     if (act === 'forge-cat') { forgeSel.cat = btn.dataset.v; renderForge(); }
     if (act === 'forge-rank') { forgeSel.rank = btn.dataset.v; renderForge(); }
     if (act === 'forge-pick') { forgeSel.item = btn.dataset.id; renderForge(); }
@@ -1109,6 +1164,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openWardrobe: () => show('wardrobe'),
     openMine: () => show('mine'),
     openForge: () => show('forge'),
+    openStats: () => show('stats'),
     updateForge,
     openTrader: () => show('trader'),
     updateTrader,

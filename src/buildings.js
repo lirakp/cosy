@@ -58,7 +58,7 @@ export function nextCost(id) {
 
 export function advance(id) {
   const cost = nextCost(id);
-  if (cost === null || !state.spend(cost)) return false;
+  if (cost === null || !state.spend(cost, 'anlagen')) return false;
   state.buildings[id] = tier(id) + 1;
   state.changed();
   return true;

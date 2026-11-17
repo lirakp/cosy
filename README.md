@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `M` Ton an/aus ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Tag und Nacht
@@ -208,7 +208,16 @@ Artefakt. Jedes Stück kann nur einmal getragen werden.
 
 Alle Werte stehen oben in `src/arena.js`.
 
-Der Spielstand liegt im `localStorage` des Browsers.
+Der Spielstand liegt im `localStorage` des Browsers. Im Pause-Fenster lässt er
+sich als Datei **sichern** und wieder **laden** (auch zwischen Browser und
+PC-Programm) oder komplett **neu anfangen**.
+
+## Statistik
+
+`I` oder Pause → Statistik zeigt, woher Gold und Sammelstücke kommen: Gold
+eingenommen und ausgegeben je Quelle, erhaltene Stücke, Duplikate und
+Duplikat-Wert – jeweils gesamt, pro Stunde echter Zeit und pro Spielstunde.
+Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 
 ## Aufbau
 

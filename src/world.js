@@ -510,7 +510,7 @@ export function createWorld() {
         if (Math.abs(coins[i].x - player.x) < 8) {
           pops.push({ x: coins[i].x, age: 0 });
           coins.splice(i, 1);
-          state.addGold(buffs.coinValue());
+          state.addGold(buffs.coinValue(), 'muenzen');
           audio.play('coin');
         }
       }

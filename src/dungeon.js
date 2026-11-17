@@ -88,9 +88,9 @@ export function collect() {
       seen.add(item.id);
       return { item, isNew };
     });
-    state.addItems(found);
+    state.addItems(found, 'dungeon');
   }
-  state.addGold(result.gold);
+  state.addGold(result.gold, 'dungeon');
   return result;
 }
 

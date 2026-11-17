@@ -35,27 +35,80 @@ const newMine = () => ({
   trader: { until: 0, nextRoll: 0, offers: [], surprise: 0 },
 });
 
+const newStats = (now = Date.now()) => ({
+  since: now, // Beginn der Aufzeichnung
+  played: 0, // Sekunden mit sichtbarem Spiel
+  gold: {}, // eingenommenes Gold je Quelle
+  spent: {}, // ausgegebenes Gold je Zweck
+  items: {}, // erhaltene Stücke je Quelle: { n, dupes, dupValue }
+});
+
+const newGarden = () => ({
+  beds: [null, null], // je Beet: { crop, planted } oder null
+  crops: {}, // Ernte-Vorrat je Pflanze
+});
+
+const fresh = () => ({
+  gold: START_GOLD,
+  owned: {},
+  pulls: 0,
+  exp: newExpedition(),
+  dungeon: { run: null },
+  buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1 },
+  arena: newArena(),
+  mine: newMine(),
+  forge: { glut: 3, last: 0, made: 0 },
+  stats: newStats(),
+  garden: newGarden(),
+});
+
+// Ergänzt fehlende Teile (ältere Spielstände) und prüft die Grundform.
+function normalize(saved) {
+  if (!saved || typeof saved !== 'object' || typeof saved.gold !== 'number' || !saved.owned || typeof saved.owned !== 'object') return null;
+  const base = fresh();
+  return {
+    ...base,
+    ...saved,
+    exp: { ...base.exp, ...saved.exp },
+    dungeon: { ...base.dungeon, ...saved.dungeon },
+    buildings: { ...base.buildings, ...saved.buildings },
+    arena: { ...base.arena, ...saved.arena },
+    mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
+    forge: { ...base.forge, ...saved.forge },
+    stats: { ...base.stats, ...saved.stats },
+    garden: { ...base.garden, ...saved.garden },
+  };
+}
+
 const listeners = new Set();
-const data = load();
+let data = load();
 
 function load() {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
-    if (saved && typeof saved.gold === 'number' && saved.owned) {
-      saved.exp = { ...newExpedition(), ...saved.exp };
-      saved.dungeon = { run: null, ...saved.dungeon };
-      saved.buildings = { camp: -1, dungeon: -1, arena: -1, ...saved.buildings };
-      saved.arena = { ...newArena(), ...saved.arena };
-      saved.mine = { ...newMine(), ...saved.mine };
-      saved.buildings.mine ??= -1;
-      saved.buildings.forge ??= -1;
-      saved.forge = { glut: 3, last: 0, made: 0, ...saved.forge };
-      return saved;
-    }
+    const saved = normalize(JSON.parse(localStorage.getItem(KEY)));
+    if (saved) return saved;
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1 }, arena: newArena(), mine: newMine(), forge: { glut: 3, last: 0, made: 0 } };
+  return fresh();
+}
+
+// ---------------------------------------------------------------- Statistik
+
+function track(group, key, amount) {
+  const g = data.stats[group];
+  g[key] = (g[key] || 0) + amount;
+}
+
+function trackItems(items, source) {
+  const entry = (data.stats.items[source] ||= { n: 0, dupes: 0, dupValue: 0 });
+  for (const item of items) {
+    entry.n++;
+    if (data.owned[item.id]) {
+      entry.dupes++;
+      entry.dupValue += item.sell;
+    }
+  }
 }
 
 function save() {
@@ -123,8 +176,10 @@ export const state = {
   count: (id) => data.owned[id] || 0,
   onChange: (fn) => listeners.add(fn),
 
-  addGold(amount) {
+  // source: woher das Gold kommt (für die Statistik)
+  addGold(amount, source = 'sonstiges') {
     data.gold += amount;
+    if (amount > 0) track('gold', source, amount);
     changed();
   },
 
@@ -133,21 +188,30 @@ export const state = {
     if (data.gold < cost) return false;
     data.gold -= cost;
     data.pulls += items.length;
-    for (const item of items) data.owned[item.id] = (data.owned[item.id] || 0) + 1;
+    track('spent', 'brunnen', cost);
+    for (const item of items) {
+      trackItems([item], 'brunnen');
+      data.owned[item.id] = (data.owned[item.id] || 0) + 1;
+    }
     changed();
     return true;
   },
 
-  spend(cost) {
+  // purpose: wofür das Gold ausgegeben wird (für die Statistik)
+  spend(cost, purpose = 'sonstiges') {
     if (data.gold < cost) return false;
     data.gold -= cost;
+    if (cost > 0) track('spent', purpose, cost);
     changed();
     return true;
   },
 
   // Stücke ohne Bezahlung eintragen (z. B. Expeditionsfunde)
-  addItems(items) {
-    for (const item of items) data.owned[item.id] = (data.owned[item.id] || 0) + 1;
+  addItems(items, source = 'sonstiges') {
+    for (const item of items) {
+      trackItems([item], source);
+      data.owned[item.id] = (data.owned[item.id] || 0) + 1;
+    }
     changed();
   },
 
@@ -165,6 +229,7 @@ export const state = {
     const gain = extra * getItem(id).sell;
     data.owned[id] = 1;
     data.gold += gain;
+    track('gold', 'verkauf', gain);
     changed();
     return gain;
   },
@@ -180,8 +245,50 @@ export const state = {
     if (!gain) return 0;
     for (const id in data.owned) if (data.owned[id] > 1) data.owned[id] = 1;
     data.gold += gain;
+    track('gold', 'verkauf', gain);
     changed();
     return gain;
+  },
+
+  get stats() {
+    return data.stats;
+  },
+  addPlayed(seconds) {
+    data.stats.played += seconds;
+  },
+  resetStats() {
+    data.stats = newStats();
+    changed();
+  },
+
+  // ---------------------------------------------------------------- Sichern und Laden
+
+  // Spielstand als Text für eine Datei
+  exportSave() {
+    return JSON.stringify({ game: 'cosy', version: 1, savedAt: new Date().toISOString(), data }, null, 1);
+  },
+
+  // Prüft eine Sicherungsdatei; liefert den Spielstand oder wirft einen Fehler mit Erklärung.
+  parseSave(text) {
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error('Die Datei ist keine Cosy-Sicherung (kein gültiges JSON).');
+    }
+    const loaded = normalize(parsed?.game === 'cosy' ? parsed.data : parsed);
+    if (!loaded) throw new Error('Die Datei enthält keinen gültigen Cosy-Spielstand.');
+    return loaded;
+  },
+
+  // Ersetzt den kompletten Spielstand (Import, Neustart, Tests).
+  replace(next) {
+    data = normalize(next) || fresh();
+    changed();
+  },
+  reset() {
+    data = fresh();
+    changed();
   },
 
   collected: (items = ITEMS) => items.reduce((n, item) => n + (data.owned[item.id] ? 1 : 0), 0),

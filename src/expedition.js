@@ -96,7 +96,7 @@ export function evolveLeader(id = leader().id) {
   const cost = leaderCost(id);
   if (cost === null) return false;
   tick();
-  if (!state.spend(cost)) return false;
+  if (!state.spend(cost, 'leitung')) return false;
   e().leaderEvo[id] = rawLeader(id) + 1;
   refresh();
   state.changed();
@@ -163,8 +163,8 @@ export function collect() {
   if (!gold && !items.length) return null;
   x.gold -= gold;
   x.loot = [];
-  state.addItems(items.map((i) => i.item));
-  state.addGold(gold);
+  state.addItems(items.map((i) => i.item), 'expedition');
+  state.addGold(gold, 'expedition');
   refresh();
   return { gold, items };
 }

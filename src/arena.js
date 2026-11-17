@@ -144,11 +144,11 @@ const summon = (tier) => {
 };
 
 // Glücksweg: günstiger Zufallsboss mit den Rang-Chancen des Brunnens.
-export const challengeRandom = () => !a().boss && state.spend(RANDOM_PRICE) && summon(rollTier());
+export const challengeRandom = () => !a().boss && state.spend(RANDOM_PRICE, 'arena') && summon(rollTier());
 
 // Einfacher Weg: Boss eines bestimmten Rangs kaufen (bis zum Rang der Arena).
 export const canChallenge = (tier) => tier <= arenaTier();
-export const challenge = (tier) => !a().boss && canChallenge(tier) && state.spend(BOSS_PRICE[tier]) && summon(tier);
+export const challenge = (tier) => !a().boss && canChallenge(tier) && state.spend(BOSS_PRICE[tier], 'arena') && summon(tier);
 
 export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladiator(clamp(teamPower() / BOSS_POWER[boss.tier])) : 0);
 
@@ -190,6 +190,6 @@ export function trade(kind, tier) {
   a().mats[kind][tier] -= m.cost;
   const item = rollItem({ tier: Math.random() < upChance(kind) ? upTier(tier) : tier });
   const isNew = !state.count(item.id);
-  state.addItems([item]);
+  state.addItems([item], 'arena-haendler');
   return { item, isNew };
 }
