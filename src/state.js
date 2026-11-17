@@ -89,6 +89,7 @@ const fresh = () => ({
   magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
   companions: { owned: [], active: null, pts: {}, gifts: 0 },
   tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
+  statues: [null, null, null], // Statuen auf dem Hof (Sammelstück-Ids)
   // Dimensionsportal: welche Welt dahinter liegt, ob man gerade dort ist, und
   // der Spielstand der Welt, in der man gerade NICHT ist
   // type: die erste Portalwelt (Zufall beim Bau) · inside: Welt, in der man gerade ist (null = Heimat)
@@ -391,6 +392,9 @@ export const state = {
   },
   set dayCount(n) {
     data.dayCount = n;
+  },
+  get statues() {
+    return data.statues;
   },
   get tailor() {
     return data.tailor;

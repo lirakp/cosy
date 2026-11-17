@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
 import * as sets from './sets.js';
 import { CAPE_POWER } from './tailor.js';
+import * as gems from './gems.js';
 import * as companions from './companions.js';
 
 // Gemeinsame Team-Logik für Bossarena und Dungeon: Helden mit vier
@@ -99,6 +100,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
     if (key === 'hero' && !wearsGear(m)) {
       for (const s of SLOTS) m.gear[s.cat] = null;
       m.cape = null;
+      m.gem = null;
     }
     state.changed();
     return true;
@@ -124,6 +126,14 @@ export function createParty({ name, members, tier, other, locked = () => false, 
       const gear = candidates(s.cat);
       members().filter((m) => wearsGear(m)).forEach((m, i) => (m.gear[s.cat] = gear[i]?.id || null));
     }
+    // beste freie Edelsteine verteilen (höchster Rang zuerst, Rubine bevorzugt)
+    members().forEach((m) => (m.gem = null));
+    const order = ['rubin', 'smaragd', 'saphir', 'topas'];
+    const keys = gems.owned().sort((a, b) => gems.parse(b).tier - gems.parse(a).tier || order.indexOf(gems.parse(a).id) - order.indexOf(gems.parse(b).id));
+    for (const m of members().filter((x) => wearsGear(x))) {
+      const k = keys.find((g) => gemsFree(g) > 0);
+      if (k) m.gem = k;
+    }
     // beste freie Umhänge verteilen
     members().forEach((m) => (m.cape = null));
     for (const m of members().filter((x) => wearsGear(x))) {
@@ -141,8 +151,24 @@ export function createParty({ name, members, tier, other, locked = () => false, 
   function memberPower(m) {
     if (!m.hero || !getItem(m.hero)) return 0;
     if (!wearsGear(m)) return heroPower(getItem(m.hero));
-    return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0) + (m.cape != null ? CAPE_POWER[m.cape] : 0);
+    const base = heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0) + (m.cape != null ? CAPE_POWER[m.cape] : 0);
+    // Rubin: mehr Stärke für diesen Helden
+    return Math.round(base * (1 + (m.gem && gems.parse(m.gem).id === 'rubin' ? gems.value(m.gem) : 0)));
   }
+
+  // Edelsteine: wie Umhänge ein gemeinsamer Vorrat für alle Teams
+  const gemsWorn = (list, k) => list.filter((m) => m.hero && m.gem === k).length;
+  const gemsFree = (k, index = -1) =>
+    gems.count(k) - gemsWorn(other(), k) - gemsWorn(members(), k) + (members()[index]?.gem === k && members()[index]?.hero ? 1 : 0);
+  function equipGem(index, k) {
+    const m = members()[index];
+    if (!m || locked() || (k != null && (!wearsGear(m) || gemsFree(k, index) <= 0))) return false;
+    m.gem = k;
+    state.changed();
+    return true;
+  }
+  // Summe einer Edelstein-Wirkung im Team (Saphir, Smaragd, Topas)
+  const gemSum = (id) => members().reduce((s, m) => s + (m.gem && wearsGear(m) && gems.parse(m.gem).id === id ? gems.value(m.gem) : 0), 0);
 
   // freie Umhänge eines Rangs (für Platz index: der eigene zählt als frei)
   const capesFree = (tier, index = -1) =>
@@ -158,7 +184,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
   const heroIds = () => members().map((m) => m.hero).filter(Boolean);
 
   return {
-    name, monsters, wearsGear, team, clean, equip, equipCape, capesFree, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
+    name, monsters, wearsGear, equipGem, gemsFree, gemSum, team, clean, equip, equipCape, capesFree, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
     levelOf, capped, heroPower, gearPower, powerOf, material, levelCost, levelUp, usedElsewhere, locked,
   };
 }

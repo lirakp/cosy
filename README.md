@@ -380,6 +380,38 @@ unter einer eigenen Überschrift. Mitnehmen kann man sie überallhin.
 Logik in `src/realm.js`, `src/dimension.js` und `state.switchWorld()`, Stücke in `src/items.js`,
 Stil in `src/art/core.js`, Landschaften in `src/themes.js`.
 
+## Edelsteine, Statuen und Metall-Einrichtung (Schmiede)
+
+Die Schmiede hat drei Reiter: **Kopieren**, **💎 Edelsteine** und **🗿 Statuen & Deko**.
+
+**Edelsteine** werden aus Erz geschliffen. Der Rang des Edelsteins entspricht dem
+Rang des Erzes, höchstens bis zum Rang der Schmiede. Kosten je Rang D … SS:
+6 · 6 · 8 · 10 · 12 · 15 Erz und 60 · 150 · 400 · 1000 · 2500 · 6000 Gold.
+Jeder Held in Arena, Dungeon (Erkundung und Abstieg) und Bossrush hat einen
+**Edelstein-Platz**. Alle Teams teilen sich den Vorrat, Monster tragen keine.
+
+| Edelstein | Wirkung (D … SS) |
+| --- | --- |
+| Rubin | +4 · 7 · 10 · 14 · 20 · 30 % Stärke für diesen Helden |
+| Saphir | +5 · 8 · 12 · 18 · 25 · 35 % Gold aus Dungeon, Abstieg und Bossrush (Team) |
+| Smaragd | +1 · 1,5 · 2 · 3 · 4 · 6 % Erfolgschance (Team) |
+| Topas | +3 · 5 · 8 · 11 · 15 · 20 % Chance auf Extra-Beute: Sammelstück im Dungeon/Abstieg, Seide in Arena/Bossrush (Team) |
+
+**Statuen**: Auf drei Sockeln auf dem Hof steht je eine Statue eines eigenen
+Stücks ab Rang A, gegossen aus 10 Erz im Rang des Stücks plus 2000 / 6000 /
+20000 Gold. A ist aus Bronze, S aus Silber, SS aus Gold. Das Stück bleibt in der
+Sammlung. Bonus nach Kategorie (bei S × 1,5, bei SS × 2):
+Helden +3 % Stärke · Lebewesen +5 % Expeditionsgold · Monster +5 % Erz ·
+Waffen +5 % Dungeon-Gold · Rüstung +2 % Stärke und Münzen-Reichweite ·
+Relikte +5 % Mana · Artefakte +10 % Sternschnuppen.
+
+**Metall-Einrichtung** fürs Haus (Gemütlichkeit wie vom Nähtisch):
+Kaminbesteck (8 Eisenerz, ♥1), Standuhr mit Pendel (8 Silbererz, ♥2),
+goldener Kronleuchter (6 Golderz, ♥3, leuchtet nachts). Mit aller Einrichtung
+liegt die Rausch-Chance beim Schlafen jetzt bei bis zu 31 %.
+
+Werte in `src/gems.js`, `src/statues.js` und `src/tailor.js`.
+
 ## Nähtisch (Schneiderei)
 
 Im Haus steht neben dem Tisch am Fenster ein Nähkorb. Dort (`E`) wird aus Stoff
@@ -405,7 +437,7 @@ und Seide der Bossarena genäht:
   Wimpelgirlande, Seidenbaldachin und Seidenlampions (leuchten nachts) machen
   das Haus sichtbar schöner. Jede bringt Gemütlichkeit (insgesamt 15). Jeder
   Punkt erhöht die Chance auf einen Rausch beim Schlafen um 1 %, also von
-  10 % auf bis zu 25 %.
+  10 % auf bis zu 25 % (mit der Metall-Einrichtung aus der Schmiede bis 31 %).
 - **Veredeln:** 4 Stoff → 1 Seide (gleicher Rang), 5 Stoff → 1 Stoff des
   nächsten Rangs, 3 Seide → 1 Seide des nächsten Rangs.
 

@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem, worldItems, worldPool } from './items.js';
+import { ALL_ITEMS, ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem, worldItems, worldPool } from './items.js';
 import * as realm from './realm.js';
 import * as dimension from './dimension.js';
 import { state, DUPE_EXTRA, NEW_EXTRA } from './state.js';
@@ -23,6 +23,8 @@ import * as tailor from './tailor.js';
 import * as minigameNs from './minigame.js';
 import * as bossrush from './bossrush.js';
 import * as descent from './descent.js';
+import * as gems from './gems.js';
+import * as statues from './statues.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -277,6 +279,35 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     return `<button class="tile r-${RARITIES[m.cape].id}${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="cape" data-cape="${m.cape}" title="Umhang Rang ${RARITIES[m.cape].id}"${lock}><span class="rank">${RARITIES[m.cape].id}</span></button>`;
   }
 
+  // Edelstein-Platz
+  function gemButton(pk, i, m) {
+    const sel = partySel[pk];
+    const on = sel && sel.i === i && sel.key === 'gem' ? ' sel' : '';
+    const lock = PARTY[pk]().locked() ? ' disabled' : '';
+    if (!m.gem || !m.hero) return `<button class="tile empty-slot${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="gem"${lock}>Edelstein</button>`;
+    const g = gems.parse(m.gem);
+    return `<button class="tile r-${RARITIES[g.tier].id}${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="gem" data-gem="${m.gem}" title="${g.gem.name} Rang ${RARITIES[g.tier].id}: ${g.gem.text(gems.value(m.gem))}"${lock}><span class="rank">${RARITIES[g.tier].id}</span></button>`;
+  }
+
+  function gemPickerHtml(pk, i) {
+    const P = PARTY[pk]();
+    const m = P.team()[i];
+    const tiles = gems.owned().sort((a, b) => gems.parse(b).tier - gems.parse(a).tier).map((k) => {
+      const g = gems.parse(k);
+      const free = P.gemsFree(k, i);
+      return `<button class="tile r-${RARITIES[g.tier].id}${m.gem === k ? ' picked' : ''}" data-act="equip-gem" data-p="${pk}" data-v="${k}" data-gem="${k}" title="${g.gem.name} ${RARITIES[g.tier].id}: ${g.gem.text(gems.value(k))}" ${free > 0 ? '' : 'disabled'}>
+        <span class="rank">${RARITIES[g.tier].id}</span><span class="count">${free}</span></button>`;
+    }).join('');
+    const cur = m.gem ? gems.parse(m.gem) : null;
+    return `<div class="chest picker">
+      <div class="line"><span>Edelstein für Platz ${i + 1} wählen</span>
+        <span><button data-act="equip-gem" data-p="${pk}" data-v="" ${m.gem ? '' : 'disabled'}>Ablegen</button> <button data-act="slot-close" data-p="${pk}">Fertig</button></span></div>
+      ${cur ? `<p><b>${cur.gem.name} ${RARITIES[cur.tier].id}</b> – ${cur.gem.text(gems.value(m.gem))}</p>` : ''}
+      <p class="muted">${m.hero ? 'Edelsteine schleifst du in der Schmiede aus Erz. Rubin: Stärke dieses Helden · Saphir: Gold · Smaragd: Erfolgschance · Topas: Extra-Beute. Wirkungen von Saphir, Smaragd und Topas zählen fürs ganze Team. Alle Teams teilen sich den Vorrat.' : 'Erst einen Helden auf diesen Platz stellen.'}</p>
+      ${tiles ? `<div class="grid heroes">${tiles}</div>` : '<p class="muted">Du hast noch keinen Edelstein geschliffen.</p>'}
+    </div>`;
+  }
+
   function capePickerHtml(pk, i) {
     const P = PARTY[pk]();
     const m = P.team()[i];
@@ -299,7 +330,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const members = P.team().map((m, i) => `
       <div class="member">
         <div class="hero-slot">${slotButton(pk, i, 'hero', m.hero)}</div>
-        ${getItem(m.hero)?.cat === 'monster' ? '<div class="gear-slots"><span class="muted monster-note">Monster kämpfen ohne Ausrüstung</span></div>' : `<div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}${capeButton(pk, i, m)}</div>`}
+        ${getItem(m.hero)?.cat === 'monster' ? '<div class="gear-slots"><span class="muted monster-note">Monster kämpfen ohne Ausrüstung</span></div>' : `<div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}${capeButton(pk, i, m)}${gemButton(pk, i, m)}</div>`}
         <span>Stärke <b class="gold-text">${fmt(P.memberPower(m))}</b></span>
       </div>`).join('');
     const actions = P.locked()
@@ -322,7 +353,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (arenaTab === 'rush') bossrush.tick();
     const body = arenaTab === 'shop' ? shopHtml() : arenaTab === 'rush' ? rushHtml() : fightHtml();
     overlay.innerHTML = `<section class="panel arena">${head('Bossarena')}${tabs}${body}</section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     for (const el of overlay.querySelectorAll('[data-mat]')) {
       const [kind, tier] = el.dataset.mat.split(':');
       el.prepend(picture(arena.materialImage(kind, Number(tier))));
@@ -394,6 +425,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const sel = partySel[pk];
     if (!sel) return '';
     if (sel.key === 'cape') return capePickerHtml(pk, sel.i);
+    if (sel.key === 'gem') return gemPickerHtml(pk, sel.i);
     const P = PARTY[pk]();
     const { i, key } = sel;
     const m = P.team()[i];
@@ -909,7 +941,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         }).join('')}</div>`;
     } else if (tailorTab === 'einrichtung') {
       body = `<p class="muted">Gemütlichkeit <b class="gold-text">${tailor.cozy()} / ${tailor.MAX_COZY}</b> – jeder Punkt erhöht die Chance auf einen Rausch beim Schlafen um 1 % (jetzt ${percent(buffs.sleepChance())}).</p>
-        <div class="sew-list">${tailor.DECOR.map((d) => {
+        <div class="sew-list">${tailor.DECOR.filter((d) => !d.metal).map((d) => {
           const done = tailor.placed(d.id);
           const tierOf = Math.max(...d.cost.map((c) => c.tier));
           return `<div class="sew r-${RARITIES[tierOf].id}"><span class="sew-img cozy">♥${d.cozy}</span>
@@ -933,7 +965,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       const [kind, tier] = el.dataset.mat.split(':');
       el.prepend(picture(arena.materialImage(kind, Number(tier))));
     }
-    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     for (const el of overlay.querySelectorAll('[data-outfit]')) {
       const c = document.createElement('canvas');
       c.width = 12;
@@ -1068,7 +1100,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
     for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     updateMarket();
   }
 
@@ -1174,7 +1206,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${helperHtml()}
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     fillCrops();
   }
 
@@ -1318,16 +1350,22 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
 
   // ------------------------------------------------------------ Schmiede
 
+  let forgeTab = 'kopieren';
+  const forgeTabs = () => `<nav class="tabs">${[['kopieren', 'Kopieren'], ['edelsteine', '💎 Edelsteine'], ['werkstatt', '🗿 Statuen & Deko']].map(([id, n]) => `<button class="tab${forgeTab === id ? ' on' : ''}" data-act="forge-tab" data-v="${id}">${n}</button>`).join('')}</nav>`;
+
   function renderForge() {
     if (!buildings.owned('forge')) return renderPurchase('forge', 'Schmiede');
     forgeMod.tick();
+    if (forgeTab === 'edelsteine') return renderGems();
+    if (forgeTab === 'werkstatt') return renderWorkshop();
     const cats = CATEGORIES.map((c) => `<button class="tab${c.id === forgeSel.cat ? ' on' : ''}" data-act="forge-cat" data-v="${c.id}">${c.name}</button>`).join('');
     const ranks = RARITIES.map((r, t) => `<button class="tab r-${r.id}${r.id === forgeSel.rank ? ' on' : ''}" data-act="forge-rank" data-v="${r.id}"><b>${r.id}</b>${forgeMod.canForgeRank(t) ? '' : '<small>gesperrt</small>'}</button>`).join('');
     overlay.innerHTML = `
       <section class="panel forgepanel">
         ${head('Schmiede')}
-        <p class="lead">Kopiere gezielt ein Sammelstück, das du schon besitzt. Kostet Gold, Erz aus der Mine und Schmiedeglut.</p>
         ${upgradeBar('forge')}
+        ${forgeTabs()}
+        <p class="lead">Kopiere gezielt ein Sammelstück, das du schon besitzt. Kostet Gold, Erz aus der Mine und Schmiedeglut.</p>
         <div class="chest glut">
           <div class="line"><span>Schmiedeglut <span id="glut-dots"></span></span><span id="glut-next" class="muted"></span></div>
         </div>
@@ -1350,6 +1388,82 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     fillOres();
     renderForgeDetail();
     updateForge();
+  }
+
+  // ------------------------------------------------------------ Edelsteinschleiferei
+
+  function renderGems() {
+    const rows = gems.GEMS.map((g) => `
+      <div class="gem-row">
+        <div class="gem-head"><b>${g.name}</b><span class="muted">${g.effect}</span></div>
+        <div class="gem-ranks">${RARITIES.map((r, t) => {
+          const k = gems.key(g.id, t);
+          const why = gems.blocker(g.id, t);
+          return `<div class="gem-cell r-${r.id}" data-gem="${k}">
+            <span class="evo">${r.id}</span>
+            <span class="small">${g.text(g.values[t])}</span>
+            <span class="muted">Vorrat ${gems.count(k)}</span>
+            <button data-act="gem-craft" data-v="${g.id}" data-t="${t}" ${why ? `disabled title="${why}"` : ''}>${gems.ORE_COST[t]} Erz · ${fmt(gems.GOLD_COST[t])}</button>
+          </div>`;
+        }).join('')}</div>
+      </div>`).join('');
+    overlay.innerHTML = `
+      <section class="panel forgepanel">
+        ${head('Schmiede')}
+        ${upgradeBar('forge')}
+        ${forgeTabs()}
+        <p class="lead">Schleife Edelsteine aus Erz – Rang des Edelsteins = Rang des Erzes (bis zum Rang der Schmiede). Jeder Held in Arena, Dungeon und Bossrush hat einen Edelstein-Platz.</p>
+        <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        <div class="gems">${rows}</div>
+      </section>`;
+    fillOres();
+    for (const el of overlay.querySelectorAll('.gem-cell[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
+  }
+
+  // ------------------------------------------------------------ Statuen und Metall-Deko
+
+  let statueSel = 0; // gewählter Sockel
+  function renderWorkshop() {
+    const plinths = statues.PLINTHS.map((_, i) => {
+      const it = statues.at(i);
+      return `<button class="plinth${statueSel === i ? ' on' : ''}" data-act="statue-plinth" data-v="${i}">
+        <b>Sockel ${i + 1}</b>${it ? `<span data-statue="${it.id}"></span><span>${it.name}</span><span class="gold-text">${companions.describeBonus({ bonus: statues.bonusOf(it) })}</span>` : '<span class="muted">leer</span>'}</button>`;
+    }).join('');
+    const candidates = ALL_ITEMS.filter((i) => i.tier >= statues.MIN_TIER && state.count(i.id)).sort((a, b) => b.tier - a.tier).slice(0, 60);
+    const decor = tailor.DECOR.filter((d) => d.metal).map((d) => {
+      const done = tailor.placed(d.id);
+      const c = d.cost[0];
+      return `<div class="sew r-${RARITIES[c.tier].id}"><span class="sew-img cozy">♥${d.cozy}</span>
+        <div><b>${d.name}</b><span>${d.text}</span><span>${done ? 'steht im Haus' : `${c.n}× ${mine.LEVELS[c.tier].ore}`}</span></div>
+        ${done ? '<span class="tag">✓</span>' : `<button data-act="sew-decor" data-v="${d.id}" ${tailor.affordable(d.cost) ? '' : 'disabled'}>Schmieden</button>`}</div>`;
+    }).join('');
+    overlay.innerHTML = `
+      <section class="panel forgepanel">
+        ${head('Schmiede')}
+        ${upgradeBar('forge')}
+        ${forgeTabs()}
+        <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        <h4>Statuen auf dem Hof</h4>
+        <p class="muted">Gieße eine Statue eines deiner Stücke ab Rang A (${statues.ORE} Erz im Rang des Stücks + Gold: A ${fmt(statues.GOLD[3])} · S ${fmt(statues.GOLD[4])} · SS ${fmt(statues.GOLD[5])}). Sie steht auf dem Hof und gibt einen Bonus nach Kategorie – bei S × 1,5, bei SS × 2. Das Stück bleibt in deiner Sammlung.</p>
+        <div class="plinths">${plinths}</div>
+        <p class="muted">Für Sockel ${statueSel + 1} gießen${statues.at(statueSel) ? ' (ersetzt die bisherige Statue)' : ''}:</p>
+        <div class="grid" id="statue-grid"></div>
+        <h4>Metall-Einrichtung fürs Haus</h4>
+        <p class="muted">Gemütlichkeit wie die Stoff-Einrichtung vom Nähtisch: jeder Punkt +1 % Chance auf einen Rausch beim Schlafen (jetzt ${percent(buffs.sleepChance())}).</p>
+        <div class="sew-list">${decor}</div>
+      </section>`;
+    fillOres();
+    $('#statue-grid').replaceChildren(...candidates.map((item) => {
+      const why = statues.blocker(item);
+      const el = tile(item);
+      el.dataset.act = 'statue-cast';
+      el.dataset.v = item.id;
+      el.title = `${item.name}${why ? ` – ${why}` : ` · ${companions.describeBonus({ bonus: statues.bonusOf(item) })}`}`;
+      if (why) el.classList.add('elsewhere');
+      return el;
+    }));
+    if (!candidates.length) $('#statue-grid').innerHTML = '<p class="muted">Du besitzt noch kein Stück ab Rang A.</p>';
+    for (const el of overlay.querySelectorAll('[data-statue]')) el.append(picture(statues.image(getItem(el.dataset.statue))));
   }
 
   function renderForgeDetail() {
@@ -1433,7 +1547,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${minePicker()}
         <div class="mine-levels">${levels}</div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     fillOres();
   }
 
@@ -1512,7 +1626,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <p class="muted">Ein zufälliges Sammelstück im Rang des Erzes.</p>
         <div class="levels">${surprise}</div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     fillOres();
     updateTrader();
   }
@@ -1586,7 +1700,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           ${membersHtml('dungeon')}
         </section>`;
       $('#party').replaceChildren(...run.heroes.filter((id) => getItem(id)).map((id) => tile(getItem(id))));
-      for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+      for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
       updateDungeon();
       return;
     }
@@ -1638,7 +1752,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           </div>
         </div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
   }
 
   // läuft jede Sekunde mit, solange der Bossrush offen ist
@@ -1714,7 +1828,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       </section>`;
     if (x) $('#backpack')?.replaceChildren(...x.loot.items.slice(-24).map((id) => getItem(id)).filter(Boolean).map((item) => tile(item)));
     for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
-    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
   }
 
   function updateDescent() {
@@ -1889,7 +2003,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${roster.length > SHOWN ? `<p class="muted">… und ${roster.length - SHOWN} weitere, schwächere Lebewesen.</p>` : ''}
       </section>`;
 
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape)))); for (const el of overlay.querySelectorAll('[data-gem]')) el.prepend(picture(gems.image(el.dataset.gem)));
     for (const el of overlay.querySelectorAll('[data-leader]')) el.prepend(picture(exp.leaderImage(exp.LEADERS.find((l) => l.id === el.dataset.leader))));
     updateChest();
   }
@@ -2118,6 +2232,21 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     }
     if (act === 'comp-pick') { companions.setActive(btn.dataset.v || null); audio.play('click'); renderCompanions(); }
     if (act === 'portal-go') { show(null); onPortal?.(btn.dataset.v); return; }
+    if (act === 'forge-tab') { forgeTab = btn.dataset.v; renderForge(); }
+    if (act === 'gem-craft') {
+      if (gems.craft(btn.dataset.v, Number(btn.dataset.t))) { audio.play('build'); toast(`💎 ${gems.gem(btn.dataset.v).name} ${RARITIES[Number(btn.dataset.t)].id} geschliffen!`); }
+      else audio.play('error');
+      renderForge();
+    }
+    if (act === 'statue-plinth') { statueSel = Number(btn.dataset.v); renderForge(); }
+    if (act === 'statue-cast') {
+      const item = getItem(btn.dataset.v);
+      const why = statues.blocker(item);
+      if (why) { toast(why); audio.play('error'); }
+      else if (statues.cast(statueSel, item.id)) { audio.play('levelUp'); toast(`🗿 Statue „${item.name}“ steht jetzt auf dem Hof!`); }
+      renderForge();
+      return;
+    }
     if (act === 'tailor-tab') { tailorTab = btn.dataset.v; renderTailor(); }
     if (act === 'sew-cape') { audio.play(tailor.sewCape(Number(btn.dataset.v)) ? 'build' : 'error'); renderTailor(); }
     if (act === 'sew-outfit') {
@@ -2128,7 +2257,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'sew-decor') {
       if (tailor.buyDecor(btn.dataset.v)) { audio.play('build'); toast(`♥ ${tailor.decor(btn.dataset.v).name} schmückt jetzt dein Haus.`); }
       else audio.play('error');
-      renderTailor();
+      show(view);
     }
     if (act === 'refine') { audio.play(tailor.refine(btn.dataset.v, Number(btn.dataset.t)) ? 'coin' : 'error'); renderTailor(); }
     if (act === 'wish-mode') { wishMode = btn.dataset.v; renderWell(); }
@@ -2237,6 +2366,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       const pk = btn.dataset.p;
       const sel = partySel[pk];
       if (sel && !PARTY[pk]().equip(sel.i, sel.key, btn.dataset.id || null)) audio.play('error');
+      rerenderParty(pk);
+    }
+    if (act === 'equip-gem') {
+      const pk = btn.dataset.p;
+      const sel = partySel[pk];
+      if (sel && !PARTY[pk]().equipGem(sel.i, btn.dataset.v || null)) audio.play('error');
       rerenderParty(pk);
     }
     if (act === 'equip-cape') {

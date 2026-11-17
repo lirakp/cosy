@@ -11,16 +11,20 @@ import * as realm from './realm.js';
 const MAX_TIER = RARITIES.length - 1;
 const t = () => state.tailor;
 const mats = () => state.arena.mats;
-export const have = (kind, tier) => mats()[kind][tier] || 0;
+export const have = (kind, tier) => (kind === 'erz' ? state.mine.ore[tier] : mats()[kind][tier]) || 0;
 
 // cost: [{ kind, tier, n }]
 export const affordable = (cost) => cost.every((c) => have(c.kind, c.tier) >= c.n);
 function pay(cost) {
   if (!affordable(cost)) return false;
-  for (const c of cost) mats()[c.kind][c.tier] -= c.n;
+  for (const c of cost) {
+    if (c.kind === 'erz') state.mine.ore[c.tier] -= c.n;
+    else mats()[c.kind][c.tier] -= c.n;
+  }
   return true;
 }
 const S = (tier, n) => ({ kind: 'stoff', tier, n });
+const E = (tier, n) => ({ kind: 'erz', tier, n }); // Erz aus der Mine
 const K = (tier, n) => ({ kind: 'seide', tier, n });
 
 // ---------------------------------------------------------------- Umhänge
@@ -104,6 +108,10 @@ export const DECOR = [
   { id: 'girlande', name: 'Wimpelgirlande', cozy: 2, cost: [S(3, 5)], text: 'Bunte Wimpel quer unter der Decke.' },
   { id: 'baldachin', name: 'Seidenbaldachin', cozy: 3, cost: [K(4, 3)], text: 'Ein Himmel aus Seide über dem Bett.' },
   { id: 'lampions', name: 'Seidenlampions', cozy: 4, cost: [K(5, 2)], text: 'Zwei Lampions, die nachts warm leuchten.' },
+  // Metall-Einrichtung (in der Schmiede aus Erz)
+  { id: 'kaminbesteck', metal: true, name: 'Kaminbesteck', cozy: 1, cost: [E(1, 8)], text: 'Schürhaken, Zange und Schaufel aus Eisen neben dem Kamin.' },
+  { id: 'standuhr', metal: true, name: 'Standuhr', cozy: 2, cost: [E(2, 8)], text: 'Eine silberne Standuhr, die leise tickt.' },
+  { id: 'kronleuchter', metal: true, name: 'Goldener Kronleuchter', cozy: 3, cost: [E(3, 6)], text: 'Ein Kronleuchter mit Kerzen unter der Decke – leuchtet nachts.' },
 ];
 export const decor = (id) => DECOR.find((d) => d.id === id);
 export const placed = (id) => t().decor.includes(id);

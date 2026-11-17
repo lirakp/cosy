@@ -208,6 +208,43 @@ function drawDecor(ctx, time) {
       for (let r = 0; r < 4; r++) rect(ctx, x + r, y + r, 6 - r * 2 > 0 ? 6 - r * 2 : 1, 1, cols[i % cols.length]);
     }
   }
+  if (has('kaminbesteck')) {
+    // Ständer mit Schürhaken, Zange und Schaufel links vom Kamin
+    const x = 128;
+    rect(ctx, x, FLOOR - 3, 7, 2, '#4a4a58');
+    rect(ctx, x + 3, FLOOR - 22, 1, 20, '#6a6a7a');
+    rect(ctx, x + 1, FLOOR - 21, 5, 1, '#6a6a7a');
+    rect(ctx, x + 1, FLOOR - 20, 1, 12, '#8a8a9a');
+    rect(ctx, x + 5, FLOOR - 20, 1, 14, '#8a8a9a');
+    rect(ctx, x + 4, FLOOR - 7, 3, 3, '#5a5a68');
+    px(ctx, x + 3, FLOOR - 23, '#c0c0d0');
+  }
+  if (has('standuhr')) {
+    // silberne Standuhr zwischen Kamin und Schrank
+    const x = 191;
+    rect(ctx, x, FLOOR - 38, 9, 38, '#6a4a3a');
+    rect(ctx, x + 1, FLOOR - 37, 7, 36, '#8a6a52');
+    circle(ctx, x + 4, FLOOR - 31, 3, '#d8dce8');
+    px(ctx, x + 4, FLOOR - 31, PAL.ink);
+    rect(ctx, x + 4, FLOOR - 33, 1, 2, PAL.ink);
+    rect(ctx, x + 2, FLOOR - 24, 5, 16, '#3a2a24');
+    const swing = Math.round(Math.sin(time * 3) * 1.5);
+    rect(ctx, x + 4 + swing, FLOOR - 23, 1, 10, '#c0c0d0');
+    circle(ctx, x + 4 + swing, FLOOR - 12, 1, '#ffd04a');
+    rect(ctx, x - 1, FLOOR - 40, 11, 2, '#d8dce8');
+  }
+  if (has('kronleuchter')) {
+    // goldener Kronleuchter unter dem mittleren Balken
+    const x = 160;
+    rect(ctx, x, 12, 1, 8, '#c98a2a');
+    rect(ctx, x - 10, 20, 21, 2, '#ffd04a');
+    rect(ctx, x - 7, 22, 15, 1, '#c98a2a');
+    for (const dx of [-10, -5, 0, 5, 10]) {
+      rect(ctx, x + dx, 17, 1, 3, '#fdf6e3');
+      px(ctx, x + dx, 16, Math.floor(time * 6 + dx) % 3 ? '#ffd978' : '#fff1b8');
+    }
+    px(ctx, x, 23, '#9be8e0');
+  }
   if (has('lampions')) {
     for (const x of [123, 203]) {
       const sway = Math.round(Math.sin(time * 1.2 + x) * 1);
@@ -385,6 +422,7 @@ export function createInterior() {
       const flicker = Math.sin(time * 11) > 0.3 ? 1 : 0;
       glow(ctx, FIRE_X, FLOOR - 12, 24 + flicker + Math.round(night * 10), 0.22 + 0.2 * night, PAL.glow);
       glow(ctx, CANDLE.x, CANDLE.y - 2, 9 + flicker + Math.round(night * 5), 0.2 + 0.25 * night);
+      if (has('kronleuchter')) glow(ctx, 160, 18, 18 + flicker + Math.round(night * 8), 0.15 + 0.3 * night);
       if (has('lampions')) for (const x of [126, 206]) glow(ctx, x, 23, 10 + flicker + Math.round(night * 6), 0.15 + 0.3 * night, '#ff9ab0');
       for (let i = 0; i < 7; i++) {
         const h = 6 + Math.round((Math.sin(time * 9 + i * 1.7) + 1) * 3) + (i % 3 === 1 ? 4 : 0);

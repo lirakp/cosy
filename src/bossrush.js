@@ -44,7 +44,7 @@ export const reviveCost = (bosses = run()?.bosses || 0) => Math.min(REVIVE_MAX, 
 
 // Stärke des nächsten Bosses: Grundwert seines Rangs, wächst mit jedem Sieg
 export const bossPower = (tier, bosses) => Math.round(BOSS_POWER[tier] * (1 + GROWTH * bosses));
-export const winChance = (power, boss) => buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power / boss)));
+export const winChance = (power, boss) => buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power / boss + party.gemSum('smaragd'))));
 
 function newBoss(rand) {
   return { tier: rollTier(0, rand), kind: Math.floor(rand() * BOSS_NAMES.length) };
@@ -81,9 +81,9 @@ export function tick(now = Date.now(), rand = Math.random) {
     x.log.length = Math.min(x.log.length, 8);
     if (win) {
       x.bosses++;
-      x.loot.gold += Math.round(BOSS_GOLD[boss.tier] * realm.goldFactor());
+      x.loot.gold += Math.round(BOSS_GOLD[boss.tier] * realm.goldFactor() * (1 + party.gemSum('saphir')));
       x.loot.stoff[boss.tier] += WIN_CLOTH;
-      if (rand() < SILK_CHANCE) x.loot.seide[boss.tier] += 1;
+      if (rand() < SILK_CHANCE + party.gemSum('topas')) x.loot.seide[boss.tier] += 1;
       x.boss = newBoss(rand);
       x.next += FIGHT_SECONDS * 1000;
     } else {

@@ -59,7 +59,7 @@ export function need(floor, typeId) {
 export const effectivePower = (x = current()) => Math.round(x.power * (1 + x.boost - x.malus));
 export function chance(floor, x = current()) {
   const trap = type(x.type).trap ? type(x.type).trap[Math.min(5, Math.floor(floor / 10))] : 0;
-  const base = Math.min(MAX_CHANCE, effectivePower(x) / need(floor, x.type)) * (1 - trap);
+  const base = Math.min(MAX_CHANCE, effectivePower(x) / need(floor, x.type) + party.gemSum('smaragd')) * (1 - trap);
   return buffs.gladiator(Math.max(MIN_CHANCE, base));
 }
 export const reviveCost = (x = current()) => Math.min(REVIVE_MAX, REVIVE_BASE + REVIVE_STEP * (x?.floor || 0));
@@ -135,9 +135,9 @@ function resolve(x, rand) {
   }
   const odds = chance(floor, x);
   if (rand() < odds) {
-    const gold = Math.round(10 * (1 + floor * 0.35) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1));
+    const gold = Math.round(10 * (1 + floor * 0.35) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
     x.loot.gold += gold;
-    if (kind !== 'etage' || rand() < ITEM_CHANCE) addItem(x, Math.min(5, minTierAt(floor) + (kind === 'boss' ? 1 : 0)), rand);
+    if (kind !== 'etage' || rand() < ITEM_CHANCE + party.gemSum('topas')) addItem(x, Math.min(5, minTierAt(floor) + (kind === 'boss' ? 1 : 0)), rand);
     log(x, { floor, kind, win: true, odds });
     x.floor++;
     return;

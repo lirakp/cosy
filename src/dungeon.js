@@ -135,7 +135,8 @@ export const power = () => party.teamPower();
 export function chance(level, teamPower = power(), typeId = 'blut') {
   if (!teamPower) return 0;
   const l = info(level, typeId);
-  const base = Math.min(MAX_CHANCE, teamPower / l.need) * (1 - l.trap);
+  // Smaragd: + Erfolgschance
+  const base = Math.min(MAX_CHANCE, teamPower / l.need + party.gemSum('smaragd')) * (1 - l.trap);
   return buffs.gladiator(Math.max(MIN_CHANCE, base));
 }
 
@@ -190,10 +191,12 @@ export function collect() {
   }
 
   if (result.success) {
-    result.gold = Math.round(level.gold * (0.8 + Math.random() * 0.4) * realm.goldFactor() * (1 + companions.bonus('dungeonGold')));
+    result.gold = Math.round(level.gold * (0.8 + Math.random() * 0.4) * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (1 + party.gemSum('saphir')));
     const found = [];
     for (let i = 0; i < level.standard; i++) found.push(rollItem({ tier: 0, cat: pickCat(t, Math.random) }));
     for (let i = 0; i < level.bonus; i++) found.push(rollItem({ minTier: level.minTier, cat: pickCat(t, Math.random) }));
+    // Topas: Chance auf ein Extra-Stück
+    if (Math.random() < party.gemSum('topas') * level.bonus) found.push(rollItem({ minTier: level.minTier, cat: pickCat(t, Math.random) }));
     found.sort((a, b) => a.tier - b.tier);
     const seen = new Set();
     result.items = found.map((item) => {

@@ -1,5 +1,6 @@
 import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X, TOWER_X, PORTAL_X } from './config.js';
 import * as realm from './realm.js';
+import * as statues from './statues.js';
 import * as magic from './magic.js';
 import * as garden from './garden.js';
 import * as gardener from './gardener.js';
@@ -977,6 +978,17 @@ export function createWorld(theme = {}) {
       drawBuilding(ctx, 'mine', MINE_X, cam);
       drawBuilding(ctx, 'tower', TOWER_X, cam);
       drawBuilding(ctx, 'portal', PORTAL_X, cam);
+      // Statuen auf ihren Sockeln
+      statues.PLINTHS.forEach((x, i) => {
+        const it = statues.at(i);
+        if (!it) return;
+        const sx = x - cam;
+        const base = GROUND_Y + 4;
+        rect(ctx, sx - 9, base - 7, 18, 7, PAL.stone);
+        rect(ctx, sx - 10, base - 8, 20, 2, PAL.stoneLight);
+        rect(ctx, sx - 9, base - 2, 18, 2, 'rgba(42, 33, 64, 0.3)');
+        ctx.drawImage(statues.image(it), sx - 8, base - 24);
+      });
 
       // Gartenbeete vor dem Zaun
       const now = Date.now();

@@ -1,6 +1,7 @@
 import { RARITIES, rollTier } from './items.js';
 import { state } from './state.js';
 import * as realm from './realm.js';
+import * as statues from './statues.js';
 import { sprite, flipped, getOutfit } from './sprites.js';
 import { makeCanvas } from './utils.js';
 
@@ -246,7 +247,7 @@ const outfitBonus = (kind) => {
   const o = getOutfit(state.outfit);
   return o.sew && state.tailor?.sewn.includes(o.id) ? o.bonus?.[kind] || 0 : 0;
 };
-export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0) + outfitBonus(kind) + realm.bonus(kind);
+export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0) + outfitBonus(kind) + realm.bonus(kind) + statues.bonus(kind);
 
 export function befriend(id) {
   if (!companion(id) || owned(id)) return false;

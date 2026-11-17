@@ -917,11 +917,11 @@ test('Schneiderei: Kleidung erst nähen, dann tragen – ihr Bonus wirkt nur ang
 
 test('Schneiderei: Einrichtung macht das Haus gemütlich, Veredeln tauscht Material', () => {
   assert.equal(tailor.cozy(), 0);
-  for (const d of tailor.DECOR) for (const c of d.cost) state.arena.mats[c.kind][c.tier] += c.n;
+  for (const d of tailor.DECOR) for (const c of d.cost) { if (c.kind === 'erz') state.mine.ore[c.tier] += c.n; else state.arena.mats[c.kind][c.tier] += c.n; }
   for (const d of tailor.DECOR) assert.ok(tailor.buyDecor(d.id), d.name);
   assert.equal(tailor.cozy(), tailor.MAX_COZY);
-  close(buffs.sleepChance(), 0.1 + tailor.MAX_COZY * 0.01, 1e-9, 'bis 25 %');
-  assert.equal(tailor.MAX_COZY, 15);
+  close(buffs.sleepChance(), 0.1 + tailor.MAX_COZY * 0.01, 1e-9, 'bis 31 %');
+  assert.equal(tailor.MAX_COZY, 21);
   state.arena.mats.stoff[0] = 9;
   assert.ok(tailor.refine('seide', 0));
   assert.ok(tailor.refine('stoff-up', 0));
@@ -1387,4 +1387,45 @@ test('Brunnen: Fehlen nur noch A–SS, kostet „Nur Neue“ 1.000 bzw. 9.500 un
   const r = well.pull(10, seeded(4), { fresh: true });
   assert.equal(r.paid, 9500);
   assert.ok(r.results.every(({ item, isNew }) => isNew && item.tier >= 3));
+});
+
+// ---------------------------------------------------------------- Edelsteine und Statuen
+
+import * as gems from '../src/gems.js';
+import * as statues from '../src/statues.js';
+
+test('Edelsteine: aus Erz geschliffen, bis zum Schmiede-Rang, mit eigenen Wirkungen', () => {
+  state.buildings.forge = 2;
+  state.addGold(1e6);
+  state.mine.ore[2] = 20;
+  state.mine.ore[3] = 20;
+  assert.ok(gems.craft('rubin', 2));
+  assert.ok(gems.craft('smaragd', 2));
+  assert.match(gems.blocker('rubin', 3), /Schmiede-Rang A/);
+  assert.equal(state.mine.ore[2], 20 - 2 * gems.ORE_COST[2]);
+  // im Team: Rubin = mehr Stärke, Smaragd = mehr Erfolgschance
+  state.buildings.arena = 2;
+  state.addItems([getGroup('helden', 'C')[0]]);
+  arena.party.equip(0, 'hero', getGroup('helden', 'C')[0].id);
+  const bare = arena.party.memberPower(state.arena.team[0]);
+  assert.ok(arena.party.equipGem(0, gems.key('rubin', 2)));
+  close(arena.party.memberPower(state.arena.team[0]), Math.round(bare * (1 + gems.GEMS[0].values[2])), 1);
+  assert.equal(dungeon.party.equipGem(0, gems.key('rubin', 2)), false, 'der einzige Rubin steckt in der Arena');
+  state.addItems([getGroup('helden', 'C')[1]]);
+  dungeon.party.equip(0, 'hero', getGroup('helden', 'C')[1].id);
+  const before = dungeon.chance(0);
+  assert.ok(dungeon.party.equipGem(0, gems.key('smaragd', 2)));
+  close(dungeon.chance(0) - before, gems.GEMS[2].values[2], 1e-9, 'Smaragd');
+});
+
+test('Statuen: ab Rang A aus Erz gegossen, Bonus nach Kategorie und Rang', () => {
+  const hero = getGroup('helden', 'S')[0];
+  state.addItems([hero, getGroup('helden', 'B')[0]]);
+  state.addGold(1e6);
+  state.mine.ore[4] = 10;
+  assert.match(statues.blocker(getGroup('helden', 'B')[0]), /ab Rang A/);
+  assert.ok(statues.cast(0, hero.id));
+  assert.equal(state.mine.ore[4], 0);
+  close(companions.bonus('power'), 0.03 * 1.5, 1e-9, 'Helden-Statue S: +4,5 % Stärke');
+  assert.equal(state.count(hero.id), 1, 'das Stück bleibt in der Sammlung');
 });

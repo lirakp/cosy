@@ -967,3 +967,19 @@ body[data-display="fill"] { background: #0b0a1f; }
 .wish-modes button.on { box-shadow: 0 0 0 2px #ffd04a; background: #6a549e; }
 .actions .new { box-shadow: 0 0 0 3px #8fe08a; }
 .wish-mode-text { margin: 0; }
+
+/* ---------------------------------------------------------------- Edelsteine, Statuen */
+
+.gems { display: flex; flex-direction: column; gap: 8px; }
+.gem-row { background: #1b1730; padding: 8px 10px; }
+.gem-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.gem-head b { color: #fdf6e3; }
+.gem-ranks { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.gem-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; background: #2a2456; box-shadow: 0 0 0 2px var(--rc); font-size: 11px; text-align: center; }
+.gem-cell canvas, .plinth canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+.gem-cell .small { font-size: 10px; }
+.gem-cell button { font-size: 10px; padding: 4px 6px; }
+.plinths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.plinth { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; font-size: 11px; text-align: center; }
+.plinth.on { box-shadow: 0 0 0 3px #ffd04a; background: #6a549e; }
+.plinth b { color: #fdf6e3; }

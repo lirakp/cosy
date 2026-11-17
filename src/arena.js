@@ -79,7 +79,8 @@ export const challengeRandom = () => !a().boss && state.spend(RANDOM_PRICE, 'are
 export const canChallenge = (tier) => tier <= arenaTier();
 export const challenge = (tier) => !a().boss && canChallenge(tier) && state.spend(BOSS_PRICE[tier], 'arena') && summon(tier);
 
-export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladiator(clamp(teamPower() / BOSS_POWER[boss.tier])) : 0);
+// Smaragd: + Erfolgschance
+export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladiator(clamp(teamPower() / BOSS_POWER[boss.tier] + party.gemSum('smaragd'))) : 0);
 
 export function fight() {
   const boss = bossInfo();
@@ -90,7 +91,8 @@ export function fight() {
   const result = { boss, odds, win: Math.random() < odds, stoff: 0, seide: 0 };
   if (result.win) {
     result.stoff = WIN_CLOTH;
-    result.seide = Math.random() < SILK_CHANCE ? 1 : 0;
+    // Topas: mehr Seide
+    result.seide = Math.random() < SILK_CHANCE + party.gemSum('topas') ? 1 : 0;
     a().mats.stoff[boss.tier] += result.stoff;
     a().mats.seide[boss.tier] += result.seide;
     a().wins++;
