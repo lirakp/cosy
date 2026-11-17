@@ -853,7 +853,7 @@ test('Brunnen: Gratiswünsche am Tag, Gratis-Folgewunsch und Rabatt je Rang', ()
   assert.equal(well.dailyLeft(), 1, 'neuer Tag, neuer Gratiswunsch');
   state.buildings.well = 5;
   assert.equal(well.dailyLeft(), 3);
-  assert.ok(well.cost(10) < 585 * 0.85);
+  assert.equal(well.cost(10), 680, '850 Gold − 20 % bei Rang SS');
   state.buildings.well = 0;
 });
 
@@ -926,4 +926,25 @@ test('Schneiderei: Einrichtung macht das Haus gemütlich, Veredeln tauscht Mater
   assert.ok(tailor.refine('stoff-up', 0));
   assert.deepEqual([state.arena.mats.stoff[0], state.arena.mats.seide[0], state.arena.mats.stoff[1]], [0, 1, 1]);
   assert.equal(tailor.refine('seide-up', 5), false, 'über SS geht nichts');
+});
+
+test('Brunnen: Preise 100/850, Duplikat-Wunsch bringt nur Eigenes und kostet 50 mehr je Zug', () => {
+  resetWell();
+  state.buildings.well = 0;
+  assert.equal(well.cost(1), 100);
+  assert.equal(well.cost(10), 850);
+  assert.equal(well.cost(1, true), 150);
+  assert.equal(well.cost(10, true), 1350);
+  setGold(1e6);
+  assert.ok(well.pull(10, Math.random, { dupes: true }).error, 'ohne Sammlung geht es nicht');
+  const mine = [getGroup('monster', 'D')[0], getGroup('waffen', 'D')[3], getGroup('helden', 'B')[2]];
+  state.addItems(mine);
+  const before = state.gold;
+  const random = seeded(4);
+  for (let i = 0; i < 30; i++) {
+    const r = well.pull(10, random, { dupes: true });
+    for (const { item } of r.results) assert.ok(mine.some((m) => m.id === item.id), 'nur eigene Stücke');
+  }
+  assert.equal(before - state.gold, 30 * 1350);
+  assert.equal(state.well.pityA, 0, 'zählt nicht für den Glückszähler');
 });

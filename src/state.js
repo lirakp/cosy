@@ -5,8 +5,10 @@ import { ITEMS, getItem } from './items.js';
 const KEY = 'cosy-save-v1';
 const START_GOLD = 500;
 
-export const PULL_COST = 65;
-export const PULL_10_COST = 585; // zehn Züge zum Preis von neun
+export const PULL_COST = 100;
+export const PULL_10_COST = 850; // zehn Züge mit Mengenrabatt
+// Duplikat-Wunsch: nur Stücke, die man schon besitzt (Material zum Leveln), je Zug teurer
+export const DUPE_EXTRA = 50;
 
 const newExpedition = () => ({
   evo: {}, // Entwicklungsstufe je Lebewesen (0 = D … 5 = SS)

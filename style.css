@@ -884,3 +884,7 @@ table.stats td { border-top: 1px solid #3a3170; }
 .refine-row button { min-width: 48px; box-shadow: 0 0 0 2px var(--rc); }
 .outfit.locked { opacity: 0.55; }
 .outfit .gold-text { font-size: 10px; }
+.dupe-toggle { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; background: #1b1730; padding: 8px 10px; cursor: pointer; }
+.dupe-toggle input { margin-top: 2px; accent-color: #9be8e0; }
+.dupe-toggle b { color: #9be8e0; }
+.actions .dupe { box-shadow: 0 0 0 3px #9be8e0; }

@@ -1,5 +1,5 @@
 import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem } from './items.js';
-import { state, PULL_COST, PULL_10_COST } from './state.js';
+import { state, DUPE_EXTRA } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
@@ -123,6 +123,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   // ------------------------------------------------------------ Wunschbrunnen
 
   let spiritLine = null; // letzter Spruch des Brunnengeists
+  let dupeMode = false; // Duplikat-Wunsch eingeschaltet
   function renderWell() {
     const chances = tierChances(buffs.lucky());
     const rates = RARITIES.map(
@@ -140,9 +141,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${buffs.lucky() ? '<p class="buff-note">✦ Glücksrausch aktiv: seltene Ränge um 10 % wahrscheinlicher.</p>' : ''}
         ${well.spiritGift() ? '<button class="big spirit-wish" data-act="pull" data-n="spirit">✦ Geschenk des Brunnengeists<small>Gratiswunsch · garantiert Rang A, S oder SS</small></button>' : ''}
         <div class="actions">
-          <button class="big${free ? ' free' : ''}" data-act="pull" data-n="1">1× wünschen<small>${free ? (free === 'next' ? 'Gratis! (Glückswurf)' : 'Gratis! (Wunsch des Tages)') : `${fmt(well.cost(1))} Gold`}</small></button>
-          <button class="big" data-act="pull" data-n="10">10× wünschen<small>${fmt(well.cost(10))} Gold</small></button>
+          <button class="big${free && !dupeMode ? ' free' : ''}${dupeMode ? ' dupe' : ''}" data-act="pull" data-n="1">1× ${dupeMode ? 'Duplikat' : 'wünschen'}<small>${free && !dupeMode ? (free === 'next' ? 'Gratis! (Glückswurf)' : 'Gratis! (Wunsch des Tages)') : `${fmt(well.cost(1, dupeMode))} Gold`}</small></button>
+          <button class="big${dupeMode ? ' dupe' : ''}" data-act="pull" data-n="10">10× ${dupeMode ? 'Duplikate' : 'wünschen'}<small>${fmt(well.cost(10, dupeMode))} Gold</small></button>
         </div>
+        <label class="dupe-toggle"><input type="checkbox" data-act="dupe-mode" ${dupeMode ? 'checked' : ''} ${well.canDupe() ? '' : 'disabled'}>
+          <span><b>Nur Duplikate</b> (+${DUPE_EXTRA} Gold pro Zug) – es kommen nur Stücke, die du schon hast. Ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Zählt nicht für den Glückszähler.</span></label>
         <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
         <div class="pity">
           <div class="line"><span>Glückszähler <b class="rank-a">A</b></span><span class="muted">spätestens in ${well.untilA()} Stücken</span></div>
@@ -172,7 +175,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   function pull(n) {
-    const res = well.pull(n);
+    const res = well.pull(n, Math.random, { dupes: dupeMode && n !== 'spirit' });
     if (res.error) {
       $('#well-note').textContent = res.error;
       audio.play('error');
@@ -1966,6 +1969,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     const el = e.target;
     if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
     if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
+    if (el.dataset.act === 'dupe-mode') { dupeMode = el.checked; audio.click(); renderWell(); }
   });
 
   document.body.addEventListener('click', (e) => {

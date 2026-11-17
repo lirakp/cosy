@@ -407,7 +407,10 @@ Werte in `src/buffs.js`, Outfits in `src/sprites.js`.
 ## Sammeln
 
 Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
-65 Gold, zehn Züge 585 Gold. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
+100 Gold, zehn Züge 850 Gold. Mit „Nur Duplikate“ kommen nur Stücke, die man schon
+besitzt (Material zum Leveln) – für 50 Gold mehr je Zug (150 / 1350). Der Rang wird
+wie immer gewürfelt; fehlt einem der Rang, kommt ein Stück aus dem nächstniedrigeren.
+Duplikat-Wünsche zählen nicht für den Glückszähler. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
 × 50 Stück. Die Bilder werden nicht einzeln gespeichert, sondern aus Bauplänen
 in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 

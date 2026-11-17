@@ -1,5 +1,5 @@
-import { RARITIES, rollItem } from './items.js';
-import { state, PULL_COST, PULL_10_COST } from './state.js';
+import { ITEMS, RARITIES, rollItem, rollTier } from './items.js';
+import { state, PULL_COST, PULL_10_COST, DUPE_EXTRA } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
 import * as sets from './sets.js';
@@ -24,7 +24,20 @@ export const SPIRIT_MIN_TIER = 3; // Geschenk des Brunnengeists: mindestens Rang
 const w = () => state.well;
 export const tier = () => Math.max(0, buildings.tier('well'));
 
-export const cost = (n) => sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()])));
+export const cost = (n, dupes = false) => sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + (dupes ? DUPE_EXTRA * n : 0);
+
+// Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
+// aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).
+// Er zählt nicht für den Glückszähler.
+export const canDupe = () => ITEMS.some((i) => state.count(i.id));
+function rollDupe(minTier, r) {
+  const t0 = rollTier(minTier, r, buffs.lucky());
+  for (let t = t0; t >= 0; t--) {
+    const pool = ITEMS.filter((i) => i.tier === t && state.count(i.id));
+    if (pool.length) return { item: pool[Math.floor(r() * pool.length)], forced: false };
+  }
+  return null;
+}
 
 // Tägliche Gratiswünsche (Spieltag = state.dayCount)
 export function dailyLeft() {
@@ -63,16 +76,18 @@ function rollOne(minTier, r) {
 
 // Wünschen. mode: 1 | 10 | 'spirit'. Liefert das Ergebnis oder { error }.
 //   { results: [{ item, isNew, pity }], paid, free, gotFreeNext, gotSpirit }
-export function pull(mode, r = Math.random) {
+export function pull(mode, r = Math.random, { dupes = false } = {}) {
   const n = mode === 10 ? 10 : 1;
   let free = null;
   let paid = 0;
+  if (dupes && mode === 'spirit') dupes = false;
+  if (dupes && !canDupe()) return { error: 'Du besitzt noch kein Sammelstück, das sich verdoppeln ließe.' };
   if (mode === 'spirit') {
     if (!spiritGift()) return { error: 'Der Brunnengeist hat gerade nichts für dich.' };
     free = 'spirit';
-  } else if (n === 1 && freeSingle()) free = freeSingle();
+  } else if (n === 1 && !dupes && freeSingle()) free = freeSingle();
   else {
-    paid = cost(n);
+    paid = cost(n, dupes);
     if (state.gold < paid) return { error: 'Nicht genug Gold. Sammle Münzen auf dem Weg oder verkaufe Duplikate in der Galerie.' };
   }
 
@@ -81,7 +96,7 @@ export function pull(mode, r = Math.random) {
   const rolled = [];
   for (let i = 0; i < n; i++) {
     const min = mode === 'spirit' ? SPIRIT_MIN_TIER : lucky && i === 0 ? lucky : 0;
-    rolled.push(rollOne(min, r));
+    rolled.push(dupes ? rollDupe(min, r) : rollOne(min, r));
   }
   const seen = new Set();
   const results = rolled.map(({ item, forced }) => {
@@ -114,7 +129,7 @@ export function pull(mode, r = Math.random) {
     if (gotSpirit) w().spiritGift = true;
   }
   state.changed();
-  return { results, paid, free, gotFreeNext, gotSpirit };
+  return { results, paid, free, gotFreeNext, gotSpirit, dupes };
 }
 
 // ---------------------------------------------------------------- Brunnengeist
