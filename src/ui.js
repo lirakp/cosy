@@ -21,6 +21,7 @@ import * as companions from './companions.js';
 import * as well from './well.js';
 import * as tailor from './tailor.js';
 import * as minigameNs from './minigame.js';
+import * as bossrush from './bossrush.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -64,8 +65,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   let lastPull = [];
   const pick = { level: 0, type: 'blut' }; // gewählte Art und Gefahrenstufe im Dungeon-Menü
   let arenaTab = 'fight';
-  const partySel = { arena: null, dungeon: null }; // angetippter Platz je Team: { i, key }
-  const rerenderParty = (pk) => (pk === 'arena' ? renderArena() : renderDungeon());
+  const partySel = { arena: null, dungeon: null, rush: null }; // angetippter Platz je Team: { i, key }
+  const rerenderParty = (pk) => (pk === 'dungeon' ? renderDungeon() : renderArena());
   let mineSel = null; // angetippter Arbeitsplatz in der Mine: { l, s }
   const forgeSel = { cat: CATEGORIES[0].id, rank: 'D', item: null };
   let talkTo = null; // Dorfbewohner im Gespräch
@@ -235,10 +236,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   // ------------------------------------------------------------ Bossarena
 
   // Team-Bausteine für Arena und Dungeon (gemeinsame Logik in party.js)
-  const PARTY = { arena: () => arena.party, dungeon: () => dungeon.party };
-  const OTHER = { arena: 'Dungeon', dungeon: 'Arena' };
-  const PLACE_RANK = { arena: 'Arena-Rang', dungeon: 'Tor-Rang' };
-  const slotLabel = (key) => (key === 'hero' ? 'Held' : arena.SLOTS.find((s) => s.cat === key).name);
+  const PARTY = { arena: () => arena.party, dungeon: () => dungeon.party, rush: () => bossrush.party };
+  const OTHER = { arena: 'Dungeon/Bossrush', dungeon: 'Arena/Bossrush', rush: 'Arena/Dungeon' };
+  const PLACE_RANK = { arena: 'Arena-Rang', dungeon: 'Tor-Rang', rush: 'Arena-Rang' };
+  const slotLabel = (key, pk) => (key === 'hero' ? (pk === 'rush' ? 'Held/Monster' : 'Held') : arena.SLOTS.find((s) => s.cat === key).name);
   const levelBadge = (pk, id) => `<span class="count">${RARITIES[PARTY[pk]().levelOf(id)].id}</span>`;
 
   // Ein Platz im Team: belegt als Kachel, sonst als leeres Feld mit Beschriftung.
@@ -247,7 +248,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const on = sel && sel.i === i && sel.key === key ? ' sel' : '';
     const lock = PARTY[pk]().locked() ? ' disabled' : '';
     const item = id && getItem(id);
-    if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="${key}"${lock}>${slotLabel(key)}</button>`;
+    if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="${key}"${lock}>${slotLabel(key, pk)}</button>`;
     return `<button class="tile r-${item.rank}${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="${key}" data-sprite="${id}" title="${item.name}"${lock}>
       <span class="rank">${item.rank}</span>${levelBadge(pk, id)}</button>`;
   }
@@ -283,7 +284,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const members = P.team().map((m, i) => `
       <div class="member">
         <div class="hero-slot">${slotButton(pk, i, 'hero', m.hero)}</div>
-        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}${capeButton(pk, i, m)}</div>
+        ${getItem(m.hero)?.cat === 'monster' ? '<div class="gear-slots"><span class="muted monster-note">Monster kämpfen ohne Ausrüstung</span></div>' : `<div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}${capeButton(pk, i, m)}</div>`}
         <span>Stärke <b class="gold-text">${fmt(P.memberPower(m))}</b></span>
       </div>`).join('');
     const actions = P.locked()
@@ -300,9 +301,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     arena.clean();
     const tabs = `<nav class="tabs">
       <button class="tab${arenaTab === 'fight' ? ' on' : ''}" data-act="arena-tab" data-v="fight">Arena</button>
+      <button class="tab${arenaTab === 'rush' ? ' on' : ''}" data-act="arena-tab" data-v="rush">Bossrush</button>
       <button class="tab${arenaTab === 'shop' ? ' on' : ''}" data-act="arena-tab" data-v="shop">Händler</button>
     </nav>`;
-    const body = arenaTab === 'shop' ? shopHtml() : fightHtml();
+    if (arenaTab === 'rush') bossrush.tick();
+    const body = arenaTab === 'shop' ? shopHtml() : arenaTab === 'rush' ? rushHtml() : fightHtml();
     overlay.innerHTML = `<section class="panel arena">${head('Bossarena')}${tabs}${body}</section>`;
     for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     for (const el of overlay.querySelectorAll('[data-mat]')) {
@@ -310,7 +313,50 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       el.prepend(picture(arena.materialImage(kind, Number(tier))));
     }
     const boss = arena.bossInfo();
-    if (boss) $('#boss-frame')?.append(picture(boss.image));
+    if (boss && arenaTab !== 'rush') $('#boss-frame')?.append(picture(boss.image));
+    const rb = bossrush.bossOf(bossrush.run()?.boss);
+    if (rb && arenaTab === 'rush') $('#rush-boss')?.append(picture(rb.image));
+  }
+
+  // ------------------------------------------------------------ Bossrush
+
+  let rushShown = ''; // zuletzt angezeigter Stand (Siege + Status)
+
+  function rushHtml() {
+    const x = bossrush.run();
+    const P = bossrush.party;
+    const matLine = (loot) => ['stoff', 'seide'].flatMap((k) => RARITIES.map((r, t) => (loot[k][t] ? `${arena.MATERIALS[k].name} ${r.id} ×${loot[k][t]}` : null)).filter(Boolean)).join(' · ') || 'noch nichts';
+    if (!x) {
+      return `
+        <p class="lead">Stell bis zu ${bossrush.TEAM_SIZE} Helden (mit Ausrüstung) und Monster auf. Sie kämpfen alle ${bossrush.FIGHT_SECONDS} Sekunden gegen einen Boss mit zufälligem Rang – auch wenn du nicht spielst – bis sie verlieren. Jeder Sieg bringt Gold, Stoff und manchmal Seide; die Bosse werden mit jedem Sieg zäher.</p>
+        <h4>Rush-Team · Stärke ${fmt(P.teamPower())}</h4>
+        ${membersHtml('rush')}
+        <div class="chest">
+          <p class="muted">Bester Lauf: <b class="gold-text">${state.bossrush.best || 0}</b> Bosse. Wiederbeleben kostet ${fmt(bossrush.REVIVE_BASE)} Gold + ${bossrush.REVIVE_STEP} je besiegtem Boss (höchstens ${fmt(bossrush.REVIVE_MAX)}).</p>
+          <div class="line"><button class="big" data-act="rush-start" ${P.heroIds().length ? '' : 'disabled'}>Bossrush starten</button></div>
+        </div>`;
+    }
+    rushShown = `${x.bosses}${x.status}`;
+    const boss = bossrush.bossOf(x.boss);
+    const odds = bossrush.winChance(x.power, boss.power);
+    const log = x.log.map((f) => `<li class="${f.win ? 'good' : 'bad'}">${f.win ? '✓' : '✗'} ${arena.BOSS_NAMES[f.kind]} <b class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</b> · ${percent(f.odds)}</li>`).join('');
+    return `
+      <div class="chest rush r-${boss.rank}">
+        <div class="line"><span>Besiegte Bosse <b class="gold-text">${x.bosses}</b>${x.revives ? ` · ${x.revives}× wiederbelebt` : ''}</span><span>Team-Stärke ${fmt(x.power)}</span></div>
+        <div class="rush-boss"><div class="frame" id="rush-boss"></div>
+          <div><b>${x.status === 'down' ? 'Besiegt von' : 'Nächster Gegner'}: ${boss.name}</b> <span class="evo">Rang ${boss.rank}</span><br>
+          Stärke ${fmt(boss.power)} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b><br>
+          ${x.status === 'fighting' ? `Kampf in <b id="rush-time">${clock(bossrush.remaining())}</b>` : '<b class="bad">Die Gruppe ist gefallen.</b>'}</div></div>
+        <div class="line"><span>Beute: <b class="gold-text">${fmt(x.loot.gold)} Gold</b></span></div>
+        <p class="muted">${matLine(x.loot)}</p>
+        ${log ? `<ul class="rush-log">${log}</ul>` : ''}
+        <div class="line">
+          ${x.status === 'down' ? `<button class="big" data-act="rush-revive" ${state.gold >= bossrush.reviveCost() ? '' : 'disabled'}>Wiederbeleben · ${fmt(bossrush.reviveCost())} Gold</button>` : ''}
+          <button ${x.status === 'down' ? '' : ''} data-act="rush-collect">Heimkehren und Beute einsammeln</button>
+        </div>
+      </div>
+      <h4>Rush-Team</h4>
+      ${membersHtml('rush')}`;
   }
 
   function fightHtml() {
@@ -352,7 +398,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           ? `<button disabled>${P.capped(level) ? `${PLACE_RANK[pk]} nötig` : 'Maximal'}</button>`
           : `<button data-act="gear-up" data-p="${pk}" data-id="${current}" ${P.material(item) >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
       </div>
-      <p class="muted">Verbessert wird mit ${isHero ? 'Helden-Duplikaten' : 'Duplikaten von Waffen, Rüstung, Relikten und Artefakten'} (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(P.material(item))}</b>. Stufen gelten in Arena und Dungeon.</p>`;
+      <p class="muted">Verbessert wird mit ${isHero ? (item.cat === 'monster' ? 'Monster-Duplikaten' : 'Helden-Duplikaten') : 'Duplikaten von Waffen, Rüstung, Relikten und Artefakten'} (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(P.material(item))}</b>. Stufen gelten in Arena und Dungeon.</p>`;
     }
     const tiles = list.map((item) => {
       const elsewhere = P.usedElsewhere(item.id);
@@ -1216,6 +1262,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     aufgaben: 'Aufgaben im Dorf',
     gartenhelfer: 'Gartenhelfer (Kasse)',
     sternschnuppe: 'Sternschnuppen',
+    bossrush: 'Bossrush',
     minispiel: 'Minispiele der Dimensionen',
     begleiter: 'Geschenke der Begleiter',
     magie: 'Zauber',
@@ -1577,6 +1624,16 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   }
 
   // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
+  // läuft jede Sekunde mit, solange der Bossrush offen ist
+  function updateRush() {
+    if (view !== 'arena' || arenaTab !== 'rush' || !bossrush.run()) return;
+    bossrush.tick();
+    const x = bossrush.run();
+    if (`${x.bosses}${x.status}` !== rushShown) return renderArena();
+    const t = $('#rush-time');
+    if (t) t.textContent = clock(bossrush.remaining());
+  }
+
   function updateDungeon() {
     const text = $('#run-text');
     const run = dungeon.run();
@@ -2042,6 +2099,16 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         nextReveal();
       }
     }
+    if (act === 'rush-start') { audio.play(bossrush.start() ? 'start' : 'error'); partySel.rush = null; renderArena(); }
+    if (act === 'rush-revive') { audio.play(bossrush.revive() ? 'levelUp' : 'error'); renderArena(); }
+    if (act === 'rush-collect') {
+      const res = bossrush.collect();
+      if (res) {
+        audio.play('gold');
+        toast(`Bossrush beendet: ${res.bosses} Bosse besiegt · +${fmt(res.gold)} Gold, Stoff und Seide im Vorrat`);
+      }
+      renderArena();
+    }
     if (act === 'arena-tab') { arenaTab = btn.dataset.v; renderArena(); }
     if (act === 'slot') {
       const pk = btn.dataset.p;
@@ -2123,6 +2190,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     collectChest,
     updateChest,
     updateDungeon,
+    updateRush,
     openDungeon: () => show('dungeon'),
     openArena: () => show('arena'),
     openWardrobe: () => show('wardrobe'),

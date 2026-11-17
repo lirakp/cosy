@@ -32,7 +32,7 @@ export const MATERIALS = {
   seide: { name: 'Seide', cost: 1, up: 0.7, draw: silk, seed: 9101 },
 };
 
-const BOSS_NAMES = ['Schleimkönig', 'Spukfürst', 'Urbestie', 'Erzdämon', 'Allsehendes Auge', 'Knochenkaiser',
+export const BOSS_NAMES = ['Schleimkönig', 'Spukfürst', 'Urbestie', 'Erzdämon', 'Allsehendes Auge', 'Knochenkaiser',
   'Nachtschwinge', 'Sporenmutter', 'Tiefenkrake', 'Titanengolem'];
 
 const a = () => state.arena;
@@ -48,7 +48,7 @@ export const party = createParty({
   name: 'arena',
   members: () => state.arena.team,
   tier: () => buildings.tier('arena'),
-  other: () => state.dungeon.team,
+  other: () => [...state.dungeon.team, ...(state.bossrush?.team || [])],
   bonus: 'arenaPower',
 });
 export const {

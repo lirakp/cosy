@@ -941,3 +941,14 @@ body[data-display="fill"] { background: #0b0a1f; }
 .memory.scene span { display: block; font-size: 11px; }
 .reveal.dtype-blut .rank-big { color: #ff6a6a; }
 .reveal.dtype-schleife .rank-big { color: #c8a8ff; }
+
+/* ---------------------------------------------------------------- Bossrush */
+
+.members.rush { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.rush .line { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rush-boss { display: flex; gap: 12px; align-items: center; margin: 8px 0; font-size: 12px; }
+.rush-boss .frame { flex: none; }
+.rush-log { list-style: none; padding: 0; margin: 4px 0; font-size: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 10px; }
+.rush-log .good { color: #8fe08a; }
+.rush-log .bad { color: #e86a6a; }
+.monster-note { font-size: 11px; padding: 6px; }

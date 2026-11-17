@@ -74,6 +74,8 @@ const fresh = () => ({
   pulls: 0,
   exp: newExpedition(),
   dungeon: { run: null, team: Array.from({ length: 5 }, member) },
+  // Bossrush: 10 Plätze für Helden und Monster, laufender Rush, bester Lauf
+  bossrush: { team: Array.from({ length: 10 }, member), run: null, best: 0 },
   buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1, well: 0, portal: -1 },
   well: { pityA: 0, pityS: 0, freeNext: false, dailyDay: -1, dailyUsed: 0, spiritGift: false, spiritWishes: 0 },
   arena: newArena(),
@@ -95,7 +97,7 @@ const fresh = () => ({
 // Diese Teile hat jede Welt für sich (Gebäude, Expedition, Dungeon, Arena,
 // Mine, Schmiede, Brunnen, Garten). Alles andere – Gold, Sammlung, Begleiter,
 // Haus, Dorf, Magie – teilen sich beide Welten.
-export const WORLD_KEYS = ['buildings', 'exp', 'dungeon', 'arena', 'mine', 'forge', 'well', 'garden'];
+export const WORLD_KEYS = ['buildings', 'exp', 'dungeon', 'arena', 'mine', 'forge', 'well', 'garden', 'bossrush'];
 
 // Neue Portalwelt: alles noch unbebaut, nur Brunnen und Portal (für den Rückweg) stehen.
 function freshRealmWorld() {
@@ -111,6 +113,7 @@ function mergeWorld(saved = {}, base) {
   return {
     exp: { ...base.exp, ...saved.exp },
     dungeon: { ...base.dungeon, ...saved.dungeon },
+    bossrush: { ...base.bossrush, ...saved.bossrush },
     buildings: { ...base.buildings, ...saved.buildings },
     arena: { ...base.arena, ...saved.arena },
     mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
@@ -245,6 +248,9 @@ export const state = {
   },
   get exp() {
     return data.exp;
+  },
+  get bossrush() {
+    return data.bossrush;
   },
   get dungeon() {
     return data.dungeon;

@@ -121,7 +121,7 @@ export const party = createParty({
   name: 'dungeon',
   members: () => state.dungeon.team,
   tier: () => buildings.tier('dungeon'),
-  other: () => state.arena.team,
+  other: () => [...state.arena.team, ...(state.bossrush?.team || [])],
   locked: () => !!state.dungeon.run,
   bonus: 'dungeonPower',
 });

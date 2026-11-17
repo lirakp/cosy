@@ -675,6 +675,27 @@ Der Spielstand liegt im `localStorage` des Browsers. Im Pause-Fenster lässt er
 sich als Datei **sichern** und wieder **laden** (auch zwischen Browser und
 PC-Programm) oder komplett **neu anfangen**.
 
+
+### Bossrush
+
+Im Arena-Menü gibt es den Reiter **Bossrush**. Dort stellt man bis zu **10**
+Kämpfer auf: Helden mit Ausrüstung und Umhang oder Monster ohne Ausrüstung.
+Beide werden wie in Arena und Dungeon gelevelt, Monster mit Monster-Duplikaten.
+Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
+
+- Nach dem Start kämpft das Team **alle 20 Sekunden** gegen einen Boss mit
+  zufälligem Rang (Chancen wie am Brunnen). Das läuft auch offline weiter,
+  bis es verliert.
+- Jeder Boss wird je bisherigem Sieg um 6 % stärker. Die Siegchance ist
+  Team-Stärke ÷ Boss-Stärke (5–95 %).
+- Jeder Sieg bringt Gold (40 · 90 · 200 · 450 · 1100 · 3000 je Rang, in
+  Dimensionen doppelt), 3 Stoff und mit 35 % 1 Seide im Rang des Bosses.
+- **Wiederbeleben** nach einer Niederlage: 300 Gold + 150 je besiegtem Boss,
+  höchstens **15.000**. Danach geht es gegen denselben Boss weiter.
+- **Heimkehren** (jederzeit): Gold und Material kommen in den Vorrat. Der
+  beste Lauf wird gespeichert.
+
+Werte in `src/bossrush.js`.
 ## Statistik
 
 `I` oder Pause → Statistik zeigt, woher Gold und Sammelstücke kommen: Gold

@@ -27,6 +27,9 @@ export const LEVEL_COST = [30, 80, 200, 600, 2000];
 // Helden und Ausrüstung der aktuellen Welt
 const gearPool = () => worldPool('gear', (item) => SLOTS.some((s) => s.cat === item.cat));
 const heroPool = () => worldPool('helden', (item) => item.cat === 'helden');
+const monsterPool = () => worldPool('monster', (item) => item.cat === 'monster');
+// Kämpfer: Helden (mit Ausrüstung) – im Bossrush auch Monster (ohne Ausrüstung)
+export const isFighter = (item) => item?.cat === 'helden' || item?.cat === 'monster';
 
 export const emptyMember = () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null }, cape: null });
 
@@ -42,13 +45,17 @@ const uses = (members, id) => members.some((m) => m.hero === id || SLOTS.some((s
 
 // members: Team-Liste · tier: Rang der Anlage · other: Team der anderen Anlage
 // locked: Team darf gerade nicht geändert werden · bonus: Set-Bonus auf die Stärke
-export function createParty({ name, members, tier, other, locked = () => false, bonus }) {
+export function createParty({ name, members, tier, other, locked = () => false, bonus, monsters = false }) {
   const levelOf = (id) => Math.max(0, Math.min(rawLevel(id), tier()));
   const capped = (level) => level < MAX_TIER && level >= tier();
   const heroPower = (item, level = levelOf(item.id)) => Math.round(HERO_POWER[item.tier] * LEVEL_MULT[level]);
   const gearPower = (item, level = levelOf(item.id)) => Math.round(GEAR_POWER[item.tier] * LEVEL_MULT[level]);
-  const powerOf = (item, level) => (item.cat === 'helden' ? heroPower(item, level) : gearPower(item, level));
-  const pool = (item) => (item?.cat === 'helden' ? heroPool() : gearPool());
+  const powerOf = (item, level) => (isFighter(item) ? heroPower(item, level) : gearPower(item, level));
+  const pool = (item) => (item?.cat === 'helden' ? heroPool() : item?.cat === 'monster' ? monsterPool() : gearPool());
+  const fighters = () => (monsters ? [...heroPool(), ...monsterPool()] : heroPool());
+  const fits = (item, key) => (key === 'hero' ? item.cat === 'helden' || (monsters && item.cat === 'monster') : item.cat === key);
+  // Ausrüstung tragen nur Helden
+  const wearsGear = (m) => getItem(m.hero)?.cat === 'helden';
   const material = (item) => dupValue(pool(item));
   const levelCost = (item) => (rawLevel(item.id) < MAX_TIER && rawLevel(item.id) < tier() ? LEVEL_COST[rawLevel(item.id)] : null);
 
@@ -83,10 +90,16 @@ export function createParty({ name, members, tier, other, locked = () => false, 
     const m = members()[index];
     const item = id && getItem(id);
     if (!m || locked()) return false;
-    if (id && (!item || !state.count(id) || item.cat !== (key === 'hero' ? 'helden' : key) || usedElsewhere(id))) return false;
+    if (id && (!item || !state.count(id) || !fits(item, key) || usedElsewhere(id))) return false;
+    if (key !== 'hero' && id && !wearsGear(m)) return false;
     if (id) remove(id);
     if (key === 'hero') m.hero = id || null;
     else m.gear[key] = id || null;
+    // ein Monster legt Ausrüstung und Umhang ab
+    if (key === 'hero' && !wearsGear(m)) {
+      for (const s of SLOTS) m.gear[s.cat] = null;
+      m.cape = null;
+    }
     state.changed();
     return true;
   }
@@ -95,7 +108,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
 
   // Eigene Stücke einer Art, die stärksten zuerst. all: auch die im anderen Team.
   const candidates = (key, all = false) =>
-    (key === 'hero' ? heroPool() : gearPool().filter((i) => i.cat === key))
+    (key === 'hero' ? fighters() : gearPool().filter((i) => i.cat === key))
       .filter((i) => state.count(i.id) && (all || !usedElsewhere(i.id)))
       .sort((x, y) => powerOf(y) - powerOf(x) || y.tier - x.tier);
 
@@ -109,11 +122,11 @@ export function createParty({ name, members, tier, other, locked = () => false, 
     });
     for (const s of SLOTS) {
       const gear = candidates(s.cat);
-      members().filter((m) => m.hero).forEach((m, i) => (m.gear[s.cat] = gear[i]?.id || null));
+      members().filter((m) => wearsGear(m)).forEach((m, i) => (m.gear[s.cat] = gear[i]?.id || null));
     }
     // beste freie Umhänge verteilen
     members().forEach((m) => (m.cape = null));
-    for (const m of members().filter((x) => x.hero)) {
+    for (const m of members().filter((x) => wearsGear(x))) {
       for (let t = CAPE_POWER.length - 1; t >= 0; t--) {
         if (capesFree(t) > 0) {
           m.cape = t;
@@ -127,6 +140,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
 
   function memberPower(m) {
     if (!m.hero || !getItem(m.hero)) return 0;
+    if (!wearsGear(m)) return heroPower(getItem(m.hero));
     return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0) + (m.cape != null ? CAPE_POWER[m.cape] : 0);
   }
 
@@ -144,7 +158,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
   const heroIds = () => members().map((m) => m.hero).filter(Boolean);
 
   return {
-    name, team, clean, equip, equipCape, capesFree, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
+    name, monsters, wearsGear, team, clean, equip, equipCape, capesFree, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
     levelOf, capped, heroPower, gearPower, powerOf, material, levelCost, levelUp, usedElsewhere, locked,
   };
 }

@@ -8,6 +8,7 @@ import * as magic from './magic.js';
 import { createTitle } from './title.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
+import * as bossrush from './bossrush.js';
 import * as realm from './realm.js';
 import * as dimension from './dimension.js';
 import * as care from './companioncare.js';
@@ -530,6 +531,8 @@ function expeditionTick() {
   if (dungeonNow === 'done' && dungeonWas === 'running' && !document.hidden) ui.toast('Deine Helden sind aus dem Dungeon zurück!', true);
   dungeonWas = dungeonNow;
   ui.updateDungeon();
+  bossrush.tick();
+  ui.updateRush();
 
   // Mine: Erz wird laufend gehackt
   const gained = mine.tick();

@@ -1236,3 +1236,50 @@ test('Dungeons: Beute folgt den Schwerpunkten, der Schleifendungeon zeigt Erinne
   assert.ok(share('schleife', ['monster', 'artefakte']) > 0.7);
   assert.equal(dungeon.memoriesSeen().length, dungeon.MEMORIES.length, 'nach 60 Durchläufen alle Erinnerungen gesehen');
 });
+
+// ---------------------------------------------------------------- Bossrush
+
+import * as bossrush from '../src/bossrush.js';
+
+test('Bossrush: Helden und Monster bis 10 Plätze, nicht gleichzeitig in Arena oder Dungeon', () => {
+  state.buildings.arena = 2;
+  const heroes = getGroup('helden', 'B').slice(0, 3);
+  const monsters = getGroup('monster', 'A').slice(0, 9);
+  state.addItems([...heroes, ...monsters, getGroup('waffen', 'B')[0]]);
+  arena.party.equip(0, 'hero', heroes[0].id);
+  bossrush.party.autoEquip();
+  const ids = bossrush.party.heroIds();
+  assert.equal(ids.length, 10);
+  assert.ok(!ids.includes(heroes[0].id), 'Arena-Held bleibt in der Arena');
+  assert.ok(ids.some((id) => id.startsWith('monster-')), 'Monster kämpfen mit');
+  const m = state.bossrush.team.find((x) => x.hero.startsWith('monster-'));
+  assert.ok(Object.values(m.gear).every((g) => g === null), 'Monster tragen keine Ausrüstung');
+  assert.equal(bossrush.party.equip(state.bossrush.team.indexOf(m), 'waffen', getGroup('waffen', 'B')[0].id), false);
+  assert.equal(arena.party.equip(1, 'hero', ids[0]), false, 'im Rush-Team gebunden');
+});
+
+test('Bossrush: kämpft bis zur Niederlage, sammelt Beute, Wiederbeleben wird teurer bis 15.000', () => {
+  state.buildings.arena = 5;
+  state.addItems(getGroup('helden', 'SS').slice(0, 5));
+  bossrush.party.autoEquip();
+  const t0 = Date.now();
+  assert.ok(bossrush.start(t0, seeded(2)));
+  assert.equal(arena.party.autoEquip() && state.bossrush.team.length, 10);
+  // eine Stunde später: viele Kämpfe auf einmal
+  bossrush.tick(t0 + 3600 * 1000, seeded(5));
+  const x = bossrush.run();
+  assert.ok(x.bosses > 0);
+  assert.ok(x.loot.gold > 0 && x.loot.stoff.reduce((a, b) => a + b) === x.bosses * arena.WIN_CLOTH);
+  if (x.status === 'fighting') return; // sehr stark – sonst unten weiter
+  assert.equal(x.status, 'down');
+  assert.equal(bossrush.reviveCost(), Math.min(15000, bossrush.REVIVE_BASE + bossrush.REVIVE_STEP * x.bosses));
+  assert.equal(bossrush.reviveCost(1000), 15000, 'gedeckelt');
+  state.addGold(20000);
+  const gold = state.gold;
+  assert.ok(bossrush.revive());
+  assert.equal(gold - state.gold, bossrush.reviveCost(x.bosses));
+  const stoff = state.arena.mats.stoff.reduce((a, b) => a + b);
+  const res = bossrush.collect();
+  assert.equal(state.arena.mats.stoff.reduce((a, b) => a + b) - stoff, res.stoff.reduce((a, b) => a + b));
+  assert.equal(bossrush.run(), null);
+});
