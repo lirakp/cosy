@@ -24,7 +24,7 @@ export const MAX_CHANCE = 0.95;
 
 // Beute je Sieg, im Rang des Bosses.
 export const WIN_CLOTH = 3;
-export const SILK_CHANCE = 0.35;
+export const SILK_CHANCE = 0.4;
 
 // Händler: Preis in Stücken und Chance, dass das Sammelstück einen Rang höher ausfällt.
 export const MATERIALS = {

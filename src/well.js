@@ -1,5 +1,5 @@
 import { RARITIES, rollItem, rollTier, worldItems } from './items.js';
-import { state, PULL_COST, PULL_10_COST, DUPE_EXTRA } from './state.js';
+import { state, PULL_COST, PULL_10_COST, DUPE_EXTRA, NEW_EXTRA } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
 import * as sets from './sets.js';
@@ -27,7 +27,9 @@ const w = () => state.well;
 export const tier = () => Math.max(0, buildings.tier('well'));
 
 // In den Portalwelten kostet ein Wunsch das Doppelte.
-export const cost = (n, dupes = false) => (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + (dupes ? DUPE_EXTRA * n : 0)) * (realm.inRealm() ? realm.PULL : 1);
+// variant: false/'normal' · true/'dupes' (nur Duplikate, +50 je Zug) · 'new' (nur Neues, +100 je Zug)
+const extra = (variant) => (variant === 'new' ? NEW_EXTRA : variant ? DUPE_EXTRA : 0);
+export const cost = (n, variant = false) => (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + extra(variant) * n) * (realm.inRealm() ? realm.PULL : 1);
 
 // Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
 // aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).
@@ -40,6 +42,26 @@ function rollDupe(minTier, r) {
     if (pool.length) return { item: pool[Math.floor(r() * pool.length)], forced: false };
   }
   return null;
+}
+
+// Neu-Wunsch: Der Rang wird wie immer gewürfelt (mit Glückszähler), es kommen
+// aber nur Stücke, die man noch nicht besitzt – fehlt in dem Rang nichts mehr,
+// dann aus dem nächstniedrigeren, sonst aus einem höheren.
+export const canNew = () => worldItems().some((i) => !state.count(i.id));
+function rollNew(minTier, r, taken) {
+  const { tier: t0, forced } = pityTier(minTier, r);
+  const order = [...Array.from({ length: t0 + 1 }, (_, k) => t0 - k), ...Array.from({ length: RARITIES.length - t0 - 1 }, (_, k) => t0 + 1 + k)];
+  for (const t of order) {
+    if (t < minTier && order.some((u) => u >= minTier && worldItems().some((i) => i.tier === u && !state.count(i.id) && !taken.has(i.id)))) continue;
+    const pool = worldItems().filter((i) => i.tier === t && !state.count(i.id) && !taken.has(i.id));
+    if (pool.length) {
+      const item = pool[Math.floor(r() * pool.length)];
+      taken.add(item.id);
+      countPity(item);
+      return { item, forced };
+    }
+  }
+  return rollOne(minTier, r);
 }
 
 // Tägliche Gratiswünsche (Spieltag = state.dayCount)
@@ -59,11 +81,19 @@ export const untilA = () => PITY_A - w().pityA;
 export const untilS = () => PITY_S - w().pityS;
 
 // Ein Stück würfeln, Glückszähler beachten und fortschreiben
-function rollOne(minTier, r) {
+// Mindest-Rang durch den Glückszähler und gewürfelter Rang
+function pityTier(minTier, r) {
   if (w().pityS >= PITY_S - 1) minTier = Math.max(minTier, 4);
   else if (w().pityA >= PITY_A - 1) minTier = Math.max(minTier, 3);
-  const forced = minTier >= 3;
-  const item = rollItem({ lucky: buffs.lucky(), minTier, random: r });
+  return { tier: rollTier(minTier, r, buffs.lucky()), forced: minTier >= 3 };
+}
+function rollOne(minTier, r) {
+  const { tier: t, forced } = pityTier(minTier, r);
+  const item = rollItem({ tier: t, random: r });
+  countPity(item);
+  return { item, forced };
+}
+function countPity(item) {
   if (item.tier >= 4) {
     w().pityA = 0;
     w().pityS = 0;
@@ -74,32 +104,33 @@ function rollOne(minTier, r) {
     w().pityA++;
     w().pityS++;
   }
-  return { item, forced };
 }
 
 // Wünschen. mode: 1 | 10 | 'spirit'. Liefert das Ergebnis oder { error }.
 //   { results: [{ item, isNew, pity }], paid, free, gotFreeNext, gotSpirit }
-export function pull(mode, r = Math.random, { dupes = false } = {}) {
+export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {}) {
   const n = mode === 10 ? 10 : 1;
   let free = null;
   let paid = 0;
-  if (dupes && mode === 'spirit') dupes = false;
+  if (mode === 'spirit') dupes = fresh = false;
+  if (fresh && !canNew()) return { error: 'Du hast hier schon alles gesammelt – es gibt nichts Neues mehr.' };
   if (dupes && !canDupe()) return { error: 'Du besitzt noch kein Sammelstück, das sich verdoppeln ließe.' };
   if (mode === 'spirit') {
     if (!spiritGift()) return { error: 'Der Brunnengeist hat gerade nichts für dich.' };
     free = 'spirit';
-  } else if (n === 1 && !dupes && freeSingle()) free = freeSingle();
+  } else if (n === 1 && !dupes && !fresh && freeSingle()) free = freeSingle();
   else {
-    paid = cost(n, dupes);
+    paid = cost(n, fresh ? 'new' : dupes);
     if (state.gold < paid) return { error: 'Nicht genug Gold. Sammle Münzen auf dem Weg oder verkaufe Duplikate in der Galerie.' };
   }
 
   // Glückszauber: das erste Stück hat mindestens den Rang des Zaubers
   const lucky = mode === 'spirit' ? 0 : magic.useLuckyPull();
   const rolled = [];
+  const taken = new Set();
   for (let i = 0; i < n; i++) {
     const min = mode === 'spirit' ? SPIRIT_MIN_TIER : lucky && i === 0 ? lucky : 0;
-    rolled.push(dupes ? rollDupe(min, r) : rollOne(min, r));
+    rolled.push(dupes ? rollDupe(min, r) : fresh ? rollNew(min, r, taken) : rollOne(min, r));
   }
   const seen = new Set();
   const results = rolled.map(({ item, forced }) => {
@@ -132,7 +163,7 @@ export function pull(mode, r = Math.random, { dupes = false } = {}) {
     if (gotSpirit) w().spiritGift = true;
   }
   state.changed();
-  return { results, paid, free, gotFreeNext, gotSpirit, dupes };
+  return { results, paid, free, gotFreeNext, gotSpirit, dupes, fresh };
 }
 
 // ---------------------------------------------------------------- Brunnengeist

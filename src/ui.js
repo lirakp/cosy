@@ -1,7 +1,7 @@
 import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem, worldItems, worldPool } from './items.js';
 import * as realm from './realm.js';
 import * as dimension from './dimension.js';
-import { state, DUPE_EXTRA } from './state.js';
+import { state, DUPE_EXTRA, NEW_EXTRA } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
@@ -131,7 +131,14 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   // ------------------------------------------------------------ Wunschbrunnen
 
   let spiritLine = null; // letzter Spruch des Brunnengeists
-  let dupeMode = false; // Duplikat-Wunsch eingeschaltet
+  const WISH_LABEL = { normal: ['wünschen', 'wünschen'], dupes: ['Duplikat', 'Duplikate'], new: ['Neues', 'Neue'] };
+  const WISH_TEXT = {
+    normal: 'Normale Wünsche: jedes Stück ist möglich. Zählt für den Glückszähler, Gratiswünsche gelten nur hier.',
+    dupes: 'Es kommen nur Stücke, die du schon hast – ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Zählt nicht für den Glückszähler.',
+    new: 'Es kommen nur Stücke, die dir noch fehlen – keine Duplikate. Der Rang wird wie immer gewürfelt (mit Glückszähler); fehlt dir in dem Rang nichts mehr, kommt ein Stück aus einem anderen Rang.',
+  };
+  const wishVariant = () => (wishMode === 'new' ? 'new' : wishMode === 'dupes');
+  let wishMode = 'normal'; // 'normal' · 'dupes' (nur Duplikate) · 'new' (nur Neues)
   function renderWell() {
     const chances = tierChances(buffs.lucky());
     const rates = RARITIES.map(
@@ -149,11 +156,15 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${buffs.lucky() ? '<p class="buff-note">✦ Glücksrausch aktiv: seltene Ränge um 10 % wahrscheinlicher.</p>' : ''}
         ${well.spiritGift() ? '<button class="big spirit-wish" data-act="pull" data-n="spirit">✦ Geschenk des Brunnengeists<small>Gratiswunsch · garantiert Rang A, S oder SS</small></button>' : ''}
         <div class="actions">
-          <button class="big${free && !dupeMode ? ' free' : ''}${dupeMode ? ' dupe' : ''}" data-act="pull" data-n="1">1× ${dupeMode ? 'Duplikat' : 'wünschen'}<small>${free && !dupeMode ? (free === 'next' ? 'Gratis! (Glückswurf)' : 'Gratis! (Wunsch des Tages)') : `${fmt(well.cost(1, dupeMode))} Gold`}</small></button>
-          <button class="big${dupeMode ? ' dupe' : ''}" data-act="pull" data-n="10">10× ${dupeMode ? 'Duplikate' : 'wünschen'}<small>${fmt(well.cost(10, dupeMode))} Gold</small></button>
+          <button class="big${free && wishMode === 'normal' ? ' free' : ''}${wishMode !== 'normal' ? ` ${wishMode}` : ''}" data-act="pull" data-n="1">1× ${WISH_LABEL[wishMode][0]}<small>${free && wishMode === 'normal' ? (free === 'next' ? 'Gratis! (Glückswurf)' : 'Gratis! (Wunsch des Tages)') : `${fmt(well.cost(1, wishVariant()))} Gold`}</small></button>
+          <button class="big${wishMode !== 'normal' ? ` ${wishMode}` : ''}" data-act="pull" data-n="10">10× ${WISH_LABEL[wishMode][1]}<small>${fmt(well.cost(10, wishVariant()))} Gold</small></button>
         </div>
-        <label class="dupe-toggle"><input type="checkbox" data-act="dupe-mode" ${dupeMode ? 'checked' : ''} ${well.canDupe() ? '' : 'disabled'}>
-          <span><b>Nur Duplikate</b> (+${DUPE_EXTRA} Gold pro Zug) – es kommen nur Stücke, die du schon hast. Ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Zählt nicht für den Glückszähler.</span></label>
+        <div class="wish-modes">
+          <button class="${wishMode === 'normal' ? 'on' : ''}" data-act="wish-mode" data-v="normal"><b>Normal</b><span>alles möglich</span></button>
+          <button class="${wishMode === 'dupes' ? 'on' : ''}" data-act="wish-mode" data-v="dupes" ${well.canDupe() ? '' : 'disabled'}><b>Nur Duplikate</b><span>+${DUPE_EXTRA} Gold je Zug</span></button>
+          <button class="${wishMode === 'new' ? 'on' : ''}" data-act="wish-mode" data-v="new" ${well.canNew() ? '' : 'disabled'}><b>Nur Neue</b><span>+${NEW_EXTRA} Gold je Zug</span></button>
+        </div>
+        <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}</p>
         <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
         <div class="pity">
           <div class="line"><span>Glückszähler <b class="rank-a">A</b></span><span class="muted">spätestens in ${well.untilA()} Stücken</span></div>
@@ -183,7 +194,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   }
 
   function pull(n) {
-    const res = well.pull(n, Math.random, { dupes: dupeMode && n !== 'spirit' });
+    const res = well.pull(n, Math.random, { dupes: wishMode === 'dupes' && n !== 'spirit', fresh: wishMode === 'new' && n !== 'spirit' });
     if (res.error) {
       $('#well-note').textContent = res.error;
       audio.play('error');
@@ -2120,6 +2131,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       renderTailor();
     }
     if (act === 'refine') { audio.play(tailor.refine(btn.dataset.v, Number(btn.dataset.t)) ? 'coin' : 'error'); renderTailor(); }
+    if (act === 'wish-mode') { wishMode = btn.dataset.v; renderWell(); }
     if (act === 'spell-school') { spellSchool = btn.dataset.v; renderTower(); }
     if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
     if (act === 'cast') {
@@ -2282,7 +2294,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const el = e.target;
     if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
     if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
-    if (el.dataset.act === 'dupe-mode') { dupeMode = el.checked; audio.click(); renderWell(); }
+
   });
 
   document.body.addEventListener('click', (e) => {

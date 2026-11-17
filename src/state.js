@@ -10,6 +10,8 @@ export const PULL_COST = 100;
 export const PULL_10_COST = 850; // zehn Züge mit Mengenrabatt
 // Duplikat-Wunsch: nur Stücke, die man schon besitzt (Material zum Leveln), je Zug teurer
 export const DUPE_EXTRA = 50;
+// Neu-Wunsch: nur Stücke, die man noch nicht hat – noch etwas teurer
+export const NEW_EXTRA = 100;
 
 const newExpedition = () => ({
   evo: {}, // Entwicklungsstufe je Lebewesen (0 = D … 5 = SS)

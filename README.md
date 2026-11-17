@@ -535,7 +535,11 @@ Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
 100 Gold, zehn Züge 850 Gold. Mit „Nur Duplikate“ kommen nur Stücke, die man schon
 besitzt (Material zum Leveln) – für 50 Gold mehr je Zug (150 / 1350). Der Rang wird
 wie immer gewürfelt; fehlt einem der Rang, kommt ein Stück aus dem nächstniedrigeren.
-Duplikat-Wünsche zählen nicht für den Glückszähler. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
+Duplikat-Wünsche zählen nicht für den Glückszähler.
+Mit „Nur Neue“ kommen nur Stücke, die man noch nicht besitzt, also keine Duplikate.
+Das kostet 100 Gold mehr je Zug (200 / 1850). Der Rang wird wie immer gewürfelt und
+zählt für den Glückszähler. Fehlt einem in dem Rang nichts mehr, kommt ein Stück aus
+einem anderen Rang. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
 × 50 Stück. Die Bilder werden nicht einzeln gespeichert, sondern aus Bauplänen
 in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
@@ -718,7 +722,7 @@ Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 - Jeder Boss wird je bisherigem Sieg um 6 % stärker. Die Siegchance ist
   Team-Stärke ÷ Boss-Stärke (5–95 %).
 - Jeder Sieg bringt Gold (40 · 90 · 200 · 450 · 1100 · 3000 je Rang, in
-  Dimensionen doppelt), 3 Stoff und mit 35 % 1 Seide im Rang des Bosses.
+  Dimensionen doppelt), 3 Stoff und mit 40 % 1 Seide im Rang des Bosses.
 - **Wiederbeleben** nach einer Niederlage: 300 Gold + 150 je besiegtem Boss,
   höchstens **15.000**. Danach geht es gegen denselben Boss weiter.
 - **Heimkehren** (jederzeit): Gold und Material kommen in den Vorrat. Der

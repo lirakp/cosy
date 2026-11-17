@@ -887,7 +887,7 @@ table.stats td { border-top: 1px solid #3a3170; }
 .dupe-toggle { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; background: #1b1730; padding: 8px 10px; cursor: pointer; }
 .dupe-toggle input { margin-top: 2px; accent-color: #9be8e0; }
 .dupe-toggle b { color: #9be8e0; }
-.actions .dupe { box-shadow: 0 0 0 3px #9be8e0; }
+.actions .dupes, .actions .dupe { box-shadow: 0 0 0 3px #9be8e0; }
 
 /* ---------------------------------------------------------------- Portalwelt */
 
@@ -960,3 +960,10 @@ body[data-display="fill"] { background: #0b0a1f; }
 .rush-log .ev { color: #c8a8ff; }
 .merchant { box-shadow: 0 0 0 2px #ffd04a; margin: 6px 0; }
 .merchant p { margin: 4px 0; font-style: italic; }
+
+.wish-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.wish-modes button { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; font-size: 12px; }
+.wish-modes button span { font-size: 10px; opacity: 0.75; }
+.wish-modes button.on { box-shadow: 0 0 0 2px #ffd04a; background: #6a549e; }
+.actions .new { box-shadow: 0 0 0 3px #8fe08a; }
+.wish-mode-text { margin: 0; }

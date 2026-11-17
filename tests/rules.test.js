@@ -1353,3 +1353,23 @@ test('Abstieg: Wiederbeleben wird mit der Tiefe teurer und stoppt bei 15.000, Qu
   assert.ok(descent.revive());
   assert.equal(x.status, 'running');
 });
+
+test('Brunnen: „Nur Neue“ bringt keine Duplikate und kostet 100 mehr je Zug', () => {
+  resetWell();
+  state.buildings.well = 0;
+  setGold(1e7);
+  assert.equal(well.cost(1, 'new'), 200);
+  assert.equal(well.cost(10, 'new'), 1850);
+  const random = seeded(31);
+  const seen = new Set(Object.keys(state.owned || {}));
+  for (let i = 0; i < 40; i++) {
+    const r = well.pull(10, random, { fresh: true });
+    for (const { item, isNew } of r.results) {
+      assert.ok(isNew, 'nur Neues');
+      assert.ok(!seen.has(item.id));
+      seen.add(item.id);
+    }
+  }
+  assert.ok(state.well.pityA < well.PITY_A, 'zählt für den Glückszähler');
+  assert.equal(arena.SILK_CHANCE, 0.4, 'Seide +5 %');
+});
