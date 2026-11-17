@@ -535,8 +535,8 @@ test('Fischreuse: fängt nach Zeit bis zur Kapazität, ohne Flaschenpost, Fänge
 // ---------------------------------------------------------------- Magie
 
 import * as magic from '../src/magic.js';
+import * as stars from '../src/stars.js';
 
-const scroll = (rank) => ITEMS.find((i) => i.kind === 'Schriftrolle' && i.rank === rank);
 
 test('Magie: Mana lädt nach Zeit, nachts doppelt, bis zum Vorrat des Turms', () => {
   state.buildings.tower = 0;
@@ -549,49 +549,101 @@ test('Magie: Mana lädt nach Zeit, nachts doppelt, bis zum Vorrat des Turms', ()
   assert.equal(magic.mana(), magic.MAX_MANA[0]);
 });
 
-test('Magie: Lernen braucht Turm-Rang und eine Schriftrolle, verbraucht sie aber nicht', () => {
-  state.buildings.tower = 0;
-  assert.match(magic.learnBlocker(magic.spell('wachstum')), /Schriftrolle/);
-  const s = scroll('D');
-  state.addItems([s]);
-  assert.ok(magic.learn('wachstum'));
-  assert.equal(state.count(s.id), 1);
-  assert.match(magic.learnBlocker(magic.spell('lockruf')), /Turm-Rang C/);
+// Zauber einer Schule in einem Rang
+const spellAt = (school, rank) => magic.SPELLS.find((sp) => sp.school === school && sp.rank === rank);
+
+test('Magie: jede Schriftrolle lehrt einen eigenen Zauber, je Schule wird er mit dem Rang stärker', () => {
+  const scrolls = ITEMS.filter((i) => i.kind === 'Schriftrolle');
+  assert.equal(magic.SPELLS.length, scrolls.length);
+  assert.equal(new Set(magic.SPELLS.map((sp) => sp.name)).size, scrolls.length, 'jeder Zauber hat einen eigenen Namen');
+  for (const s of scrolls) assert.equal(magic.spellOf(s.id).rank, s.tier);
+  for (const sc of magic.SCHOOLS) {
+    const list = [0, 1, 2, 3, 4, 5].map((t) => spellAt(sc.id, t));
+    assert.ok(list.every(Boolean), `${sc.name}: alle Ränge`);
+    // Zahlenwerte steigen nie und mindestens einer steigt von Rang zu Rang
+    const nums = (fx) => Object.entries(fx).flatMap(([k, v]) => (typeof v === 'number' ? [[k, v]] : typeof v === 'object' ? [[k + '.n', v.n ?? 0], [k + '.v', v.v ?? v.min ?? 0]] : []));
+    for (let t = 1; t < 6; t++) {
+      const prev = Object.fromEntries(nums(list[t - 1].fx));
+      const cur = Object.fromEntries(nums(list[t].fx));
+      for (const [k, v] of Object.entries(prev)) assert.ok((cur[k] ?? -1) >= v, `${list[t].name}: ${k} sinkt nicht`);
+      assert.ok(Object.keys(cur).length > Object.keys(prev).length || Object.entries(cur).some(([k, v]) => v > (prev[k] ?? 0)), `${list[t].name} ist stärker`);
+      assert.ok(list[t].cost > list[t - 1].cost && list[t].cost <= magic.MAX_MANA[t]);
+    }
+  }
 });
 
-test('Magie: Wirken kostet Mana, hat Abklingzeit, Wachstum macht Beete reif', () => {
+test('Magie: Lernen braucht genau diese Schriftrolle und den Turm-Rang, verbraucht sie aber nicht', () => {
   state.buildings.tower = 0;
-  state.addItems([scroll('D')]);
-  magic.learn('wachstum');
+  const sp = spellAt('natur', 0);
+  assert.match(magic.learnBlocker(sp), /fehlt/);
+  state.addItems([spellAt('gold', 0).scroll]);
+  assert.match(magic.learnBlocker(sp), /fehlt/, 'eine andere Schriftrolle reicht nicht');
+  state.addItems([sp.scroll]);
+  assert.ok(magic.learn(sp.id));
+  assert.equal(state.count(sp.scroll.id), 1);
+  const c = spellAt('wasser', 1);
+  state.addItems([c.scroll]);
+  assert.match(magic.learnBlocker(c), /Turm-Rang C/);
+});
+
+test('Magie: Wirken kostet Mana, hat Abklingzeit, Keimling macht Beete reif', () => {
+  state.buildings.tower = 0;
+  const sp = spellAt('natur', 0);
+  state.addItems([sp.scroll]);
+  magic.learn(sp.id);
   garden.plant(0, 'sternenblume');
   state.magic.mana = 25;
-  assert.ok(magic.cast('wachstum'));
-  assert.equal(magic.mana(), 5);
+  assert.ok(magic.cast(sp.id));
+  assert.equal(magic.mana(), 25 - sp.cost);
   assert.ok(garden.ready(0));
-  assert.ok(magic.cooldownLeft('wachstum') > 0);
+  assert.ok(magic.cooldownLeft(sp.id) > 0);
   state.magic.mana = 30;
-  assert.equal(magic.cast('wachstum'), null, 'noch in der Abklingzeit');
+  assert.equal(magic.cast(sp.id), null, 'noch in der Abklingzeit');
 });
 
-test('Magie: Lockruf hebt den nächsten Fang um einen Rang, Glückszauber sichert Rang C', () => {
+test('Magie: höhere Naturzauber bepflanzen neu und geben Extra-Ernte', () => {
+  state.buildings.tower = 4;
+  const sp = spellAt('natur', 4);
+  state.addItems([sp.scroll]);
+  magic.learn(sp.id);
+  state.garden.last[0] = 'sternenblume';
+  state.magic.mana = 100;
+  assert.ok(magic.cast(sp.id));
+  assert.ok(garden.ready(0), 'leeres Beet neu bepflanzt und reif');
+  assert.equal(garden.have('sternenblume'), sp.fx.crops);
+});
+
+test('Magie: Lockruf-Ladungen heben den Fang je nach Rang, Glück sichert Mindest-Ränge', () => {
   const random = seeded(17);
   for (let i = 0; i < 2000; i++) {
-    const r = village.rollCatch(random, 'Tag', true);
-    assert.ok(!r.treasure && r.tier >= 1, 'mit Lockruf mindestens Rang C, keine Flaschenpost');
+    const r = village.rollCatch(random, 'Tag', 2);
+    assert.ok(!r.treasure && r.tier >= 2, 'mit starkem Lockruf mindestens Rang B, keine Flaschenpost');
   }
-  state.magic.luckyPull = true;
-  assert.ok(magic.useLuckyPull());
-  assert.equal(magic.useLuckyPull(), false, 'nur einmal');
+  state.buildings.tower = 5;
+  const lure = spellAt('wasser', 5);
+  const luck = spellAt('glueck', 3);
+  state.addItems([lure.scroll, luck.scroll]);
+  magic.learn(lure.id);
+  magic.learn(luck.id);
+  state.magic.mana = 130;
+  assert.ok(magic.cast(lure.id));
+  for (let i = 0; i < lure.fx.lure.n; i++) assert.equal(magic.useLure(), lure.fx.lure.v);
+  assert.equal(magic.useLure(), 0, 'Ladungen verbraucht');
+  state.magic.mana = 130;
+  assert.ok(magic.cast(luck.id));
+  assert.equal(magic.luckyReady(), luck.fx.luck.n);
+  assert.equal(magic.useLuckyPull(), luck.fx.luck.v);
+  assert.ok(stars.showerPending() >= luck.fx.stars, 'Sternschnuppen kommen');
 });
 
-test('Magie: Schutzschild gilt für die nächste Erkundung und wird dabei verbraucht', () => {
+test('Magie: Schutzschild gilt je nach Rang und wird bei der Erkundung verbraucht', () => {
   state.buildings.dungeon = 5;
   state.addItems([getGroup('helden', 'D')[0]]);
   dungeon.party.autoEquip();
-  state.magic.shield = true;
+  state.magic.shield = { n: 1, v: 0.15 };
   assert.ok(dungeon.start(5));
-  assert.equal(state.dungeon.run.shield, true);
-  assert.equal(magic.shieldReady(), false);
+  assert.equal(state.dungeon.run.shield, 0.15);
+  assert.equal(magic.shieldReady(), 0);
   state.dungeon.run.end = Date.now() - 1;
   const random = Math.random;
   Math.random = () => 0.12; // über der normalen 5 %-Chance, unter 5 % + 15 %
@@ -605,18 +657,32 @@ test('Magie: Schutzschild gilt für die nächste Erkundung und wird dabei verbra
 test('Magie: Zeitsprung gibt Expedition 30 Minuten Ertrag', () => {
   state.buildings.tower = 3;
   state.buildings.camp = 0;
-  state.addItems([...getGroup('lebewesen', 'B').slice(0, 4), scroll('A')]);
+  const sp = spellAt('natur', 3);
+  state.addItems([...getGroup('lebewesen', 'B').slice(0, 4), sp.scroll]);
   expedition.tick();
-  magic.learn('zeitsprung');
+  magic.learn(sp.id);
   state.magic.mana = 100;
   const before = expedition.live.gold;
-  assert.ok(magic.cast('zeitsprung'));
-  close(expedition.live.gold - before, expedition.goldPerMinute() * 30, 2, 'Truhe');
+  assert.ok(magic.cast(sp.id));
+  close(expedition.live.gold - before, expedition.goldPerMinute() * sp.fx.skip, 2, 'Truhe');
+});
+
+test('Magie: Goldzauber geben Gold und ab Rang S einen Goldrausch', () => {
+  state.buildings.tower = 4;
+  const sp = spellAt('gold', 4);
+  state.addItems([sp.scroll]);
+  magic.learn(sp.id);
+  state.magic.mana = 100;
+  const gold = state.gold;
+  let rain = 0;
+  assert.ok(magic.cast(sp.id, { onRain: (s) => (rain = s) }));
+  assert.equal(state.gold - gold, sp.fx.gold);
+  assert.equal(rain, sp.fx.rain);
+  assert.ok(buffs.active('gold'));
 });
 
 // ---------------------------------------------------------------- Sternschnuppen
 
-import * as stars from '../src/stars.js';
 
 test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selten ein Sammelstück', () => {
   for (let i = 0; i < 200; i++) stars.update(1, false);

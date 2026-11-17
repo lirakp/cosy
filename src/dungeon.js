@@ -84,7 +84,7 @@ export function collect() {
   // ältere Erkundungen ohne gespeicherte Stärke: Stärke der losgezogenen Helden
   const fallback = () => r.heroes.reduce((sum, id) => sum + (getItem(id) ? party.heroPower(getItem(id)) : 0), 0);
   const base = chance(r.level, r.power ?? fallback());
-  const odds = r.shield ? magic.shielded(base) : base;
+  const odds = r.shield ? magic.shielded(base, r.shield) : base;
   const result = { level, odds, success: Math.random() < odds, gold: 0, items: [] };
   d().run = null;
 

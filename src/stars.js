@@ -16,18 +16,30 @@ const HIT = 14; // großzügige Trefferfläche in Spielpixeln
 
 let star = null;
 let wait = 8 + Math.random() * 10;
+let showerLeft = 0; // Sternschnuppen aus einem Zauber, die noch kommen
+export const SHOWER_GAP = 1.6; // Sekunden zwischen zwei Schnuppen beim Zauber
 
-// dt: vergangene Spielzeit; active: ist es Nacht und der Himmel sichtbar?
-export function update(dt, active) {
+// Zauber: n Sternschnuppen kurz hintereinander (auch am Tag)
+export function shower(n) {
+  showerLeft += n;
+  wait = Math.min(wait, 0.4);
+}
+export const showerPending = () => showerLeft;
+
+// dt: vergangene Spielzeit; night: ist es Nacht; sky: ist der Himmel sichtbar?
+export function update(dt, night, sky = night) {
   if (star) {
     star.t += dt;
     if (star.t > LIFE) star = null;
     return;
   }
-  if (!active) return;
+  if (!sky || (!night && !showerLeft)) return;
   wait -= dt;
   if (wait > 0) return;
-  wait = SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0]);
+  if (showerLeft > 0) {
+    showerLeft--;
+    wait = showerLeft ? SHOWER_GAP : SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0]);
+  } else wait = SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0]);
   const fromLeft = Math.random() < 0.5;
   star = {
     x: fromLeft ? 30 + Math.random() * 120 : VIEW_W - 30 - Math.random() * 120,

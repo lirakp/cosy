@@ -211,18 +211,30 @@ Tageswert. Vorrat und Nachladen je Rang: 30 · 45 · 60 · 80 · 100 · 130 Mana
 1 · 1,3 · 1,6 · 2 · 2,5 · 3 pro Minute. Das **Zauberbuch** öffnet sich am Turm
 oder überall mit `Z`; das Mana steht oben links.
 
-Zauber lernt man, wenn man eine **Schriftrolle** (Relikt) ab dem Rang des
-Zaubers besitzt und der Turm hoch genug ausgebaut ist – die Schriftrolle wird
-nicht verbraucht.
+**Jede der 30 Schriftrollen** (Relikte, 5 je Rang) lehrt ihren eigenen Zauber.
+Lernen braucht genau diese Schriftrolle und einen Turm ab ihrem Rang; die
+Schriftrolle wird nicht verbraucht (die Schmiede kann sie kopieren). Innerhalb
+eines Rangs gehören die Schriftrollen zu fünf Schulen. Mit jedem Rang wird der
+Zauber stärker, ab und zu kommen Wirkungen dazu.
 
-| Zauber | Rang | Mana | Abklingzeit | Wirkung |
-| --- | --- | --- | --- | --- |
-| Wachstum | D | 20 | 10 min | alle bepflanzten Beete sofort reif |
-| Sternenregen | D | 15 | 5 min | eine Minute lang regnet es Münzen rund um die Figur |
-| Lockruf | C | 20 | 10 min | der nächste Fisch beißt sofort und ist einen Rang höher |
-| Glückszauber | B | 30 | 15 min | der nächste Wunsch am Brunnen ist mindestens Rang C |
-| Zeitsprung | A | 45 | 30 min | Expedition und Mine bekommen 30 Minuten Ertrag |
-| Schutzschild | S | 50 | 30 min | nächste Erkundung oder nächster Bosskampf +15 Prozentpunkte |
+Mana und Abklingzeit je Rang D … SS: 15 · 20 · 30 · 45 · 65 · 90 Mana,
+5 · 8 · 12 · 20 · 30 · 45 Minuten.
+
+| Schule | D | C | B | A | S | SS |
+| --- | --- | --- | --- | --- | --- | --- |
+| ❀ Zeit & Wachstum | **Keimling**: Beete reif | **Frühlingshauch**: + 1 Ernte je Beet | **Erntesegen**: + 15 min Ertrag für Expedition und Mine | **Zeitsprung**: + 2 Ernte, 30 min | **Jahreslauf**: leere Beete neu bepflanzt, 60 min | **Ewiger Frühling**: + 3 Ernte, 120 min |
+| ◉ Gold | **Sternenregen**: 45 s Münzregen | **Münzschauer**: 60 s + 100 Gold | **Goldene Brise**: 75 s + 300 | **Schatzregen**: 90 s + 800 | **Goldflut**: 120 s + 2000, Goldrausch 10 min | **Sonnengold**: 180 s + 5000, Goldrausch 20 min |
+| ≈ Wasser | **Lockruf**: 1 Wurf, +1 Rang | **Fischflüstern**: 2 Würfe | **Gezeitenruf**: 3 Würfe, Reuse + 30 min | **Mondflut**: 4 Würfe, +2 Ränge, Reuse + 60 min | **Tiefenruf**: 5 Würfe, Reuse + 120 min | **Ruf des Ozeans**: 8 Würfe, +3 Ränge, Reuse + 240 min |
+| ✦ Glück & Sterne | **Glücksfunke**: 1 Wunsch ab C | **Wunschstern**: 2 Wünsche ab C, 3 Sternschnuppen | **Kleeblattsegen**: 2 ab B, 4 Schnuppen | **Sternschnuppenregen**: 3 ab B, 6 Schnuppen | **Schicksalsfaden**: 3 ab A, 8 Schnuppen, Glücksrausch 15 min | **Tausend Wünsche**: 5 ab A, 12 Schnuppen, Glücksrausch 30 min |
+| ⛨ Schutz & Kampf | **Schutzhauch**: 1 Kampf +5 % | **Eisenhaut**: +10 % | **Schutzschild**: 2 Kämpfe +12 % | **Kriegsruf**: 2 × +15 % | **Bollwerk**: 3 × +20 % | **Unbezwingbar**: 3 × +25 %, Gladiatorrausch 20 min |
+
+„Wünsche“ heißt: das erste Stück eines Zugs am Brunnen hat mindestens diesen
+Rang. Lockruf-, Glücks- und Schild-Ladungen desselben Typs werden nicht
+addiert: Es zählen die meisten Ladungen und die stärkste Wirkung. Zauber-
+Sternschnuppen kommen kurz nacheinander, auch am Tag. Ein Rausch aus einem
+Zauber verlängert einen gleichen Rausch oder ersetzt einen anderen. Alte
+Spielstände behalten ihre Zauber, sie heißen jetzt nach ihrer Schule. In der
+Galerie steht bei jeder Schriftrolle, welchen Zauber sie lehrt.
 
 Werte in `src/magic.js`.
 

@@ -323,7 +323,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
       if (fish.phase === 'idle') {
         const [a, b] = village.BITE_SECONDS;
         swimmers.forEach((s, i) => (s.species = pickSwimmer(i)));
-        // Lockruf: sofortiger Biss und ein Rang höher
+        // Lockruf: sofortiger Biss und (je nach Zauber) Ränge höher
         const lure = magic.useLure();
         Object.assign(fish, { phase: 'cast', t: 0, biteAt: lure ? 0.9 : a + Math.random() * (b - a), target: village.rollCatch(Math.random, undefined, lure), from: Math.random() < 0.5 ? -1 : 1 });
         return 'cast';

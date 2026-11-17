@@ -85,7 +85,8 @@ export function fight() {
   const boss = bossInfo();
   if (!boss || !teamPower()) return null;
   // Schutzschild aus dem Zauberbuch wird beim Kampf verbraucht
-  const odds = magic.useShield() ? magic.shielded(winChance()) : winChance();
+  const shield = magic.useShield();
+  const odds = shield ? magic.shielded(winChance(), shield) : winChance();
   const result = { boss, odds, win: Math.random() < odds, stoff: 0, seide: 0 };
   if (result.win) {
     result.stoff = WIN_CLOTH;

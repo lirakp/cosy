@@ -157,9 +157,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       audio.play('error');
       return;
     }
-    // Glückszauber: das erste Stück ist mindestens Rang C
+    // Glückszauber: das erste Stück hat mindestens den Rang des Zaubers
     const lucky = magic.useLuckyPull();
-    const items = Array.from({ length: n }, (_, i) => rollItem({ lucky: buffs.lucky(), minTier: lucky && i === 0 ? 1 : 0 }));
+    const items = Array.from({ length: n }, (_, i) => rollItem({ lucky: buffs.lucky(), minTier: lucky && i === 0 ? lucky : 0 }));
     const seen = new Set();
     lastPull = items.map((item) => {
       const isNew = !state.count(item.id) && !seen.has(item.id);
@@ -497,26 +497,39 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
 
   // ------------------------------------------------------------ Magierturm und Zauberbuch
 
+  let spellSchool = 'alle';
   function renderTower() {
     if (!buildings.owned('tower')) return renderPurchase('tower', 'Magierturm');
     magic.tick();
-    const cards = magic.SPELLS.map((sp) => {
+    const shown = magic.SPELLS.filter((sp) => spellSchool === 'alle' || sp.school === spellSchool);
+    const card = (sp) => {
       const rank = RARITIES[sp.rank].id;
       const learned = magic.learned(sp.id);
       const block = learned ? magic.castBlocker(sp) : magic.learnBlocker(sp);
       const cd = magic.cooldownLeft(sp.id);
+      const known = learned || magic.hasScroll(sp);
       const button = learned
         ? `<button class="big" data-act="cast" data-v="${sp.id}" ${block ? 'disabled' : ''}>Wirken · ${sp.cost} Mana</button>`
         : `<button data-act="learn" data-v="${sp.id}" ${block ? 'disabled' : ''}>Lernen</button>`;
-      return `<div class="spell r-${rank}${learned ? '' : ' locked'}">
-        <div class="line"><b>${sp.name}</b><span class="evo">Rang ${rank}</span></div>
+      return `<div class="spell r-${rank}${learned ? '' : ' locked'}${known ? '' : ' unknown'}">
+        <div class="spell-head"><span class="spell-img" data-scroll="${sp.scroll.id}"></span>
+          <div><div class="line"><b>${magic.school(sp.school).icon} ${sp.name}</b><span class="evo">Rang ${rank}</span></div>
+          <span class="muted">${sp.scroll.name}</span></div></div>
         <p>${sp.text}</p>
         <span class="muted">${sp.cost} Mana · Abklingzeit ${sp.cooldown} min${cd ? ` · bereit in <b data-cd="${sp.id}">${clock(cd)}</b>` : ''}</span>
         ${button}
         ${block && !(learned && cd) ? `<span class="note">${block}</span>` : ''}
       </div>`;
+    };
+    const groups = RARITIES.map((r, t) => {
+      const list = shown.filter((sp) => sp.rank === t);
+      return list.length ? `<h3 class="spell-rank r-${r.id}">Rang ${r.id}</h3><div class="spells">${list.map(card).join('')}</div>` : '';
     }).join('');
-    const pending = [magic.lureReady() && 'Lockruf', magic.luckyReady() && 'Glückszauber', magic.shieldReady() && 'Schutzschild'].filter(Boolean);
+    const count = (id) => magic.SPELLS.filter((sp) => (id === 'alle' || sp.school === id) && magic.learned(sp.id)).length;
+    const total = (id) => magic.SPELLS.filter((sp) => id === 'alle' || sp.school === id).length;
+    const tabs = [['alle', 'Alle'], ...magic.SCHOOLS.map((sc) => [sc.id, `${sc.icon} ${sc.name}`])]
+      .map(([id, name]) => `<button class="tab${spellSchool === id ? ' on' : ''}" data-act="spell-school" data-v="${id}">${name} <span class="muted">${count(id)}/${total(id)}</span></button>`).join('');
+    const pending = magic.pending();
     overlay.innerHTML = `
       <section class="panel towerpanel">
         ${head('Zauberbuch')}
@@ -524,11 +537,13 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         <div class="chest mana">
           <div class="line"><span>Mana <b id="mana-text"></b></span><span class="muted">+${fmt1(magic.regen())}/min, nachts doppelt so schnell</span></div>
           <div class="bar mana-bar"><i id="mana-bar"></i></div>
-          ${pending.length ? `<p class="buff-note">Wartet auf seinen Einsatz: ${pending.join(', ')}</p>` : ''}
+          ${pending.length ? `<p class="buff-note">Wartet auf seinen Einsatz: ${pending.join(' · ')}</p>` : ''}
         </div>
-        <p class="muted">Zauber lernst du aus Schriftrollen (Relikte), die du besitzt – sie werden dabei nicht verbraucht. Das Zauberbuch öffnest du überall mit <kbd>Z</kbd>.</p>
-        <div class="spells">${cards}</div>
+        <p class="muted">Jede Schriftrolle (Relikte) lehrt ihren eigenen Zauber – sie wird dabei nicht verbraucht. Je höher der Rang, desto stärker der Zauber. Das Zauberbuch öffnest du überall mit <kbd>Z</kbd>.</p>
+        <nav class="tabs">${tabs}</nav>
+        ${groups}
       </section>`;
+    for (const el of overlay.querySelectorAll('[data-scroll]')) el.append(sprite(getItem(el.dataset.scroll)));
     updateTower();
   }
 
@@ -934,6 +949,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     aufgaben: 'Aufgaben im Dorf',
     gartenhelfer: 'Gartenhelfer (Kasse)',
     sternschnuppe: 'Sternschnuppen',
+    magie: 'Zauber',
     markt: 'Markt im Dorf',
     angeln: 'Angeln (Flaschenpost)',
     sonstiges: 'Sonstiges',
@@ -1535,6 +1551,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
           ${extra ? `${extra} Duplikat${extra > 1 ? 'e' : ''} verkaufen (+${fmt(extra * item.sell)} Gold)` : 'Keine Duplikate'}
         </button>
         ${buildings.owned('forge') ? `<button data-act="forge-item" data-id="${item.id}">In der Schmiede kopieren</button>` : ''}
+        ${magic.spellOf(item.id) ? `<p class="muted">Lehrt den Zauber <b>${magic.spellOf(item.id).name}</b>${magic.learned(item.id) ? ' (gelernt)' : ''}: ${magic.spellOf(item.id).text}</p>` : ''}
       </div>`;
     $('.frame', box).append(sprite(item));
   }
@@ -1613,6 +1630,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (act === 'helper-res') { gardener.setReserve(gardener.info().reserve + Number(btn.dataset.v)); renderGarden(); }
     if (act === 'helper-deposit') { audio.play(gardener.deposit() ? 'coin' : 'error'); renderGarden(); }
     if (act === 'helper-withdraw') { if (gardener.withdraw()) audio.play('gold'); renderGarden(); }
+    if (act === 'spell-school') { spellSchool = btn.dataset.v; renderTower(); }
     if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
     if (act === 'cast') {
       const id = btn.dataset.v;

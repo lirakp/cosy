@@ -52,7 +52,7 @@ const ui = createUI({
   where: () => ({ place, mineLevel }),
   onCast: (id, seconds) => {
     spellFx = 1.6;
-    if (id === 'sternenregen' && seconds) world.coinRain(seconds);
+    if (seconds) world.coinRain(seconds);
   },
 });
 let spellFx = 0; // Funkeln um die Figur nach einem Zauber
@@ -702,7 +702,7 @@ function frame(now) {
   lastNight = ph.night;
   // Sternschnuppen nur nachts und unter freiem Himmel (nicht beim Angeln in der Seesicht)
   const openSky = (place === 'outside' || place === 'village') && !villageScene.fishing();
-  stars.update(dt, openSky && ph.night > 0.6);
+  stars.update(dt, ph.night > 0.6, openSky);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);

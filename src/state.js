@@ -92,6 +92,25 @@ function migrateFish(map = {}) {
 }
 
 // Ergänzt fehlende Teile (ältere Spielstände) und prüft die Grundform.
+// Zauber vor den Schriftrollen-Zaubern → Zauber derselben Schule (Schriftrolle als Id)
+const LEGACY_SPELLS = {
+  wachstum: 'relikte-D-5',
+  sternenregen: 'relikte-D-16',
+  lockruf: 'relikte-C-27',
+  glueck: 'relikte-B-38',
+  zeitsprung: 'relikte-A-5',
+  schild: 'relikte-S-49',
+};
+function migrateMagic(x) {
+  x.learned = [...new Set((x.learned || []).map((id) => LEGACY_SPELLS[id] || id))];
+  if (x.lure === true) x.lure = { n: 1, v: 1 };
+  if (x.luckyPull === true) x.luckyPull = { n: 1, v: 1 };
+  if (x.shield === true) x.shield = { n: 1, v: 0.15 };
+  x.cd = { ...x.cd };
+  for (const k of Object.keys(LEGACY_SPELLS)) delete x.cd[k];
+  return x;
+}
+
 function normalize(saved) {
   if (!saved || typeof saved !== 'object' || typeof saved.gold !== 'number' || !saved.owned || typeof saved.owned !== 'object') return null;
   const base = fresh();
@@ -111,6 +130,7 @@ function normalize(saved) {
   };
   merged.village.fish = migrateFish(merged.village.fish);
   merged.village.caughtBy = migrateFish(merged.village.caughtBy);
+  merged.magic = migrateMagic(merged.magic);
   return merged;
 }
 

@@ -726,6 +726,14 @@ table.stats td { border-top: 1px solid #3a3170; }
 .spell .line { display: flex; justify-content: space-between; }
 .spell .evo { color: var(--rc); }
 .spell.locked { opacity: 0.75; }
+.spell.unknown { opacity: 0.5; }
+.spell-head { display: flex; gap: 8px; align-items: center; }
+.spell-head > div { flex: 1; min-width: 0; }
+.spell-img { flex: none; width: 32px; height: 32px; display: grid; place-items: center; }
+.spell-img canvas, .spell-img img { width: 32px; height: 32px; image-rendering: pixelated; }
+.spell.unknown .spell-img { filter: grayscale(1) brightness(0.6); }
+.spell-rank { margin: 12px 0 6px; color: var(--rc); font-size: 13px; }
+.towerpanel .tabs { flex-wrap: wrap; }
 .spell > button { align-self: stretch; }
 .mana-bar i { background: linear-gradient(90deg, #6a54c8, #9be8e0); }
 #mana { background: #1b1730; padding: 6px 10px; box-shadow: 0 0 0 2px #6a54c8; color: #9be8e0; white-space: nowrap; }
