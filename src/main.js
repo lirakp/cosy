@@ -33,6 +33,25 @@ const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
 let near = null; // 'well' | 'camp' | 'dungeon' | 'arena'
 
+// Pause: Figur, Münzen und Animationen halten an. Expedition und Dungeon
+// rechnen nach echter Zeit und laufen deshalb weiter – wie bei geschlossenem Spiel.
+const pauseScreen = document.getElementById('pause');
+let paused = false;
+function setPaused(value) {
+  if (value && ui.isOpen()) return;
+  paused = value;
+  pauseScreen.hidden = !paused;
+  setBlocked(paused || ui.isOpen());
+  if (paused) document.getElementById('btn-resume').focus();
+}
+document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
+document.getElementById('btn-resume').addEventListener('click', () => setPaused(false));
+addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (e.code === 'KeyP') setPaused(!paused);
+  else if (e.code === 'Escape' && paused) setPaused(false);
+});
+
 const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot > 0;
 
 function act() {
@@ -48,7 +67,7 @@ document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDu
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
 actionButton.addEventListener('click', act);
 addEventListener('keydown', (e) => {
-  if (ui.isOpen() || e.repeat) return;
+  if (paused || ui.isOpen() || e.repeat) return;
   if (e.code === 'KeyG') ui.openGallery();
   if (e.code === 'KeyX') ui.openExpedition();
   if (e.code === 'KeyF') ui.openDungeon();
@@ -62,7 +81,7 @@ addEventListener('keydown', (e) => {
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
   const chestX = CHEST_X - Math.round(camX);
-  if (!buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
+  if (paused || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
   ui.collectChest();
   return true;
 });
@@ -97,13 +116,15 @@ let time = 0;
 let last = performance.now();
 
 function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);
+  const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
   last = now;
   time += dt;
 
-  player.update(dt);
-  background.update(dt);
-  world.update(dt, player);
+  if (!paused) {
+    player.update(dt);
+    background.update(dt);
+    world.update(dt, player);
+  }
 
   near =
     Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
@@ -111,7 +132,7 @@ function frame(now) {
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
     : Math.abs(player.x - ARENA_X) < ARENA_RANGE ? 'arena'
     : null;
-  actionButton.hidden = !near || ui.isOpen();
+  actionButton.hidden = !near || paused || ui.isOpen();
   const label =
     near === 'well' ? '✦ Wunschbrunnen'
     : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`

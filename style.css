@@ -454,3 +454,33 @@ td b { color: var(--rc); }
   .members { grid-template-columns: 1fr; }
   .member { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 }
+
+/* ---------------------------------------------------------------- Pause */
+
+.hud-left { display: flex; gap: 8px; align-items: flex-start; }
+#btn-pause { letter-spacing: 1px; }
+#pause {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(15, 12, 30, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#pause[hidden] { display: none; }
+.pause-card {
+  background: #2a2456;
+  box-shadow: 0 0 0 3px #1b1730, 0 0 0 6px #6a549e, 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 24px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 360px;
+  color: #e6daf0;
+  font-size: 14px;
+}
+.pause-card h2 { margin: 0; font-size: 28px; letter-spacing: 6px; color: #fdf6e3; text-shadow: 3px 3px 0 #1b1730; }
+.pause-card p { margin: 0; }

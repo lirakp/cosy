@@ -11,7 +11,10 @@
     <div id="stage">
       <canvas id="game" width="320" height="180" aria-label="Cosy – ein gemütliches Pixel-Art-Spiel"></canvas>
       <div id="hud">
-        <div id="gold" title="Gold">◉ <span>0</span></div>
+        <div class="hud-left">
+          <div id="gold" title="Gold">◉ <span>0</span></div>
+          <button id="btn-pause" title="Pause (P)" aria-label="Pause">❚❚</button>
+        </div>
         <div class="hud-buttons">
           <button id="btn-arena">Arena <kbd>B</kbd></button>
           <button id="btn-dungeon">Dungeon <kbd>F</kbd></button>
@@ -25,6 +28,13 @@
     <p class="hint">← → oder A / D laufen · Münzen sammeln · am Brunnen wünschen · im Lager die Truhe leeren · links der Dungeon · rechts die Bossarena</p>
   </main>
   <div id="overlay" hidden></div>
+  <div id="pause" hidden>
+    <div class="pause-card">
+      <h2>PAUSE</h2>
+      <p>Die Welt steht still. Expedition und Dungeon laufen weiter.</p>
+      <button class="big" id="btn-resume">Weiter <kbd>P</kbd></button>
+    </div>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

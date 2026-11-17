@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `P` Pause ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Sammeln
