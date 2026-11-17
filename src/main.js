@@ -1,4 +1,6 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE } from './config.js';
+import * as village from './village.js';
+import { createVillageScene, zoneAt as villageZoneAt, VILLAGE_W, VILLAGE_BOUNDS, VILLAGE_SPAWN } from './villagescene.js';
 import * as garden from './garden.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
@@ -47,7 +49,7 @@ const ui = createUI({
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
 let near = null; // draußen: 'well' | 'camp' | 'dungeon' | 'arena' | 'house' · drinnen: 'door' | 'wardrobe' | 'bed'
-let place = 'outside'; // 'outside' | 'house' | 'mine'
+let place = 'outside'; // 'outside' | 'house' | 'mine' | 'village'
 let mineLevel = 0; // Ebene in der Mine (0 = D … 5 = SS)
 let sleeping = false;
 
@@ -184,6 +186,39 @@ function leaveHouse() {
   });
 }
 
+// ---------------------------------------------------------------- Dorf
+
+function enterVillage() {
+  audio.play('door');
+  fadeThrough(() => {
+    place = 'village';
+    player.x = VILLAGE_SPAWN;
+    player.facing = -1;
+    player.bounds = VILLAGE_BOUNDS;
+    camX = clamp(player.x - VIEW_W / 2, 0, VILLAGE_W - VIEW_W);
+  });
+}
+
+function leaveVillage() {
+  villageScene.cancelFishing();
+  audio.play('door');
+  fadeThrough(() => {
+    place = 'outside';
+    player.x = VILLAGE_SIGN_X + 16;
+    player.facing = 1;
+    player.bounds = [10, WORLD_W - 10];
+    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  });
+}
+
+function fishAction() {
+  const r = villageScene.fishPress();
+  if (r === 'cast') {
+    player.facing = -1;
+    audio.play('cast');
+  }
+}
+
 // ---------------------------------------------------------------- Mine
 
 function enterMine() {
@@ -249,6 +284,11 @@ function sleep() {
 
 function act() {
   if (sleeping) return;
+  if (near === 'village') enterVillage();
+  if (near === 'farm') leaveVillage();
+  if (near === 'fishing') fishAction();
+  if (near === 'market') ui.openMarket();
+  if (near?.startsWith('npc:')) ui.talk(near.slice(4));
   if (near === 'house') enterHouse();
   if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
   if (near === 'lift') ui.openMine();
@@ -292,6 +332,23 @@ addEventListener('keydown', (e) => {
 
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
+  // Klick auf den Wegweiser führt ins Dorf, im Dorf auf einen Bewohner spricht ihn an
+  if (!paused && place === 'outside' && Math.abs(x - (VILLAGE_SIGN_X - Math.round(camX))) < 12 && y > GROUND_Y - 22 && y < GROUND_Y + 6) {
+    enterVillage();
+    return true;
+  }
+  if (!paused && place === 'village' && y > GROUND_Y - 24 && y < GROUND_Y + 12) {
+    const wx = x + Math.round(camX);
+    const npc = village.VILLAGERS.find((v) => Math.abs(v.x - wx) < 9);
+    if (npc) {
+      ui.talk(npc.id);
+      return true;
+    }
+    if (Math.abs(village.MARKET.x - wx) < 16) {
+      ui.openMarket();
+      return true;
+    }
+  }
   const chestX = CHEST_X - Math.round(camX);
   if (paused || place !== 'outside' || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
   ui.collectChest();
@@ -350,6 +407,7 @@ function expeditionTick() {
   forge.tick();
   ui.updateForge();
   ui.updateGarden();
+  ui.updateMarket();
 
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
@@ -369,6 +427,11 @@ const background = createBackground();
 const world = createWorld();
 const player = createPlayer();
 const interior = createInterior();
+const villageScene = createVillageScene({
+  onBite: () => audio.play('bite'),
+  onCatch: (res) => ui.caught(res),
+  onMiss: (why) => ui.toast(why === 'early' ? 'Zu früh eingeholt – der Fisch ist weg.' : 'Weg ist er … beim nächsten Biss schneller einholen!'),
+});
 let lastPick = 0;
 const mineScene = createMineScene({
   onStrike() {
@@ -436,6 +499,33 @@ function drawInside(ph) {
   interior.drawLights(ctx, time, ph.night);
 }
 
+function fishLabel() {
+  const phase = villageScene.phase();
+  if (phase === 'idle') return 'Angel auswerfen';
+  if (phase === 'bite') return '!!! Jetzt einholen !!!';
+  return 'Warten … bei „!“ einholen';
+}
+
+function npcLabel(id) {
+  const q = village.quest(id);
+  const name = village.villager(id).name;
+  return q ? `${name} · ${village.canComplete(q) ? 'Aufgabe abgeben ✓' : 'Aufgabe ?'}` : name;
+}
+
+// Das Dorf liegt draußen: gleicher Himmel und gleiche Tageszeit wie auf dem Hof
+function drawVillage(ph) {
+  background.drawSky(ctx, camX, time, ph);
+  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  background.drawLand(sctx, camX, ph);
+  villageScene.draw(sctx, camX, time);
+  player.draw(sctx, Math.round(camX));
+  world.drawFront(sctx, camX, time);
+  tint(ph.tint, ph.tintAlpha);
+  ctx.drawImage(scene, 0, 0);
+  villageScene.drawLights(ctx, camX, time, ph.night);
+  villageScene.drawFishing(ctx, camX, player.x, time);
+}
+
 // In der Mine ist es dunkel, nur Laternen und Funken leuchten.
 function drawMine() {
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
@@ -458,11 +548,17 @@ function frame(now) {
     background.update(dt);
     if (place === 'outside') world.update(dt, player);
     if (place === 'mine') mineScene.update(dt, mineLevel, time);
+    if (place === 'village') {
+      villageScene.update(dt);
+      if (player.moving) villageScene.cancelFishing();
+    }
   }
 
   near =
     place === 'house' ? zoneAt(player.x)
     : place === 'mine' ? mineZoneAt(player.x)
+    : place === 'village' ? villageZoneAt(player.x)
+    : Math.abs(player.x - VILLAGE_SIGN_X) < VILLAGE_SIGN_RANGE ? 'village'
     : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
     : Math.abs(player.x - FORGE_X) < FORGE_RANGE ? 'forge'
     : Math.abs(player.x - GARDEN_X) < GARDEN_RANGE ? 'garden'
@@ -475,7 +571,12 @@ function frame(now) {
     : null;
   actionButton.hidden = !near || paused || sleeping || ui.isOpen();
   const label =
-    near === 'house' ? 'Haus betreten'
+    near === 'village' ? '← Ins Dorf'
+    : near === 'farm' ? 'Zurück zum Hof →'
+    : near === 'fishing' ? fishLabel()
+    : near === 'market' ? 'Marktstand'
+    : near?.startsWith('npc:') ? npcLabel(near.slice(4))
+    : near === 'house' ? 'Haus betreten'
     : near === 'door' ? 'Hinausgehen'
     : near === 'wardrobe' ? 'Kleiderschrank'
     : near === 'bed' ? (canSleep() ? 'Schlafen gehen' : 'Bett · schlafen ab dem Abend')
@@ -494,8 +595,9 @@ function frame(now) {
   if (actionLabel.textContent !== label) actionLabel.textContent = label;
 
   // Kamera folgt der Figur sanft (im Haus steht sie still)
-  if (place === 'outside') {
-    const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  if (place === 'outside' || place === 'village') {
+    const width = place === 'village' ? VILLAGE_W : WORLD_W;
+    const target = clamp(player.x - VIEW_W / 2, 0, width - VIEW_W);
     camX += (target - camX) * Math.min(1, dt * 6);
   }
 
@@ -503,6 +605,7 @@ function frame(now) {
   audio.setNight(ph.night);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
+  else if (place === 'village') drawVillage(ph);
   else drawOutside(ph);
 
   const dl = dayLabel(dayTime);

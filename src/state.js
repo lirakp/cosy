@@ -48,6 +48,16 @@ const newGarden = () => ({
   crops: {}, // Ernte-Vorrat je Pflanze
 });
 
+const newVillage = () => ({
+  quests: {}, // offene Aufgabe je Bewohner
+  next: {}, // ab wann ein Bewohner eine neue Aufgabe hat
+  done: 0,
+  fish: {}, // gefangene Fische je Rang
+  caught: 0,
+  seeds: {}, // Saatpäckchen auf Vorrat
+  market: { stock: [], wants: [], refreshAt: 0 },
+});
+
 const fresh = () => ({
   gold: START_GOLD,
   owned: {},
@@ -60,6 +70,7 @@ const fresh = () => ({
   forge: { glut: 3, last: 0, made: 0 },
   stats: newStats(),
   garden: newGarden(),
+  village: newVillage(),
 });
 
 // Ergänzt fehlende Teile (ältere Spielstände) und prüft die Grundform.
@@ -77,6 +88,7 @@ function normalize(saved) {
     forge: { ...base.forge, ...saved.forge },
     stats: { ...base.stats, ...saved.stats },
     garden: { ...base.garden, ...saved.garden },
+    village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market } },
   };
 }
 
@@ -250,6 +262,9 @@ export const state = {
     return gain;
   },
 
+  get village() {
+    return data.village;
+  },
   get garden() {
     return data.garden;
   },

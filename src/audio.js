@@ -356,6 +356,16 @@ const SFX = {
   trader() {
     notes([72, 76, 79, 76, 84], 0.09, { type: 'triangle', gain: 0.06, release: 0.3 });
   },
+  cast() {
+    const t = ctx.currentTime;
+    hiss(t, 0.25, { gain: 0.05, freq: 2000, type: 'bandpass' });
+    tone(midi(79), t + 0.3, 0.1, { type: 'sine', gain: 0.05, slide: 0.6, release: 0.15 });
+  },
+  bite() {
+    const t = ctx.currentTime;
+    hiss(t, 0.18, { gain: 0.07, freq: 900, type: 'bandpass' });
+    notes([88, 88], 0.09, { type: 'square', gain: 0.04, release: 0.08, cutoff: 4000, dur: 0.05 });
+  },
   pause() {
     notes([76, 69], 0.08, { type: 'triangle', gain: 0.06, release: 0.2 });
   },

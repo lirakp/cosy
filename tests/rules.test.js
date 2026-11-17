@@ -282,3 +282,77 @@ test('Statistik: Einnahmen und Duplikate werden je Quelle gezählt', () => {
   assert.equal(state.stats.gold.muenzen, 30);
   assert.deepEqual(state.stats.items.expedition, { n: 2, dupes: 1, dupValue: d1.sell });
 });
+
+// ---------------------------------------------------------------- Dorf
+
+import * as village from '../src/village.js';
+
+test('Dorf: Aufgaben sind machbar – Erz nur aus offenen Minen-Ebenen', () => {
+  const random = seeded(5);
+  for (let i = 0; i < 2000; i++) {
+    const q = village.makeQuest(village.VILLAGERS[i % village.VILLAGERS.length].id, random);
+    assert.notEqual(q.need.type, 'ore', 'ohne Mine keine Erz-Aufgaben');
+  }
+  state.buildings.mine = 2;
+  for (let i = 0; i < 2000; i++) {
+    const q = village.makeQuest('jonas', random);
+    if (q.need.type === 'ore') assert.ok(q.need.tier <= 2, 'Erz höchstens aus Ebene C');
+    if (q.difficulty === 'leicht' && q.need.type === 'ore') assert.equal(q.need.tier, 0);
+  }
+});
+
+test('Dorf: Aufgabe abgeben verbraucht das Verlangte, zahlt aus und kommt später neu', () => {
+  state.village.quests.greta = { villager: 'greta', difficulty: 'leicht', need: { type: 'crop', id: 'karotte', n: 3 }, reward: { gold: 80, item: null } };
+  assert.equal(village.complete('greta'), null, 'ohne Karotten geht es nicht');
+  state.garden.crops.karotte = 5;
+  const gold = state.gold;
+  const res = village.complete('greta');
+  assert.ok(res);
+  assert.equal(state.gold, gold + 80);
+  assert.equal(garden.have('karotte'), 2);
+  assert.equal(state.village.quests.greta, null);
+  assert.ok(state.village.next.greta > Date.now(), 'neue Aufgabe erst nach einer Pause');
+  state.village.next.greta = 0;
+  assert.ok(village.quest('greta'), 'danach gibt es eine neue Aufgabe');
+});
+
+test('Dorf: Sammelstück-Aufgaben nehmen nur Duplikate, nie das letzte Exemplar', () => {
+  const item = getGroup('waffen', 'C')[0];
+  state.addItems([item]);
+  state.village.quests.jonas = { villager: 'jonas', difficulty: 'mittel', need: { type: 'item', cat: 'waffen', tier: 1, n: 1 }, reward: { gold: 200, item: null } };
+  assert.equal(village.canComplete(state.village.quests.jonas), false);
+  state.addItems([item]);
+  assert.ok(village.complete('jonas'));
+  assert.equal(state.count(item.id), 1);
+});
+
+test('Markt: Kaufen am Stand kostet mehr, als der Ankauf zahlt – keine Gelddruckmaschine', () => {
+  for (const r of RARITIES) {
+    const item = getGroup('relikte', r.id)[0];
+    assert.ok(village.stockPrice(item) > village.wantPrice(item), `Rang ${r.id}`);
+    assert.ok(village.wantPrice(item) > item.sell, 'Ankauf lohnt mehr als Verkauf in der Galerie');
+  }
+});
+
+test('Markt: Saatpäckchen sind günstiger und werden beim Pflanzen zuerst verbraucht', () => {
+  assert.ok(village.seedPrice('kuerbis') < garden.crop('kuerbis').seed);
+  assert.ok(village.buySeeds('kuerbis', 1));
+  const gold = state.gold;
+  assert.ok(garden.plant(0, 'kuerbis'));
+  assert.equal(state.gold, gold, 'Päckchen statt Gold');
+  assert.equal(village.seeds('kuerbis'), 0);
+});
+
+test('Angeln: Fangquoten folgen den Brunnen-Chancen, Flaschenpost selten', () => {
+  const random = seeded(9);
+  const n = 40000;
+  const count = Array(RARITIES.length).fill(0);
+  let treasure = 0;
+  for (let i = 0; i < n; i++) {
+    const r = village.catchFish(random);
+    if (r.treasure) treasure++;
+    else count[r.tier]++;
+  }
+  close(treasure / n, village.TREASURE_CHANCE, 0.005, 'Flaschenpost');
+  RARITIES.forEach((r, t) => close(count[t] / (n - treasure), r.chance, 0.008, `Fisch Rang ${r.id}`));
+});

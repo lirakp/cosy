@@ -41,6 +41,36 @@ Dann <http://localhost:8000> öffnen.
 **Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
+## Das Dorf
+
+Am Wegweiser ganz links auf dem Hof (`E` oder Klick aufs Schild) geht es ins
+Dorf; rechts im Dorf führt der Weg zurück.
+
+- **Bewohner mit Aufgaben:** Bäckerin Greta, Fischer Ole, Bürgermeister Anton,
+  Gärtnerin Lotte und Abenteurer Jonas. Ein „?“ über dem Kopf heißt: Aufgabe
+  offen, ein grünes „!“: kann abgegeben werden. Aufgaben sind zufällig und
+  kommen immer wieder (1–3 Minuten nach Abgabe oder Ablehnen). Verlangt werden
+  Erz (nur aus offenen Minen-Ebenen), Ernte, Fische oder ein Duplikat einer
+  Kategorie und eines Rangs.
+
+| Schwierigkeit | Häufigkeit | Belohnung |
+| --- | --- | --- |
+| leicht | 50 % | 40–100 Gold |
+| mittel | 35 % | 150–350 Gold, mit 40 % ein Sammelstück ab Rang C |
+| schwer | 15 % | 600–1200 Gold und ein Sammelstück ab Rang B |
+
+- **Marktstand (Marktfrau Hilde):** Saatpäckchen auf Vorrat (20 % günstiger,
+  werden beim Pflanzen zuerst verbraucht), Ernte und Fische verkaufen, vier
+  Sammelstücke zum Kaufen (Verkaufswert × 5) und drei gesuchte Stücke, die sie
+  für den doppelten Verkaufswert ankauft (nur Duplikate). Das Angebot wechselt
+  alle 20 Minuten.
+- **Angeln am Steg:** `E` wirft aus. Nach 3–8 Sekunden beißt etwas („!“), dann
+  hat man 0,9 Sekunden zum Einholen. Fische nach den Brunnen-Chancen: Weißfisch
+  (D), Forelle (C), Karpfen (B), Hecht (A), Goldkarpfen (S), Mondfisch (SS); mit
+  3 % eine Flaschenpost mit einem Sammelstück.
+
+Werte in `src/village.js`.
+
 ## Garten und Küche
 
 Rechts vom Haus liegen Beete (zwei sind frei, weitere kosten 300 · 800 · 2000 ·
@@ -296,6 +326,8 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/mine.js` | Mine: Ebenen, Arbeiter, Erz |
 | `src/minescene.js` | Darstellung der Mine mit hackenden Monstern |
 | `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
+| `src/village.js` | Dorf: Aufgaben, Markt, Angeln |
+| `src/villagescene.js` | Darstellung des Dorfs und der Angel |
 | `src/garden.js` | Garten (Beete, Wachstum, Ernte) und Küche (Rezepte) |
 | `src/sets.js` | Sammel-Sets und ihre Boni |
 | `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |

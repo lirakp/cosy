@@ -11,6 +11,7 @@ import * as trader from './trader.js';
 import * as forgeMod from './forge.js';
 import * as sets from './sets.js';
 import * as garden from './garden.js';
+import * as village from './village.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -56,6 +57,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   let arenaSel = null; // angetippter Platz im Arena-Team: { i, key }
   let mineSel = null; // angetippter Arbeitsplatz in der Mine: { l, s }
   const forgeSel = { cat: CATEGORIES[0].id, rank: 'D', item: null };
+  let talkTo = null; // Dorfbewohner im Gespräch
+  let marketTab = 'saat';
   const reveals = [];
 
   const refreshGold = () => {
@@ -83,6 +86,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'stats') renderStats();
     if (view === 'garden') renderGarden();
     if (view === 'kitchen') renderKitchen();
+    if (view === 'villager') renderVillager();
+    if (view === 'market') renderMarket();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -171,6 +176,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (next.fight) return showFight(next.fight);
     if (next.setDone) return showSetComplete(next.setDone);
     if (next.meal) return showMeal(next.meal);
+    if (next.questDone) return showQuestDone(next.questDone);
+    if (next.catch) return showCatch(next.catch);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -428,6 +435,162 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     onToggle(true);
   }
 
+  // ------------------------------------------------------------ Dorf
+
+  const DIFF_RANK = { leicht: 'D', mittel: 'B', schwer: 'S' };
+
+  function needIcon(need) {
+    if (need.type === 'ore') return mine.oreImage(need.tier);
+    if (need.type === 'crop') return garden.cropImage(need.id);
+    if (need.type === 'fish') return village.fishImage(need.tier);
+    return itemImage(getGroup(need.cat, RARITIES[need.tier].id)[0]);
+  }
+
+  function renderVillager() {
+    const npc = village.villager(talkTo);
+    const q = village.quest(npc.id);
+    let body;
+    if (!q) {
+      const wait = Math.max(0, Math.ceil(((state.village.next[npc.id] || 0) - Date.now()) / 1000));
+      body = `<p class="lead">„${npc.hello} Gerade habe ich nichts für dich – schau in ${clock(wait)} wieder vorbei.“</p>`;
+    } else {
+      const have = village.haveFor(q.need);
+      const ok = village.canComplete(q);
+      const reward = `${fmt(q.reward.gold)} Gold${q.reward.item !== null ? ` + Sammelstück ab Rang ${RARITIES[q.reward.item].id}` : ''}`;
+      body = `
+        <p class="lead">„${npc.hello}“</p>
+        <div class="chest quest r-${DIFF_RANK[q.difficulty]}">
+          <div class="line"><b>Aufgabe</b><span class="tag diff">${q.difficulty}</span></div>
+          <div class="quest-need"><span id="need-icon"></span><span>Bitte bring mir <b>${village.describeNeed(q.need)}</b></span></div>
+          <span class="${ok ? 'gold-text' : 'muted'}">Du hast ${fmt(have)} von ${q.need.n}${q.need.type === 'item' ? ' (nur Duplikate zählen)' : ''}</span>
+          <span>Belohnung: <b class="gold-text">${reward}</b></span>
+          <div class="line">
+            <button class="big" data-act="quest-done" ${ok ? '' : 'disabled'}>Abgeben</button>
+            <button data-act="quest-skip">Ablehnen</button>
+          </div>
+        </div>`;
+    }
+    overlay.innerHTML = `
+      <section class="panel villagerpanel">
+        ${head(npc.name)}
+        <div class="villager-row"><div class="frame" id="npc-face"></div><div class="info">${body}</div></div>
+        <p class="muted">Erledigte Aufgaben insgesamt: ${fmt(state.village.done)}. Neue Aufgaben tauchen immer wieder auf.</p>
+      </section>`;
+    $('#npc-face').append(picture(village.villagerImage(npc.id)));
+    if (q) $('#need-icon')?.append(picture(needIcon(q.need)));
+  }
+
+  function showQuestDone(res) {
+    const npc = village.villager(res.quest.villager);
+    const el = document.createElement('div');
+    el.className = `reveal r-${DIFF_RANK[res.quest.difficulty]}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">AUFGABE ERLEDIGT · ${res.quest.difficulty.toUpperCase()}</div>
+        <div class="rank-big">DANKE!</div>
+        <div class="frame"></div>
+        <h3>${npc.name}</h3>
+        <p class="gold-won">+${fmt(res.gold)} Gold</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(village.villagerImage(npc.id)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('win');
+    onToggle(true);
+  }
+
+  // Fang: kleine Fische als Hinweis, große als Pop-up, Flaschenpost als Sammelstück
+  function showCatch(res) {
+    const rank = RARITIES[res.tier].id;
+    const el = document.createElement('div');
+    el.className = `reveal r-${rank}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">GROSSER FANG</div>
+        <div class="rank-big">RANG ${rank}</div>
+        <div class="frame"></div>
+        <h3>${res.fish.name}</h3>
+        <p>Wert am Markt: ${fmt(res.fish.price)} Gold</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(village.fishImage(res.tier)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', res.tier);
+    onToggle(true);
+  }
+
+  function renderMarket() {
+    const m = village.market();
+    const tabs = ['saat', 'verkauf', 'sammel'].map((t, i) => `<button class="tab${marketTab === t ? ' on' : ''}" data-act="market-tab" data-v="${t}">${['Saatgut', 'Ernte und Fisch verkaufen', 'Sammelstücke'][i]}</button>`).join('');
+    let body = '';
+    if (marketTab === 'saat') {
+      body = `<p class="muted">Saatpäckchen auf Vorrat sind 20 % günstiger. Beim Pflanzen im Garten werden sie zuerst verbraucht.</p>
+        <div class="seeds">${garden.CROPS.map((c) => `
+          <div class="seed" data-crop-img="${c.id}"><b>${c.name}</b><span>Vorrat: ${village.seeds(c.id)}</span>
+            <span class="gold-text">${village.seedPrice(c.id)} Gold</span>
+            <span><button data-act="buy-seed" data-v="${c.id}" data-n="1" ${state.gold >= village.seedPrice(c.id) ? '' : 'disabled'}>1×</button>
+            <button data-act="buy-seed" data-v="${c.id}" data-n="5" ${state.gold >= village.seedPrice(c.id) * 5 ? '' : 'disabled'}>5×</button></span>
+          </div>`).join('')}</div>`;
+    }
+    if (marketTab === 'verkauf') {
+      const crops = garden.CROPS.map((c) => `
+        <div class="seed" data-crop-img="${c.id}"><b>${c.name}</b><span>Vorrat: ${garden.have(c.id)}</span>
+          <span class="gold-text">${village.CROP_PRICE[c.id]} Gold je Stück</span>
+          <button data-act="sell-crop" data-v="${c.id}" ${garden.have(c.id) ? '' : 'disabled'}>Alle verkaufen</button></div>`).join('');
+      const fish = village.FISH.map((f, t) => `
+        <div class="seed" data-fish-img="${t}"><b>${f.name} <span class="evo r-${RARITIES[t].id}">${RARITIES[t].id}</span></b><span>Vorrat: ${village.fishCount(t)}</span>
+          <span class="gold-text">${fmt(f.price)} Gold je Stück</span>
+          <button data-act="sell-fish" data-v="${t}" ${village.fishCount(t) ? '' : 'disabled'}>Alle verkaufen</button></div>`).join('');
+      body = `<h4>Ernte</h4><div class="seeds">${crops}</div><h4>Fische</h4><div class="seeds">${fish}</div>
+        <p class="muted">Tipp: Aufgaben der Dorfbewohner zahlen für Ernte und Fische meist deutlich mehr.</p>`;
+    }
+    if (marketTab === 'sammel') {
+      const stock = m.stock.map((s, i) => {
+        const item = getItem(s.id);
+        return `<div class="offer r-${item.rank}${s.sold ? ' sold' : ''}">
+          <div class="tile r-${item.rank}" data-sprite="${item.id}"><span class="rank">${item.rank}</span>${state.count(item.id) ? '' : '<span class="new">NEU</span>'}</div>
+          <b>${item.name}</b><span class="gold-text">${fmt(village.stockPrice(item))} Gold</span>
+          <button data-act="market-buy" data-v="${i}" ${!s.sold && state.gold >= village.stockPrice(item) ? '' : 'disabled'}>${s.sold ? 'Verkauft' : 'Kaufen'}</button></div>`;
+      }).join('');
+      const wants = m.wants.map((w, i) => {
+        const item = getItem(w.id);
+        const dup = state.duplicates(item.id);
+        return `<div class="offer r-${item.rank}${w.done ? ' sold' : ''}">
+          <div class="tile r-${item.rank}${state.count(item.id) ? '' : ' unknown'}" data-sprite="${item.id}"><span class="rank">${item.rank}</span>${dup ? `<span class="count">×${dup}</span>` : ''}</div>
+          <b>${item.name}</b><span class="gold-text">${fmt(village.wantPrice(item))} Gold</span>
+          <button data-act="market-sell" data-v="${i}" ${!w.done && dup ? '' : 'disabled'}>${w.done ? 'Verkauft' : dup ? 'Duplikat verkaufen' : 'Kein Duplikat'}</button></div>`;
+      }).join('');
+      body = `<p class="muted">Neues Angebot in <b id="market-time"></b>.</p>
+        <h4>Hilde verkauft</h4><div class="offers">${stock}</div>
+        <h4>Hilde sucht – zahlt das Doppelte des Verkaufswerts</h4><div class="offers">${wants}</div>`;
+    }
+    overlay.innerHTML = `
+      <section class="panel marketpanel">
+        ${head(village.MARKET.name)}
+        <p class="lead">„Frisch vom Feld, frisch aus dem Teich – und dazu allerlei Schätze!“</p>
+        <nav class="tabs">${tabs}</nav>
+        ${body}
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
+    for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(Number(el.dataset.fishImg))));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    updateMarket();
+  }
+
+  function updateMarket() {
+    const el = $('#market-time');
+    if (el) el.textContent = clock(village.marketRefreshIn());
+    if (view === 'market' && village.marketRefreshIn() === 0) renderMarket();
+    if (view === 'villager' && !village.quest(talkTo) && !$('.quest')) {
+      // Wartezeit auf eine neue Aufgabe herunterzählen
+      renderVillager();
+    }
+  }
+
   // ------------------------------------------------------------ Garten
 
   const cropChip = (id, n, need) => `<span class="ore-chip${need !== undefined && n < need ? ' short' : ''}" data-crop="${id}"><b>${need !== undefined ? `${n}/${need}` : fmt(n)}</b> ${garden.crop(id).name}</span>`;
@@ -572,6 +735,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     anlagen: 'Anlagen bauen und ausbauen',
     leitung: 'Expeditionsleitung',
     garten: 'Garten (Saatgut)',
+    aufgaben: 'Aufgaben im Dorf',
+    markt: 'Markt im Dorf',
+    angeln: 'Angeln (Flaschenpost)',
     sonstiges: 'Sonstiges',
   };
 
@@ -1230,6 +1396,31 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       audio.play('levelUp');
       renderWardrobe();
     }
+    if (act === 'quest-done') {
+      const res = village.complete(talkTo);
+      if (!res) audio.play('error');
+      else {
+        reveals.push({ questDone: res });
+        if (res.item) reveals.push({ item: res.item, isNew: res.isNew, source: 'BELOHNUNG' });
+        renderVillager();
+        nextReveal();
+      }
+    }
+    if (act === 'quest-skip') { village.decline(talkTo); renderVillager(); }
+    if (act === 'market-tab') { marketTab = btn.dataset.v; renderMarket(); }
+    if (act === 'buy-seed') { audio.play(village.buySeeds(btn.dataset.v, Number(btn.dataset.n)) ? 'coin' : 'error'); renderMarket(); }
+    if (act === 'sell-crop') { if (village.sellCrops(btn.dataset.v)) audio.play('sell'); renderMarket(); }
+    if (act === 'sell-fish') { if (village.sellFish(Number(btn.dataset.v))) audio.play('sell'); renderMarket(); }
+    if (act === 'market-buy') {
+      const got = village.buyStock(Number(btn.dataset.v));
+      if (!got) audio.play('error');
+      else {
+        reveals.push({ ...got, source: 'MARKT' });
+        renderMarket();
+        nextReveal();
+      }
+    }
+    if (act === 'market-sell') { if (village.sellWanted(Number(btn.dataset.v))) audio.play('sell'); renderMarket(); }
     if (act === 'bed') { gardenSel = Number(btn.dataset.v); renderGarden(); }
     if (act === 'bed-close') { gardenSel = null; renderGarden(); }
     if (act === 'plant') {
@@ -1357,6 +1548,23 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openForge: () => show('forge'),
     openStats: () => show('stats'),
     openGarden: () => show('garden'),
+    talk(id) {
+      talkTo = id;
+      show('villager');
+    },
+    openMarket: () => show('market'),
+    updateMarket,
+    caught(res) {
+      if (res.treasure) {
+        toast('Eine Flaschenpost! Darin steckt etwas …');
+        reveals.push({ item: res.item, isNew: res.isNew, source: 'FLASCHENPOST' });
+      } else if (res.tier < HIGHLIGHT_TIER) {
+        toast(`Gefangen: ${res.fish.name} (Rang ${RARITIES[res.tier].id})`);
+        audio.play('coin');
+        return;
+      } else reveals.push({ catch: res });
+      if (!$('.reveal')) nextReveal();
+    },
     openKitchen: () => show('kitchen'),
     harvest,
     updateGarden,

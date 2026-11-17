@@ -653,3 +653,18 @@ table.stats td { border-top: 1px solid #3a3170; }
 .recipe b { color: #fdf6e3; font-size: 13px; }
 .recipe > button { align-self: flex-start; }
 .frame.small { width: 48px; padding: 4px; }
+
+/* ---------------------------------------------------------------- Dorf */
+
+.villager-row { display: flex; gap: 14px; align-items: flex-start; }
+.villager-row .frame { width: 80px; }
+.villager-row .info { flex: 1; gap: 8px; }
+.quest { box-shadow: 0 0 0 2px var(--rc); }
+.quest .line { align-items: center; }
+.quest-need { display: flex; align-items: center; gap: 8px; }
+.quest-need .sprite { width: 32px; }
+.tag.diff { text-transform: uppercase; background: var(--rc); color: #1b1730; }
+.seed > span:last-child { display: flex; gap: 4px; }
+.marketpanel .seed button { font-size: 11px; padding: 4px 8px; }
+.gold-won { font-size: 20px; color: #ffd04a; margin: 0; }
+@media (max-width: 520px) { .villager-row { flex-direction: column; } }

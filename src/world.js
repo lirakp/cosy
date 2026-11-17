@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X } from './config.js';
 import * as garden from './garden.js';
 import * as trader from './trader.js';
 import * as mine from './mine.js';
@@ -278,6 +278,20 @@ function drawForge(ctx, x) {
   rect(ctx, left - 18, base - 7, 11, 1, PAL.stoneLight);
 }
 
+// Wegweiser „Zum Dorf“ mit Pfeil nach links
+function drawVillageSign(ctx, x) {
+  const base = GROUND_Y + 4;
+  rect(ctx, x, base - 22, 2, 22, PAL.woodDark);
+  rect(ctx, x - 10, base - 22, 20, 8, PAL.woodLight);
+  rect(ctx, x - 12, base - 21, 2, 6, PAL.woodLight);
+  px(ctx, x - 13, base - 18, PAL.woodLight);
+  rect(ctx, x - 8, base - 20, 14, 1, PAL.woodDark);
+  rect(ctx, x - 8, base - 17, 10, 1, PAL.woodDark);
+  // kleine Häuschen-Silhouette auf dem Schild
+  rect(ctx, x + 4, base - 19, 4, 3, PAL.roof);
+  rect(ctx, x + 5, base - 21, 2, 2, PAL.roof);
+}
+
 function drawMineEntrance(ctx, x) {
   const base = GROUND_Y + 4;
   // felsiger Hügel
@@ -374,6 +388,7 @@ function makeGround() {
   for (const x of [300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
+  drawVillageSign(ctx, VILLAGE_SIGN_X);
   drawLantern(ctx, LANTERN_X);
   drawWell(ctx, WELL_X);
   return c;

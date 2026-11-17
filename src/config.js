@@ -49,3 +49,7 @@ export const GARDEN_X = 298;
 export const GARDEN_RANGE = 44;
 export const GARDEN_BED_X = 258; // linker Rand des ersten Beets
 export const GARDEN_BED_STEP = 14;
+
+// Wegweiser ins Dorf am linken Rand des Hofs
+export const VILLAGE_SIGN_X = 36;
+export const VILLAGE_SIGN_RANGE = 11;

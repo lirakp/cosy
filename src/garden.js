@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import * as village from './village.js';
 import * as buffs from './buffs.js';
 import { render } from './art/core.js';
 import { carrot, wheat, potato, berries, pumpkin, starflower, teacup } from './art/crops.js';
@@ -58,7 +59,9 @@ export const remaining = (i, now = Date.now()) => {
 
 export function plant(i, cropId, now = Date.now()) {
   const c = crop(cropId);
-  if (!c || i >= beds().length || beds()[i] || !state.spend(c.seed, 'garten')) return false;
+  if (!c || i >= beds().length || beds()[i]) return false;
+  // erst Saatpäckchen vom Markt, sonst direkt mit Gold bezahlen
+  if (!village.useSeed(cropId) && !state.spend(c.seed, 'garten')) return false;
   gd().beds[i] = { crop: cropId, planted: now };
   state.changed();
   return true;
