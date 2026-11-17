@@ -3,6 +3,23 @@
 Grundlage für ein gemütliches Pixel-Art-Spiel – reines HTML5-Canvas, ohne
 Abhängigkeiten und ohne Build-Schritt.
 
+## Startbildschirm und Figuren
+
+Beim Start erscheint der Titelbildschirm. Dort wählst du deine Figur, mit Klick
+oder mit ← → und `Enter`:
+
+Mensch (männlich / weiblich), Elf, Elfe, Zwerg, Zwergin, Ork, Mondelfe und Halbling.
+
+Die Völker unterscheiden sich in Haut- und Haarfarbe, Frisur, spitzen Ohren,
+Bart, Zöpfen, Hauern und Größe. Zwerge und Halblinge sind kleiner. Menschen,
+Elfen, Zwerge und Halblinge haben fünf Hauttöne zur Auswahl. Die Wahl ändert nur
+das Aussehen, alle Figuren spielen sich gleich. Jede Kleidung aus dem
+Kleiderschrank passt allen; neu dazugekommen ist „Ohne Hut“, damit man die Frisur
+sieht. Neue Spielstände starten in diesem Outfit.
+
+Die Figur lässt sich jederzeit im Pause-Menü unter „Figur wechseln“ ändern.
+Daten in `src/sprites.js` (`CHARACTERS`), der Bildschirm in `src/title.js`.
+
 ## Als Programm für Windows
 
 Unter **Releases** auf GitHub liegt der aktuelle Build („Cosy für Windows“):

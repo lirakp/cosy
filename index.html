@@ -35,6 +35,23 @@
   </main>
   <div id="overlay" hidden></div>
   <div id="fade"></div>
+  <div id="title" hidden>
+    <div class="title-card">
+      <h1 class="logo">Cosy</h1>
+      <p class="tagline">Ein gemütliches Pixel-Abenteuer</p>
+      <h3>Wähle deine Figur</h3>
+      <div class="chars" id="chars"></div>
+      <div class="char-info">
+        <div class="char-big" id="char-big"></div>
+        <div>
+          <h4 id="char-name"></h4>
+          <p id="char-text"></p>
+          <div class="tones" id="tones"></div>
+        </div>
+      </div>
+      <button class="big" id="btn-start">Spielen <kbd>Enter</kbd></button>
+    </div>
+  </div>
   <div id="pause" hidden>
     <div class="pause-card">
       <h2>PAUSE</h2>
@@ -55,6 +72,7 @@
           <button id="btn-export">Sichern</button>
           <button id="btn-import">Laden</button>
           <button id="btn-stats">Statistik</button>
+          <button id="btn-character">Figur wechseln</button>
           <button id="btn-reset" class="danger">Neu anfangen</button>
         </div>
         <p class="muted" id="save-note">Sichert den Spielstand als Datei – z. B. zum Übertragen zwischen Browser und PC-Programm.</p>

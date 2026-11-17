@@ -7,12 +7,12 @@ import { state } from './state.js';
 const SPEED = 52; // Pixel pro Sekunde – gemütliches Schlendern
 
 export function createPlayer() {
-  let sprites = makePlayerSprites(state.outfit);
+  let sprites = makePlayerSprites(state.outfit, state.character || {});
   // bounds: begehbarer Bereich (draußen die Welt, im Haus das Zimmer)
   const p = { x: 150, facing: 1, moving: false, walkTime: 0, time: 0, bounds: [10, WORLD_W - 10] };
 
   p.setOutfit = (id) => {
-    sprites = makePlayerSprites(id);
+    sprites = makePlayerSprites(id ?? state.outfit, state.character || {});
   };
 
   p.update = (dt) => {

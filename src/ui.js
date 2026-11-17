@@ -427,7 +427,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         c.width = 12;
         c.height = 16;
         c.className = 'sprite outfit-sprite';
-        c.getContext('2d').drawImage(makePlayerSprites(o.id)[1].idle, 0, 0);
+        c.getContext('2d').drawImage(makePlayerSprites(o.id, state.character || {})[1].idle, 0, 0);
         el.append(c);
         el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}`);
         return el;

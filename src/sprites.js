@@ -41,10 +41,19 @@ const HATS = {
   nightcap: ['.........f..', '......HHH...', '...HHHHHH...', '..hhhhhhhh..'],
 };
 
+// Ohne Kopfbedeckung sieht man die Frisur der Figur (a = Haarfarbe).
+const HAIR_TOP = {
+  short: ['............', '............', '...aaaaaa...', '..aaaaaaaa..'],
+  long: ['............', '....aaaaa...', '..aaaaaaaa..', '.aaaaaaaaaa.'],
+  mohawk: ['.....aa.....', '....aaa.....', '....aaaa....', '..aaaaaaaa..'],
+  curly: ['............', '...a.aa.a...', '..aaaaaaaa..', '.aaaaaaaaaa.'],
+};
+
 // Kapuzen und Helme umrahmen das Gesicht.
 const FRAMED = { face: '..Hssssss...', eyes: '..Hssseses..', shut: '..Hsssssss..' };
 
 export const OUTFITS = [
+  { id: 'alltag', name: 'Ohne Hut', hat: 'hair', colors: {} },
   { id: 'wanderer', name: 'Wanderer', hat: 'straw', colors: {} },
   { id: 'herbst', name: 'Herbstspaziergang', hat: 'straw', colors: { H: '#a86a3a', h: '#5a3a2e', r: '#4f8f55', c: '#d07a3a', C: '#a85a2a', p: '#4a3a3a' } },
   { id: 'winter', name: 'Winterjacke', hat: 'beanie', colors: { H: '#d9574a', h: '#fdf6e3', r: '#fdf6e3', c: '#4a6ab0', C: '#3a5090', p: '#3a3a5a', b: '#5a3a2e' } },
@@ -89,14 +98,75 @@ const LEGS_CLOSE = ['....pppp....', '....pppp....', '....bbbb....'];
 
 export const getOutfit = (id) => OUTFITS.find((o) => o.id === id) || OUTFITS[0];
 
+// ---------------------------------------------------------------- Figuren
+
+// Hauttöne zum Auswählen (für Völker mit tones: true)
+export const SKIN_TONES = ['#f6cfa6', '#eab68c', '#c98e64', '#9a6440', '#6a4430'];
+
+// Völker der Spielfigur. Sie verändern Haut, Haare, Ohren, Bart und Größe –
+// die Kleidung aus dem Kleiderschrank passt allen.
+//   hair: 'short' | 'long' · ears: spitze Elfenohren · beard · tusks: Hauer · small: kleiner
+export const CHARACTERS = [
+  { id: 'mensch-m', name: 'Mensch', sub: 'männlich', skin: '#f6cfa6', hairColor: '#6a4a30', hair: 'short', tones: true, text: 'Ein Wanderer, der sich im Tal ein gemütliches Zuhause sucht.' },
+  { id: 'mensch-w', name: 'Mensch', sub: 'weiblich', skin: '#f6cfa6', hairColor: '#a8582a', hair: 'long', tones: true, text: 'Eine Abenteurerin mit großem Herz für Gärten und Geschichten.' },
+  { id: 'elf-m', name: 'Elf', sub: 'männlich', skin: '#f8e2cc', hairColor: '#f0d890', hair: 'short', ears: true, eyes: '#2f6a4a', tones: true, text: 'Kommt aus den Birkenwäldern und hört die Sterne flüstern.' },
+  { id: 'elf-w', name: 'Elfe', sub: 'weiblich', skin: '#f8e2cc', hairColor: '#e8eef8', hair: 'long', ears: true, eyes: '#2f6a4a', tones: true, text: 'Eine Elfe mit silbernem Haar, die Magie im Blut trägt.' },
+  { id: 'zwerg-m', name: 'Zwerg', sub: 'männlich', skin: '#eab68c', hairColor: '#c0602a', hair: 'short', beard: true, small: true, tones: true, text: 'Klein, stur und ein Meister in Mine und Schmiede.' },
+  { id: 'zwerg-w', name: 'Zwergin', sub: 'weiblich', skin: '#eab68c', hairColor: '#d8903a', hair: 'long', braid: true, small: true, tones: true, text: 'Trägt ihre Zöpfe stolz und findet jede Erzader.' },
+  { id: 'ork', name: 'Ork', sub: 'sanftmütig', skin: '#8ab060', hairColor: '#2a2140', hair: 'mohawk', tusks: true, text: 'Groß, grün und der freundlichste Gärtner im ganzen Tal.' },
+  { id: 'mondelfe', name: 'Mondelfe', sub: 'weiblich', skin: '#b8a8e0', hairColor: '#fdf6e3', hair: 'long', ears: true, eyes: '#6a2a8a', text: 'Ein Kind der Nacht, das im Mondlicht erst richtig aufblüht.' },
+  { id: 'halbling', name: 'Halbling', sub: 'divers', skin: '#f0c49a', hairColor: '#8a5a3a', hair: 'curly', small: true, tones: true, text: 'Liebt zweites Frühstück, Tee und lange Spaziergänge.' },
+];
+export const getCharacter = (id) => CHARACTERS.find((c) => c.id === id) || CHARACTERS[0];
+
+// Setzt einzelne Pixel einer Zeilenliste (nur auf freie Stellen, wenn soft)
+function put(rows, x, y, ch, soft = false) {
+  if (!rows[y] || (soft && rows[y][x] !== '.')) return;
+  rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1);
+}
+
+// Zeilen 0–3 Kopfbedeckung, 4 Stirn, 5 Augen, 6–12 Körper, danach Beine
+function applyCharacter(rows, ch) {
+  if (ch.hair) {
+    put(rows, 2, 4, 'a', true);
+    put(rows, 2, 5, 'a', true);
+  }
+  if (ch.hair === 'long') {
+    for (const [x, y] of [[1, 4], [1, 5], [2, 6], [1, 6], [1, 7]]) put(rows, x, y, 'a', true);
+  }
+  if (ch.braid) {
+    put(rows, 1, 8, 'a');
+    put(rows, 1, 9, 'h');
+  }
+  if (ch.ears) {
+    put(rows, 1, 4, 's');
+    put(rows, 0, 3, 's', true);
+  }
+  if (ch.beard) {
+    for (let x = 4; x <= 9; x++) put(rows, x, 6, 'a');
+    for (let x = 5; x <= 8; x++) put(rows, x, 7, 'a');
+    put(rows, 6, 8, 'a');
+    put(rows, 7, 8, 'a');
+  }
+  if (ch.tusks) {
+    put(rows, 6, 6, 'w');
+    put(rows, 8, 6, 'w');
+  }
+  return rows;
+}
+
 // Alle Bilder der Spielfigur in einem Outfit, jeweils nach rechts und links schauend.
-export function makePlayerSprites(outfitId) {
+// character: { id, tone } – Volk und gewählter Hautton
+export function makePlayerSprites(outfitId, character = {}) {
   const o = getOutfit(outfitId);
-  const legend = { ...BASE, ...o.colors };
+  const ch = getCharacter(character.id);
+  const skin = ch.tones && SKIN_TONES[character.tone] ? SKIN_TONES[character.tone] : ch.skin;
+  const legend = { ...BASE, ...o.colors, s: skin, a: ch.hairColor, w: '#fdf6e3', ...(ch.eyes ? { e: ch.eyes } : {}) };
   const face = o.framed ? FRAMED.face : '...ssssss...';
   const open = o.framed ? FRAMED.eyes : '...ssseses..';
   const shut = o.framed ? FRAMED.shut : '...sssssss..';
-  const build = (eyes, legs) => sprite([...HATS[o.hat], face, eyes, ...BODY, ...legs], legend);
+  const top = o.hat === 'hair' ? HAIR_TOP[ch.hair] || HAIR_TOP.short : HATS[o.hat];
+  const build = (eyes, legs) => sprite(applyCharacter([...top, face, eyes, ...BODY, ...(ch.small ? legs.slice(1) : legs)], ch), legend);
   const right = {
     idle: build(open, LEGS_STAND),
     blink: build(shut, LEGS_STAND),

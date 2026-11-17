@@ -5,6 +5,7 @@ import * as garden from './garden.js';
 import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
+import { createTitle } from './title.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
@@ -157,8 +158,10 @@ sets.onComplete((cat, tier) => ui.setComplete(cat, tier));
 
 document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
 document.getElementById('btn-resume').addEventListener('click', () => setPaused(false));
+document.getElementById('btn-character').addEventListener('click', () => openTitle());
 addEventListener('keydown', (e) => {
   if (e.repeat) return;
+  if (title.isOpen()) return;
   if (e.code === 'KeyP') setPaused(!paused);
   else if (e.code === 'Escape' && paused) setPaused(false);
 });
@@ -499,6 +502,23 @@ themeButtons.addEventListener('click', (e) => {
 });
 
 const player = createPlayer();
+
+// Startbildschirm: Figur wählen, solange steht die Welt still
+const title = createTitle({
+  onStart: () => {
+    player.setOutfit();
+    paused = false;
+    audio.setDucked(false);
+    setBlocked(ui.isOpen());
+  },
+});
+function openTitle() {
+  paused = true;
+  pauseScreen.hidden = true;
+  setBlocked(true);
+  title.open();
+}
+openTitle();
 const interior = createInterior();
 let lastPick = 0;
 const mineScene = createMineScene({

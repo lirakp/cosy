@@ -697,6 +697,7 @@ test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selte
   const random = seeded(77);
   const n = 20000;
   let items = 0, mana = 0, gold = 0;
+  const before = state.stats.items.sternschnuppe?.n || 0;
   for (let i = 0; i < n; i++) {
     state.magic.mana = 0;
     const w = stars.wish(random);
@@ -707,5 +708,5 @@ test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selte
   close(items / n, stars.ITEM_CHANCE, 0.006, 'Sammelstück');
   close(mana / n, (1 - stars.ITEM_CHANCE) * stars.MANA_CHANCE, 0.015, 'Mana');
   assert.ok(gold > 0);
-  assert.equal(state.stats.items.sternschnuppe.n, items);
+  assert.equal(state.stats.items.sternschnuppe.n - before, items);
 });

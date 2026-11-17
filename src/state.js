@@ -207,6 +207,14 @@ export const state = {
   set day(value) {
     data.day = value;
   },
+  // gewählte Figur: { id, tone } (null = noch nie gewählt)
+  get character() {
+    return data.character || null;
+  },
+  set character(c) {
+    data.character = { id: c.id, tone: c.tone ?? null };
+    changed();
+  },
   get outfit() {
     return data.outfit || 'wanderer';
   },
