@@ -49,23 +49,30 @@ const BOSS_NAMES = ['Schleimkönig', 'Spukfürst', 'Urbestie', 'Erzdämon', 'All
   'Nachtschwinge', 'Sporenmutter', 'Tiefenkrake', 'Titanengolem'];
 
 const GEAR = ITEMS.filter((item) => SLOTS.some((s) => s.cat === item.cat));
+const HEROES = ITEMS.filter((item) => item.cat === 'helden');
 const a = () => state.arena;
 const arenaTier = () => buildings.tier('arena');
 const clamp = (v) => Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, v));
 
-// ---------------------------------------------------------------- Ausrüstung
+// ---------------------------------------------------------------- Helden und Ausrüstung verbessern
 
+// Helden und Ausrüstung haben getrennte IDs und teilen sich daher die Stufen-Tabelle.
 const rawLevel = (id) => a().lvl[id] || 0;
-// Der Rang der Arena begrenzt, wie weit Ausrüstung verbessert werden kann.
+// Der Rang der Arena begrenzt, wie weit Helden und Ausrüstung verbessert werden können.
 export const levelOf = (id) => Math.max(0, Math.min(rawLevel(id), arenaTier()));
 export const capped = (level) => level < MAX_TIER && level >= arenaTier();
 export const gearPower = (item, level = levelOf(item.id)) => Math.round(GEAR_POWER[item.tier] * LEVEL_MULT[level]);
-export const material = () => dupValue(GEAR);
+export const heroPower = (item, level = levelOf(item.id)) => Math.round(HERO_POWER[item.tier] * LEVEL_MULT[level]);
+// Stärke eines Stücks, egal ob Held oder Ausrüstung
+export const powerOf = (item, level) => (item.cat === 'helden' ? heroPower(item, level) : gearPower(item, level));
+// Helden werden mit Helden-Duplikaten verbessert, Ausrüstung mit Ausrüstungs-Duplikaten
+const pool = (item) => (item?.cat === 'helden' ? HEROES : GEAR);
+export const material = (item) => dupValue(pool(item));
 export const levelCost = (item) => (rawLevel(item.id) < MAX_TIER && rawLevel(item.id) < arenaTier() ? LEVEL_COST[rawLevel(item.id)] : null);
 
 export function levelUp(item) {
   const cost = levelCost(item);
-  if (cost === null || !state.count(item.id) || !payWithDuplicates(GEAR, cost)) return false;
+  if (cost === null || !state.count(item.id) || !payWithDuplicates(pool(item), cost)) return false;
   a().lvl[item.id] = rawLevel(item.id) + 1;
   state.changed();
   return true;
@@ -105,7 +112,7 @@ export const equippedAt = (id) => a().team.findIndex((m) => m.hero === id || SLO
 
 export const candidates = (key) =>
   key === 'hero'
-    ? ITEMS.filter((i) => i.cat === 'helden' && state.count(i.id)).sort((x, y) => y.tier - x.tier)
+    ? HEROES.filter((i) => state.count(i.id)).sort((x, y) => heroPower(y) - heroPower(x) || y.tier - x.tier)
     : GEAR.filter((i) => i.cat === key && state.count(i.id)).sort((x, y) => gearPower(y) - gearPower(x));
 
 // Stellt die stärksten Helden auf und verteilt die beste Ausrüstung der Reihe nach.
@@ -124,7 +131,7 @@ export function autoEquip() {
 
 export function memberPower(m) {
   if (!m.hero || !getItem(m.hero)) return 0;
-  return HERO_POWER[getItem(m.hero).tier] + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0);
+  return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0);
 }
 export const teamPower = () => Math.round(a().team.reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus('arenaPower')));
 

@@ -20,7 +20,7 @@ const newExpedition = () => ({
 
 const newArena = () => ({
   team: Array.from({ length: 3 }, () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null } })),
-  lvl: {}, // Stufe je Ausrüstungsstück (0 = D … 5 = SS)
+  lvl: {}, // Stufe je Held und Ausrüstungsstück (0 = D … 5 = SS)
   boss: null, // wartender Boss: { tier, kind }
   mats: { stoff: [0, 0, 0, 0, 0, 0], seide: [0, 0, 0, 0, 0, 0] },
   wins: 0,

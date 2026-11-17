@@ -24,7 +24,7 @@ export const BUILDINGS = {
     buy: 600,
     upgrades: [1200, 3500, 9000, 22000, 55000],
     pitch: 'Rüste drei Helden aus und lass sie gegen Bosse kämpfen. Siege bringen Stoff und Seide für den Arena-Händler.',
-    unlocks: 'Bosse lassen sich bis zum Rang der Arena gezielt herausfordern, Ausrüstung bis zu diesem Rang verbessern.',
+    unlocks: 'Bosse lassen sich bis zum Rang der Arena gezielt herausfordern, Helden und Ausrüstung bis zu diesem Rang verbessern.',
   },
   mine: {
     name: 'Mine',

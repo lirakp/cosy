@@ -270,7 +270,7 @@ Artefakt. Jedes Stück kann nur einmal getragen werden.
 | --- | --- | --- | --- | --- | --- | --- |
 | Stärke Held | 10 | 20 | 40 | 70 | 120 | 200 |
 | Stärke Ausrüstung (nach Rang) | 4 | 7 | 12 | 20 | 35 | 60 |
-| Faktor nach Ausrüstungsstufe | 1 | 1,3 | 1,7 | 2,2 | 3 | 4 |
+| Faktor nach Stufe (Held und Ausrüstung) | 1 | 1,3 | 1,7 | 2,2 | 3 | 4 |
 | Kosten bis zu dieser Stufe (Duplikat-Wert) | – | 30 | 80 | 200 | 600 | 2000 |
 | Stärke Boss | 40 | 100 | 220 | 500 | 1100 | 2400 |
 | Preis Boss gezielt (Gold) | 50 | 120 | 300 | 800 | 2500 | 8000 |
@@ -282,8 +282,9 @@ Artefakt. Jedes Stück kann nur einmal getragen werden.
 - **Arena-Händler:** 3 Stoff → Sammelstück im selben Rang (75 %) oder einen
   Rang höher (25 %). 1 Seide → einen Rang höher (70 %) oder selber Rang (30 %).
   Rang SS ergibt immer SS.
-- **Ausrüstung verbessern:** mit Duplikaten von Waffen, Rüstung, Relikten und
-  Artefakten, wie bei der Expedition.
+- **Helden und Ausrüstung verbessern:** Stufe D bis SS (Stärke ×1 · 1,3 · 1,7 ·
+  2,2 · 3 · 4), bis zum Arena-Rang. Helden zahlen mit Helden-Duplikaten,
+  Ausrüstung mit Duplikaten von Waffen, Rüstung, Relikten und Artefakten.
 
 Alle Werte stehen oben in `src/arena.js`.
 

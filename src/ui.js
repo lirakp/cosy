@@ -210,7 +210,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     const item = id && getItem(id);
     if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-i="${i}" data-k="${key}">${slotLabel(key)}</button>`;
     return `<button class="tile r-${item.rank}${on}" data-act="slot" data-i="${i}" data-k="${key}" data-sprite="${id}" title="${item.name}">
-      <span class="rank">${item.rank}</span>${key === 'hero' ? '' : levelBadge(id)}</button>`;
+      <span class="rank">${item.rank}</span>${levelBadge(id)}</button>`;
   }
 
   function renderArena() {
@@ -267,24 +267,25 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     const current = key === 'hero' ? m.hero : m.gear[key];
     const list = arena.candidates(key).slice(0, 44);
     let detail = '';
-    if (current && key !== 'hero') {
+    if (current) {
       const item = getItem(current);
       const level = arena.levelOf(current);
       const cost = arena.levelCost(item);
+      const isHero = key === 'hero';
       detail = `<div class="crow r-${RARITIES[level].id}">
         <div class="info"><b>${item.name}</b>
-          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> · Stärke <span class="gold-text">${arena.gearPower(item)}</span>
-          ${cost === null ? '' : `→ ${arena.gearPower(item, level + 1)}`}</span></div>
+          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> · Stärke <span class="gold-text">${arena.powerOf(item)}</span>
+          ${cost === null ? '' : `→ ${arena.powerOf(item, level + 1)}`}</span></div>
         ${cost === null
           ? `<button disabled>${arena.capped(level) ? 'Arena-Rang nötig' : 'Maximal'}</button>`
-          : `<button data-act="gear-up" data-id="${current}" ${arena.material() >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
+          : `<button data-act="gear-up" data-id="${current}" ${arena.material(item) >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
       </div>
-      <p class="muted">Verbessert wird mit Duplikaten von Waffen, Rüstung, Relikten und Artefakten (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(arena.material())}</b>.</p>`;
+      <p class="muted">Verbessert wird mit ${isHero ? 'Helden-Duplikaten' : 'Duplikaten von Waffen, Rüstung, Relikten und Artefakten'} (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(arena.material(item))}</b>.</p>`;
     }
     const tiles = list.map((item) => {
       const at = arena.equippedAt(item.id);
       return `<button class="tile r-${item.rank}${item.id === current ? ' picked' : ''}" data-act="equip" data-id="${item.id}" data-sprite="${item.id}" title="${item.name}">
-        <span class="rank">${item.rank}</span>${key === 'hero' ? '' : levelBadge(item.id)}${at >= 0 && item.id !== current ? `<span class="new">${at + 1}</span>` : ''}</button>`;
+        <span class="rank">${item.rank}</span>${levelBadge(item.id)}${at >= 0 && item.id !== current ? `<span class="new">${at + 1}</span>` : ''}</button>`;
     }).join('');
     return `<div class="chest picker">
       <div class="line"><span>${slotLabel(key)} für Platz ${i + 1} wählen</span>

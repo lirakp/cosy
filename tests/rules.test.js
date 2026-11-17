@@ -356,3 +356,22 @@ test('Angeln: Fangquoten folgen den Brunnen-Chancen, Flaschenpost selten', () =>
   close(treasure / n, village.TREASURE_CHANCE, 0.005, 'Flaschenpost');
   RARITIES.forEach((r, t) => close(count[t] / (n - treasure), r.chance, 0.008, `Fisch Rang ${r.id}`));
 });
+
+test('Arena: Helden werden mit Helden-Duplikaten gelevelt, bis zum Arena-Rang', () => {
+  const hero = getGroup('helden', 'B')[0];
+  const dupe = getGroup('helden', 'C')[0];
+  const sword = getGroup('waffen', 'A')[0];
+  state.addItems([hero, dupe, dupe, dupe, sword, sword, sword]);
+  state.buildings.arena = 0;
+  assert.equal(arena.levelCost(hero), null, 'Arena Rang D: noch kein Leveln');
+  state.buildings.arena = 1;
+  const before = arena.heroPower(hero);
+  assert.equal(arena.material(hero), 2 * dupe.sell, 'nur Helden-Duplikate zählen');
+  assert.ok(arena.levelUp(hero));
+  assert.equal(arena.levelOf(hero.id), 1);
+  assert.ok(arena.heroPower(hero) > before);
+  assert.equal(state.count(sword.id), 3, 'Waffen-Duplikate bleiben unangetastet');
+  assert.equal(arena.levelCost(hero), null, 'weiter erst mit höherem Arena-Rang');
+  state.arena.team[0].hero = hero.id;
+  assert.equal(arena.memberPower(state.arena.team[0]), arena.heroPower(hero));
+});
