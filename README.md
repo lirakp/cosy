@@ -568,6 +568,8 @@ Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
 besitzt (Material zum Leveln) – für 50 Gold mehr je Zug (150 / 1350). Der Rang wird
 wie immer gewürfelt; fehlt einem der Rang, kommt ein Stück aus dem nächstniedrigeren.
 Duplikat-Wünsche zählen nicht für den Glückszähler.
+Im Brunnen lassen sich die Pop-ups für Rang A–SS abschalten (Häkchen unter den
+Modus-Knöpfen, wird im Browser gemerkt). Dann gibt es nur einen kurzen Hinweis.
 Mit „Nur Neue“ kommen nur Stücke, die man noch nicht besitzt, also keine Duplikate.
 Das kostet 100 Gold mehr je Zug (200 / 1850). Der Rang wird wie immer gewürfelt und
 zählt für den Glückszähler. Fehlt einem in dem Rang nichts mehr, kommt ein Stück aus

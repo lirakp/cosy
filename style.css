@@ -983,3 +983,5 @@ body[data-display="fill"] { background: #0b0a1f; }
 .plinth { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; font-size: 11px; text-align: center; }
 .plinth.on { box-shadow: 0 0 0 3px #ffd04a; background: #6a549e; }
 .plinth b { color: #fdf6e3; }
+.popup-toggle { display: flex; gap: 6px; align-items: center; font-size: 12px; cursor: pointer; }
+.popup-toggle input { accent-color: #ffd04a; }

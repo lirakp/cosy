@@ -139,6 +139,22 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     dupes: 'Es kommen nur Stücke, die du schon hast – ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Zählt nicht für den Glückszähler.',
     new: 'Es kommen nur Stücke, die dir noch fehlen – keine Duplikate. Der Rang wird wie immer gewürfelt (mit Glückszähler); fehlt dir in dem Rang nichts mehr, kommt ein Stück aus einem anderen Rang.',
   };
+  // Pop-ups am Brunnen ein/aus (wird im Browser gemerkt)
+  const POPUP_KEY = 'cosy-well-popups';
+  const wellPopups = () => {
+    try {
+      return localStorage.getItem(POPUP_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  };
+  const setWellPopups = (on) => {
+    try {
+      localStorage.setItem(POPUP_KEY, on ? 'on' : 'off');
+    } catch {
+      // nicht speicherbar – gilt bis zum Neuladen nicht
+    }
+  };
   const wishVariant = () => (wishMode === 'new' ? 'new' : wishMode === 'dupes');
   let wishMode = 'normal'; // 'normal' · 'dupes' (nur Duplikate) · 'new' (nur Neues)
   function renderWell() {
@@ -166,6 +182,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           <button class="${wishMode === 'dupes' ? 'on' : ''}" data-act="wish-mode" data-v="dupes" ${well.canDupe() ? '' : 'disabled'}><b>Nur Duplikate</b><span>+${DUPE_EXTRA} Gold je Zug</span></button>
           <button class="${wishMode === 'new' ? 'on' : ''}" data-act="wish-mode" data-v="new" ${well.canNew() ? '' : 'disabled'}><b>Nur Neue</b><span>+${NEW_EXTRA} Gold je Zug</span></button>
         </div>
+        <label class="popup-toggle"><input type="checkbox" data-act="well-popups" ${wellPopups() ? 'checked' : ''}> Pop-ups für Rang A–SS anzeigen</label>
         <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}${wishMode === 'new' && well.onlyHighMissing() ? ' <b class="gold-text">Dir fehlen nur noch Stücke ab Rang A – jeder Neu-Wunsch bringt eines davon, kostet aber mehr.</b>' : ''}</p>
         <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
         <div class="pity">
@@ -208,7 +225,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     renderWell();
     if (res.gotSpirit) toast('✦ Der Brunnengeist erscheint und schenkt dir einen besonderen Wunsch!');
     else if (res.gotFreeNext) toast('✦ Glück gehabt: Dein nächster Einzelwunsch ist gratis!');
-    // seltene Funde der Reihe nach groß zeigen, das seltenste zuletzt
+    // seltene Funde der Reihe nach groß zeigen, das seltenste zuletzt (abschaltbar)
+    const rare = lastPull.filter((p) => p.item.tier >= HIGHLIGHT_TIER);
+    if (!wellPopups()) {
+      if (rare.length) toast(`✦ ${rare.length}× Rang A oder besser: ${rare.map((p) => p.item.rank).join(' · ')}`);
+      return;
+    }
     reveals.push(...lastPull.filter((p) => p.item.tier >= HIGHLIGHT_TIER).sort((a, b) => a.item.tier - b.item.tier).map((p) => (res.free === 'spirit' ? { ...p, source: 'GESCHENK DES BRUNNENGEISTS' } : p)));
     nextReveal();
   }
@@ -2428,6 +2450,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   overlay.addEventListener('change', (e) => {
     const el = e.target;
     if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
+    if (el.dataset.act === 'well-popups') { setWellPopups(el.checked); audio.click(); renderWell(); }
     if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
 
   });
