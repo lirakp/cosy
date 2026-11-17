@@ -14,6 +14,7 @@ import * as garden from './garden.js';
 import * as village from './village.js';
 import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
+import * as magic from './magic.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -45,7 +46,7 @@ function tile(item, { hidden = false, badge = '' } = {}) {
   return el;
 }
 
-export function createUI({ onToggle, onOutfit, onTravel, where }) {
+export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   const overlay = $('#overlay');
   const goldEl = $('#gold span');
   const toastEl = $('#toast');
@@ -93,6 +94,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'market') renderMarket();
     if (view === 'fishbook') renderFishBook();
     if (view === 'trap') renderTrap();
+    if (view === 'tower') renderTower();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -155,7 +157,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       audio.play('error');
       return;
     }
-    const items = Array.from({ length: n }, () => rollItem({ lucky: buffs.lucky() }));
+    // Glückszauber: das erste Stück ist mindestens Rang C
+    const lucky = magic.useLuckyPull();
+    const items = Array.from({ length: n }, (_, i) => rollItem({ lucky: buffs.lucky(), minTier: lucky && i === 0 ? 1 : 0 }));
     const seen = new Set();
     lastPull = items.map((item) => {
       const isNew = !state.count(item.id) && !seen.has(item.id);
@@ -489,6 +493,55 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <p class="muted">Gefangen wird nach denselben Chancen wie beim Angeln; offline beißen Arten aller Tageszeiten. Fänge zählen fürs Angelbuch.</p>
       </section>`;
     for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
+  }
+
+  // ------------------------------------------------------------ Magierturm und Zauberbuch
+
+  function renderTower() {
+    if (!buildings.owned('tower')) return renderPurchase('tower', 'Magierturm');
+    magic.tick();
+    const cards = magic.SPELLS.map((sp) => {
+      const rank = RARITIES[sp.rank].id;
+      const learned = magic.learned(sp.id);
+      const block = learned ? magic.castBlocker(sp) : magic.learnBlocker(sp);
+      const cd = magic.cooldownLeft(sp.id);
+      const button = learned
+        ? `<button class="big" data-act="cast" data-v="${sp.id}" ${block ? 'disabled' : ''}>Wirken · ${sp.cost} Mana</button>`
+        : `<button data-act="learn" data-v="${sp.id}" ${block ? 'disabled' : ''}>Lernen</button>`;
+      return `<div class="spell r-${rank}${learned ? '' : ' locked'}">
+        <div class="line"><b>${sp.name}</b><span class="evo">Rang ${rank}</span></div>
+        <p>${sp.text}</p>
+        <span class="muted">${sp.cost} Mana · Abklingzeit ${sp.cooldown} min${cd ? ` · bereit in <b data-cd="${sp.id}">${clock(cd)}</b>` : ''}</span>
+        ${button}
+        ${block && !(learned && cd) ? `<span class="note">${block}</span>` : ''}
+      </div>`;
+    }).join('');
+    const pending = [magic.lureReady() && 'Lockruf', magic.luckyReady() && 'Glückszauber', magic.shieldReady() && 'Schutzschild'].filter(Boolean);
+    overlay.innerHTML = `
+      <section class="panel towerpanel">
+        ${head('Zauberbuch')}
+        ${upgradeBar('tower')}
+        <div class="chest mana">
+          <div class="line"><span>Mana <b id="mana-text"></b></span><span class="muted">+${fmt1(magic.regen())}/min, nachts doppelt so schnell</span></div>
+          <div class="bar mana-bar"><i id="mana-bar"></i></div>
+          ${pending.length ? `<p class="buff-note">Wartet auf seinen Einsatz: ${pending.join(', ')}</p>` : ''}
+        </div>
+        <p class="muted">Zauber lernst du aus Schriftrollen (Relikte), die du besitzt – sie werden dabei nicht verbraucht. Das Zauberbuch öffnest du überall mit <kbd>Z</kbd>.</p>
+        <div class="spells">${cards}</div>
+      </section>`;
+    updateTower();
+  }
+
+  function updateTower() {
+    const t = $('#mana-text');
+    if (!t) return;
+    t.textContent = `${magic.mana()} / ${magic.maxMana()}`;
+    $('#mana-bar').style.width = `${(magic.mana() / magic.maxMana()) * 100}%`;
+    for (const el of overlay.querySelectorAll('[data-cd]')) {
+      const left = magic.cooldownLeft(el.dataset.cd);
+      if (!left) return renderTower();
+      el.textContent = clock(left);
+    }
   }
 
   // ------------------------------------------------------------ Angelbuch
@@ -1559,6 +1612,18 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (act === 'helper-res') { gardener.setReserve(gardener.info().reserve + Number(btn.dataset.v)); renderGarden(); }
     if (act === 'helper-deposit') { audio.play(gardener.deposit() ? 'coin' : 'error'); renderGarden(); }
     if (act === 'helper-withdraw') { if (gardener.withdraw()) audio.play('gold'); renderGarden(); }
+    if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
+    if (act === 'cast') {
+      const id = btn.dataset.v;
+      const note = magic.cast(id, { onRain: (s) => onCast?.(id, s) });
+      if (!note) audio.play('error');
+      else {
+        audio.play('spell');
+        toast(`✦ ${magic.spell(id).name}: ${note}`);
+        onCast?.(id);
+        renderTower();
+      }
+    }
     if (act === 'trap-up') { audio.play(fishtrap.upgrade() ? 'build' : 'error'); renderTrap(); }
     if (act === 'trap-collect') {
       const got = fishtrap.collect();
@@ -1714,6 +1779,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openMarket: () => show('market'),
     openFishBook: () => show('fishbook'),
     openTrap: () => show('trap'),
+    openTower: () => show('tower'),
+    updateTower,
     refreshGarden() {
       if (view === 'garden') renderGarden();
     },

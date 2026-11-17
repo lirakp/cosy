@@ -708,3 +708,26 @@ table.stats td { border-top: 1px solid #3a3170; }
 .plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; font-size: 12px; }
 .plans label { display: flex; flex-direction: column; gap: 3px; }
 .plans select { font: inherit; background: #2a2456; color: #fdf6e3; border: 0; padding: 4px; box-shadow: 0 0 0 2px #4b3b78; }
+
+/* ---------------------------------------------------------------- Zauberbuch */
+
+.spells { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.spell {
+  background: #1b1730;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.spell b { color: #fdf6e3; font-size: 13px; }
+.spell p { margin: 0; }
+.spell .line { display: flex; justify-content: space-between; }
+.spell .evo { color: var(--rc); }
+.spell.locked { opacity: 0.75; }
+.spell > button { align-self: stretch; }
+.mana-bar i { background: linear-gradient(90deg, #6a54c8, #9be8e0); }
+#mana { background: #1b1730; padding: 6px 10px; box-shadow: 0 0 0 2px #6a54c8; color: #9be8e0; white-space: nowrap; }
+#mana[hidden] { display: none; }
+.spell > button, .spell > .big { flex: none; padding: 8px 10px; font-size: 13px; }

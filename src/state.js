@@ -77,6 +77,7 @@ const fresh = () => ({
   stats: newStats(),
   garden: newGarden(),
   village: newVillage(),
+  magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
 });
 
 // Ältere Spielstände zählten Fische nur nach Rang (0 … 5) – das waren genau diese Arten.
@@ -104,6 +105,7 @@ function normalize(saved) {
     mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
     forge: { ...base.forge, ...saved.forge },
     stats: { ...base.stats, ...saved.stats },
+    magic: { ...base.magic, ...saved.magic },
     garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
     village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market }, trap: { ...base.village.trap, ...saved.village?.trap } },
   };
@@ -295,6 +297,9 @@ export const state = {
   },
   set dayCount(n) {
     data.dayCount = n;
+  },
+  get magic() {
+    return data.magic;
   },
   get village() {
     return data.village;

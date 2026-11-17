@@ -38,7 +38,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `M` Ton an/aus ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `Z` Zauberbuch · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Das Dorf
@@ -203,6 +203,29 @@ Besuch (10 · 10 · 12 · 15 · 20 · 25 Erz → zufälliges Stück dieses Rangs
 
 Werte in `src/mine.js` und `src/trader.js`.
 
+## Magie
+
+Der **Magierturm** (zwischen Garten und Brunnen, 1500 Gold, Ausbau 3000 · 7000 ·
+15000 · 35000 · 80000) sammelt Mana – nachts doppelt so schnell, offline zum
+Tageswert. Vorrat und Nachladen je Rang: 30 · 45 · 60 · 80 · 100 · 130 Mana,
+1 · 1,3 · 1,6 · 2 · 2,5 · 3 pro Minute. Das **Zauberbuch** öffnet sich am Turm
+oder überall mit `Z`; das Mana steht oben links.
+
+Zauber lernt man, wenn man eine **Schriftrolle** (Relikt) ab dem Rang des
+Zaubers besitzt und der Turm hoch genug ausgebaut ist – die Schriftrolle wird
+nicht verbraucht.
+
+| Zauber | Rang | Mana | Abklingzeit | Wirkung |
+| --- | --- | --- | --- | --- |
+| Wachstum | D | 20 | 10 min | alle bepflanzten Beete sofort reif |
+| Sternenregen | D | 15 | 5 min | eine Minute lang regnet es Münzen rund um die Figur |
+| Lockruf | C | 20 | 10 min | der nächste Fisch beißt sofort und ist einen Rang höher |
+| Glückszauber | B | 30 | 15 min | der nächste Wunsch am Brunnen ist mindestens Rang C |
+| Zeitsprung | A | 45 | 30 min | Expedition und Mine bekommen 30 Minuten Ertrag |
+| Schutzschild | S | 50 | 30 min | nächste Erkundung oder nächster Bosskampf +15 Prozentpunkte |
+
+Werte in `src/magic.js`.
+
 ## Schmiede
 
 Der Anbau links am Haus kopiert gezielt ein Sammelstück, das man schon besitzt
@@ -254,8 +277,8 @@ in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
 ## Anlagen
 
-Expeditionslager, Dungeon-Tor, Bossarena, Mine und Schmiede müssen erst gebaut
-werden (250, 400, 600, 800 und 1000 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
+Expeditionslager, Dungeon-Tor, Bossarena, Mine, Schmiede und Magierturm müssen
+erst gebaut werden (250, 400, 600, 800, 1000 und 1500 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
 
 | Ausbau auf | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- |
@@ -397,5 +420,6 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/fishtrap.js` | Fischreuse: automatisch Fische fangen |
 | `src/garden.js` | Garten (Beete, Wachstum, Ernte) und Küche (Rezepte) |
 | `src/sets.js` | Sammel-Sets und ihre Boni |
+| `src/magic.js` | Magierturm, Mana und Zauber |
 | `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

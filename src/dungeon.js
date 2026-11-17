@@ -3,6 +3,7 @@ import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
 import { createParty, emptyMember } from './party.js';
+import * as magic from './magic.js';
 
 // Dungeon: Bis zu fünf ausgerüstete Helden ziehen für eine feste Zeit los. Die
 // Dauer ist zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber
@@ -64,7 +65,7 @@ export function start(level, now = Date.now()) {
   const heroes = party.heroIds();
   if (run() || !LEVELS[level] || !unlocked(level) || !heroes.length) return false;
   // Die Stärke beim Aufbruch zählt – das Team ist bis zur Rückkehr gesperrt.
-  d().run = { level, heroes, power: power(), start: now, end: now + LEVELS[level].seconds * 1000 };
+  d().run = { level, heroes, power: power(), shield: magic.useShield(), start: now, end: now + LEVELS[level].seconds * 1000 };
   state.changed();
   return true;
 }
@@ -82,7 +83,8 @@ export function collect() {
   const level = LEVELS[r.level];
   // ältere Erkundungen ohne gespeicherte Stärke: Stärke der losgezogenen Helden
   const fallback = () => r.heroes.reduce((sum, id) => sum + (getItem(id) ? party.heroPower(getItem(id)) : 0), 0);
-  const odds = chance(r.level, r.power ?? fallback());
+  const base = chance(r.level, r.power ?? fallback());
+  const odds = r.shield ? magic.shielded(base) : base;
   const result = { level, odds, success: Math.random() < odds, gold: 0, items: [] };
   d().run = null;
 

@@ -40,6 +40,13 @@ export const BUILDINGS = {
     pitch: 'Ein Anbau am Haus: Hier kopierst du gezielt eigene Sammelstücke – für Gold, Erz aus der Mine und Schmiedeglut.',
     unlocks: 'Kopiert werden Stücke bis zum Rang der Schmiede. Jeder Ausbau vergrößert den Glutvorrat und lässt die Glut schneller nachladen.',
   },
+  tower: {
+    name: 'Magierturm',
+    buy: 1500,
+    upgrades: [3000, 7000, 15000, 35000, 80000],
+    pitch: 'Ein Turm voller Sterne: Er sammelt Mana, mit dem du Zauber aus deinen Schriftrollen wirkst.',
+    unlocks: 'Jeder Rang vergrößert den Mana-Vorrat, lässt es schneller nachladen und erlaubt stärkere Zauber.',
+  },
 };
 
 const MAX_TIER = RARITIES.length - 1;

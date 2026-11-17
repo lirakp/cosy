@@ -199,9 +199,10 @@ export const REACT_SECONDS = 0.9; // so lange hat man Zeit zum Einholen
 // Würfelt aus, was anbeißen wird – beim Auswerfen, damit genau dieser Fisch
 // in der Seesicht zum Haken schwimmt. Gutgeschrieben wird erst beim Einholen.
 // Erst der Rang (Brunnen-Chancen), dann eine gerade aktive Art dieses Rangs.
-export function rollCatch(r = Math.random, phase = dayPhase) {
-  if (r() < TREASURE_CHANCE) return { treasure: true, item: rollItem({ random: r }) };
-  const tier = rollTier(0, r);
+// boost: Lockruf – mindestens einen Rang höher, keine Flaschenpost
+export function rollCatch(r = Math.random, phase = dayPhase, boost = false) {
+  if (!boost && r() < TREASURE_CHANCE) return { treasure: true, item: rollItem({ random: r }) };
+  const tier = Math.min(RARITIES.length - 1, rollTier(0, r) + (boost ? 1 : 0));
   const ofTier = FISH.filter((f) => f.tier === tier);
   const pool = ofTier.filter((f) => isActive(f, phase));
   const fish = (pool.length ? pool : ofTier)[Math.floor(r() * (pool.length || ofTier.length))];

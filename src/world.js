@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X, TOWER_X } from './config.js';
+import * as magic from './magic.js';
 import * as garden from './garden.js';
 import * as gardener from './gardener.js';
 import * as trader from './trader.js';
@@ -302,6 +303,34 @@ function drawVillageSign(ctx, x) {
   rect(ctx, x + 5, base - 21, 2, 2, PAL.roof);
 }
 
+// Magierturm: schmaler Steinturm mit Sternendach und Kristallkugel
+function drawTower(ctx, x) {
+  const base = GROUND_Y + 3;
+  const w = 16;
+  const left = x - w / 2;
+  const top = base - 44;
+  rect(ctx, left, top, w, base - top, '#8a7a9a');
+  rect(ctx, left, top, 2, base - top, '#a898b8');
+  rect(ctx, left + w - 3, top, 3, base - top, '#6a5a7a');
+  for (let row = 0; row < 14; row++) {
+    for (let bx = left + (row % 2) * 3; bx < left + w; bx += 6) px(ctx, bx, top + 2 + row * 3, '#5a4a6a');
+  }
+  // Spitzdach mit Sternen
+  for (let i = 0; i < 18; i++) {
+    const half = Math.floor(i * 0.62) + 1;
+    rect(ctx, x - half, top - 18 + i, half * 2, 1, i % 4 === 3 ? '#3a2c6a' : '#4b3b8a');
+  }
+  for (const [dx, dy] of [[-2, -12], [3, -8], [-5, -4], [4, -3], [0, -15]]) px(ctx, x + dx, top + dy, '#ffd978');
+  rect(ctx, x - 1, top - 22, 2, 4, PAL.woodDark);
+  // Fenster (leuchten in den Lichtern) und Tür
+  rect(ctx, x - 2, top + 8, 4, 6, PAL.ink);
+  rect(ctx, x - 2, top + 22, 4, 6, PAL.ink);
+  rect(ctx, x - 3, base - 11, 6, 11, PAL.woodDark);
+  rect(ctx, x - 2, base - 10, 4, 10, '#6a4a8a');
+  px(ctx, x + 1, base - 5, PAL.coin);
+  rect(ctx, left - 2, base - 1, w + 4, 2, PAL.stone);
+}
+
 function drawMineEntrance(ctx, x) {
   const base = GROUND_Y + 4;
   // felsiger Hügel
@@ -468,6 +497,40 @@ function crystals(ctx, x, y) {
 
 // Jede Anlage bekommt pro Rang etwas dazu (kumulativ). x ist die Mitte der Anlage.
 const UPGRADES = {
+  tower(ctx, x, t) {
+    const base = GROUND_Y + 3;
+    rankFlag(ctx, x + 10, base - 70, 12, t, 1);
+    if (t >= 1) {
+      // Balkon mit Geländer
+      rect(ctx, x - 11, base - 30, 22, 2, PAL.woodDark);
+      for (let k = -10; k <= 10; k += 3) rect(ctx, k + x, base - 33, 1, 3, PAL.wood);
+    }
+    if (t >= 2) {
+      // schwebende Kristalle neben dem Turm
+      crystals(ctx, x - 18, base - 34);
+      crystals(ctx, x + 13, base - 26);
+    }
+    if (t >= 3) {
+      // Goldkante am Dach
+      for (let i = 0; i < 18; i++) {
+        const half = Math.floor(i * 0.62) + 1;
+        px(ctx, x - half, base - 62 + i, GOLD);
+        px(ctx, x + half - 1, base - 62 + i, GOLD);
+      }
+    }
+    if (t >= 4) {
+      // Anbau mit Kuppel
+      rect(ctx, x + 9, base - 22, 12, 22, '#7a6a8a');
+      circle(ctx, x + 15, base - 22, 6, '#4b3b8a');
+      px(ctx, x + 15, base - 28, GOLD);
+      rect(ctx, x + 13, base - 14, 4, 5, PAL.ink);
+    }
+    if (t >= 5) {
+      // Sternenring um die Spitze
+      for (let k = 0; k < 12; k++) px(ctx, x + Math.round(Math.cos(k / 12 * Math.PI * 2) * 12), base - 66 + Math.round(Math.sin(k / 12 * Math.PI * 2) * 3), '#fdf6e3');
+    }
+  },
+
   camp(ctx, x, t) {
     const base = GROUND_Y + 4;
     rect(ctx, x + 1, base - 24, 4, 2, RANK_COLORS[t]); // Zeltwimpel in Rangfarbe
@@ -646,7 +709,7 @@ const UPGRADES = {
 // Bild einer Anlage im angegebenen Rang (breite Leinwand, Mitte bei 56)
 const PROP_W = 112;
 // Grundbilder (Funktionsdeklarationen weiter oben, daher hier schon verfügbar)
-const BASE_DRAW = { camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge };
+const BASE_DRAW = { camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge, tower: drawTower };
 const propCache = new Map();
 export function buildingProp(name, tier) {
   const key = `${name}-${tier}`;
@@ -714,6 +777,7 @@ export function createWorld(theme = {}) {
 
   // Münzen erscheinen nach und nach auf dem Weg und werden im Vorbeigehen eingesammelt.
   const coins = [];
+  let rain = 0; // Sekunden Sternenregen
   const pops = [];
   let coinTimer = 1;
 
@@ -791,10 +855,18 @@ export function createWorld(theme = {}) {
       updateTeam(dt);
       updateGardener(dt);
       coinTimer -= dt;
+      rain = Math.max(0, rain - dt);
       if (coinTimer <= 0) {
-        coinTimer = 2.5 + r() * 2;
-        const x = 16 + r() * (WORLD_W - 32);
-        if (coins.length < 7 && Math.abs(x - player.x) > 40) coins.push({ x, age: 0 });
+        // Sternenregen: viele Münzen rund um die Spielfigur
+        if (rain > 0) {
+          coinTimer = 0.25;
+          const x = Math.max(16, Math.min(WORLD_W - 16, player.x + (r() - 0.5) * 240));
+          if (coins.length < 30 && Math.abs(x - player.x) > 10) coins.push({ x, age: 0 });
+        } else {
+          coinTimer = 2.5 + r() * 2;
+          const x = 16 + r() * (WORLD_W - 32);
+          if (coins.length < 7 && Math.abs(x - player.x) > 40) coins.push({ x, age: 0 });
+        }
       }
       for (let i = coins.length - 1; i >= 0; i--) {
         coins[i].age += dt;
@@ -831,6 +903,7 @@ export function createWorld(theme = {}) {
       drawBuilding(ctx, 'forge', FORGE_X, cam);
       drawBuilding(ctx, 'arena', ARENA_X, cam);
       drawBuilding(ctx, 'mine', MINE_X, cam);
+      drawBuilding(ctx, 'tower', TOWER_X, cam);
 
       // Gartenbeete vor dem Zaun
       const now = Date.now();
@@ -892,6 +965,11 @@ export function createWorld(theme = {}) {
         circle(ctx, Math.round(s.x) - cam, Math.round(s.y), life < 0.15 ? 1 : life < 0.6 ? 2 : 3, PAL.smoke);
       }
       ctx.globalAlpha = 1;
+    },
+
+    coinRain(seconds) {
+      rain = seconds;
+      coinTimer = 0;
     },
 
     // Lichter werden nach der Tageszeit-Tönung gezeichnet und leuchten deshalb nachts.
@@ -970,8 +1048,33 @@ export function createWorld(theme = {}) {
         ['arena', ARENA_X + 27, GROUND_Y - 42],
         ['mine', MINE_X + 7, GROUND_Y - 45],
         ['forge', FORGE_X + 12, GROUND_Y - 32],
+        ['tower', TOWER_X + 11, GROUND_Y - 66],
       ]) {
         if (tierOf(name) >= 5) rect(ctx, x - cam, y, 7, 4, hue);
+      }
+
+      // Magierturm: Kristallkugel an der Spitze und Fenster; Runen leuchten, wenn genug Mana da ist
+      if (tierOf('tower') >= 0) {
+        const tx = TOWER_X - cam;
+        const top = GROUND_Y + 3 - 44;
+        const pulse = 0.5 + 0.5 * Math.sin(time * 2.5);
+        circle(ctx, tx, top - 24, 2, PAL.magic);
+        px(ctx, tx - 1, top - 25, '#fdf6e3');
+        glow(ctx, tx, top - 24, 8 + Math.round(pulse * 3), 0.25 + 0.15 * pulse, PAL.magic);
+        ctx.globalAlpha = 0.4 + 0.6 * Math.max(night, 0.3);
+        rect(ctx, tx - 2, top + 8, 4, 6, '#b888f0');
+        rect(ctx, tx - 2, top + 22, 4, 6, '#b888f0');
+        ctx.globalAlpha = 1;
+        if (magic.mana() >= 15) {
+          for (let k = 0; k < 4; k++) {
+            const tt = (time * 0.5 + k / 4) % 1;
+            px(ctx, tx - 8 + Math.round(Math.sin(time * 2 + k * 1.7) * 10), GROUND_Y - Math.round(tt * 50), k % 2 ? PAL.magic : '#b888f0');
+          }
+        }
+        if (tierOf('tower') >= 5) for (let k = 0; k < 12; k++) {
+          const a = time * 0.8 + k / 12 * Math.PI * 2;
+          px(ctx, tx + Math.round(Math.cos(a) * 12), top - 22 + Math.round(Math.sin(a) * 3), k % 3 ? '#fdf6e3' : PAL.magic);
+        }
       }
 
       // reife Beete funkeln

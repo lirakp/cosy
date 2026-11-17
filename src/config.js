@@ -53,3 +53,7 @@ export const GARDEN_BED_STEP = 14;
 // Wegweiser ins Dorf am linken Rand des Hofs
 export const VILLAGE_SIGN_X = 36;
 export const VILLAGE_SIGN_RANGE = 11;
+
+// Magierturm zwischen Garten und Brunnen
+export const TOWER_X = 366;
+export const TOWER_RANGE = 11;

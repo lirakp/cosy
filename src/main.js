@@ -1,9 +1,10 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE, TOWER_X, TOWER_RANGE } from './config.js';
 import * as village from './village.js';
 import { createVillageScene, zoneAt as villageZoneAt, VILLAGE_W, VILLAGE_BOUNDS, VILLAGE_SPAWN } from './villagescene.js';
 import * as garden from './garden.js';
 import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
+import * as magic from './magic.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
 import * as mine from './mine.js';
@@ -48,7 +49,13 @@ const ui = createUI({
   onOutfit: (id) => player.setOutfit(id),
   onTravel: (level) => travel(level),
   where: () => ({ place, mineLevel }),
+  onCast: (id, seconds) => {
+    spellFx = 1.6;
+    if (id === 'sternenregen' && seconds) world.coinRain(seconds);
+  },
 });
+let spellFx = 0; // Funkeln um die Figur nach einem Zauber
+let lastNight = 0;
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
 let near = null; // draußen: 'well' | 'camp' | 'dungeon' | 'arena' | 'house' · drinnen: 'door' | 'wardrobe' | 'bed'
@@ -303,6 +310,7 @@ function act() {
   if (near === 'lift') ui.openMine();
   if (near === 'trader') ui.openTrader();
   if (near === 'forge') ui.openForge();
+  if (near === 'tower') ui.openTower();
   if (near === 'garden') garden.readyCount() ? ui.harvest() : ui.openGarden();
   if (near === 'kitchen') ui.openKitchen();
   if (near === 'door') leaveHouse();
@@ -330,6 +338,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') ui.openMine();
   if (e.code === 'KeyH') ui.openForge();
   if (e.code === 'KeyI') ui.openStats();
+  if (e.code === 'KeyZ') ui.openTower();
   // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
   if (place === 'mine' && (e.code === 'ArrowUp' || e.code === 'KeyW')) travel(mineLevel - 1);
   if (place === 'mine' && (e.code === 'ArrowDown' || e.code === 'KeyS') && mine.unlocked(mineLevel + 1)) travel(mineLevel + 1);
@@ -363,6 +372,8 @@ setTapHandler((x, y) => {
   ui.collectChest();
   return true;
 });
+
+const manaEl = document.getElementById('mana');
 
 // aktiver Rausch oben links, mit Restzeit
 const buffEl = document.getElementById('buff');
@@ -422,6 +433,11 @@ function expeditionTick() {
   if (fishtrap.tick()) ui.refreshTrap();
   if (!wasFull && fishtrap.full() && !document.hidden) ui.toast('Die Fischreuse im Dorf ist voll!', true);
   ui.updateMarket();
+  // Mana lädt nach (nachts doppelt so schnell)
+  magic.tick(Date.now(), lastNight > 0.5);
+  ui.updateTower();
+  manaEl.hidden = !magic.owned();
+  if (magic.owned()) manaEl.textContent = `✦ ${magic.mana()}/${magic.maxMana()}`;
 
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
@@ -626,6 +642,7 @@ function frame(now) {
     : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
     : Math.abs(player.x - FORGE_X) < FORGE_RANGE ? 'forge'
     : Math.abs(player.x - GARDEN_X) < GARDEN_RANGE ? 'garden'
+    : Math.abs(player.x - TOWER_X) < TOWER_RANGE ? 'tower'
     : Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
@@ -652,6 +669,7 @@ function frame(now) {
     : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
     : near === 'forge' ? '⚒ Schmiede'
+    : near === 'tower' ? '✦ Magierturm'
     : near === 'garden' ? (garden.readyCount() ? `Ernten ✦ (${garden.readyCount()})` : 'Garten')
     : near === 'kitchen' ? 'Am Kamin kochen'
     : near === 'mine' ? 'Mine betreten'
@@ -670,10 +688,23 @@ function frame(now) {
   const ph = phase(dayTime);
   audio.setNight(ph.night);
   village.setDayPhase(dayLabel(dayTime).name);
+  lastNight = ph.night;
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);
   else drawOutside(ph);
+
+  // Funkeln um die Spielfigur nach einem Zauber
+  if (spellFx > 0) {
+    spellFx -= dt || 0.016;
+    const cx = place === 'outside' || place === 'village' ? Math.round(player.x - camX) : Math.round(player.x);
+    for (let k = 0; k < 14; k++) {
+      const a = time * 3 + k * 0.45;
+      const rr = 6 + (1.6 - spellFx) * 14;
+      ctx.fillStyle = k % 2 ? '#9be8e0' : '#ffd978';
+      ctx.fillRect(Math.round(cx + Math.cos(a) * rr), Math.round(150 + Math.sin(a) * rr * 0.6), 1, 1);
+    }
+  }
 
   const dl = dayLabel(dayTime);
   const text = `${dl.icon} ${dl.name}`;

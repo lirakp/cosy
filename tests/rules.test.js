@@ -531,3 +531,85 @@ test('Fischreuse: fängt nach Zeit bis zur Kapazität, ohne Flaschenpost, Fänge
   const counted = village.FISH.reduce((n, f) => n + village.caughtTotal(f.id), 0);
   assert.equal(counted, got.length);
 });
+
+// ---------------------------------------------------------------- Magie
+
+import * as magic from '../src/magic.js';
+
+const scroll = (rank) => ITEMS.find((i) => i.kind === 'Schriftrolle' && i.rank === rank);
+
+test('Magie: Mana lädt nach Zeit, nachts doppelt, bis zum Vorrat des Turms', () => {
+  state.buildings.tower = 0;
+  state.magic.mana = 0;
+  state.magic.last = Date.now() - 0.05 * MIN;
+  magic.tick(Date.now(), true);
+  close(state.magic.mana, magic.REGEN[0] * 2 * 0.05, 0.01, 'nachts doppelt');
+  state.magic.last = Date.now() - 1000 * MIN;
+  magic.tick();
+  assert.equal(magic.mana(), magic.MAX_MANA[0]);
+});
+
+test('Magie: Lernen braucht Turm-Rang und eine Schriftrolle, verbraucht sie aber nicht', () => {
+  state.buildings.tower = 0;
+  assert.match(magic.learnBlocker(magic.spell('wachstum')), /Schriftrolle/);
+  const s = scroll('D');
+  state.addItems([s]);
+  assert.ok(magic.learn('wachstum'));
+  assert.equal(state.count(s.id), 1);
+  assert.match(magic.learnBlocker(magic.spell('lockruf')), /Turm-Rang C/);
+});
+
+test('Magie: Wirken kostet Mana, hat Abklingzeit, Wachstum macht Beete reif', () => {
+  state.buildings.tower = 0;
+  state.addItems([scroll('D')]);
+  magic.learn('wachstum');
+  garden.plant(0, 'sternenblume');
+  state.magic.mana = 25;
+  assert.ok(magic.cast('wachstum'));
+  assert.equal(magic.mana(), 5);
+  assert.ok(garden.ready(0));
+  assert.ok(magic.cooldownLeft('wachstum') > 0);
+  state.magic.mana = 30;
+  assert.equal(magic.cast('wachstum'), null, 'noch in der Abklingzeit');
+});
+
+test('Magie: Lockruf hebt den nächsten Fang um einen Rang, Glückszauber sichert Rang C', () => {
+  const random = seeded(17);
+  for (let i = 0; i < 2000; i++) {
+    const r = village.rollCatch(random, 'Tag', true);
+    assert.ok(!r.treasure && r.tier >= 1, 'mit Lockruf mindestens Rang C, keine Flaschenpost');
+  }
+  state.magic.luckyPull = true;
+  assert.ok(magic.useLuckyPull());
+  assert.equal(magic.useLuckyPull(), false, 'nur einmal');
+});
+
+test('Magie: Schutzschild gilt für die nächste Erkundung und wird dabei verbraucht', () => {
+  state.buildings.dungeon = 5;
+  state.addItems([getGroup('helden', 'D')[0]]);
+  dungeon.party.autoEquip();
+  state.magic.shield = true;
+  assert.ok(dungeon.start(5));
+  assert.equal(state.dungeon.run.shield, true);
+  assert.equal(magic.shieldReady(), false);
+  state.dungeon.run.end = Date.now() - 1;
+  const random = Math.random;
+  Math.random = () => 0.12; // über der normalen 5 %-Chance, unter 5 % + 15 %
+  try {
+    assert.ok(dungeon.collect().success);
+  } finally {
+    Math.random = random;
+  }
+});
+
+test('Magie: Zeitsprung gibt Expedition 30 Minuten Ertrag', () => {
+  state.buildings.tower = 3;
+  state.buildings.camp = 0;
+  state.addItems([...getGroup('lebewesen', 'B').slice(0, 4), scroll('A')]);
+  expedition.tick();
+  magic.learn('zeitsprung');
+  state.magic.mana = 100;
+  const before = expedition.live.gold;
+  assert.ok(magic.cast('zeitsprung'));
+  close(expedition.live.gold - before, expedition.goldPerMinute() * 30, 2, 'Truhe');
+});

@@ -366,6 +366,11 @@ const SFX = {
     hiss(t, 0.18, { gain: 0.07, freq: 900, type: 'bandpass' });
     notes([88, 88], 0.09, { type: 'square', gain: 0.04, release: 0.08, cutoff: 4000, dur: 0.05 });
   },
+  spell() {
+    const t = ctx.currentTime;
+    [72, 76, 79, 83, 86, 91, 95].forEach((n, i) => tone(midi(n), t + i * 0.05, 0.25, { type: 'sine', gain: 0.05, release: 0.5 }));
+    hiss(t, 0.6, { gain: 0.03, freq: 6000 });
+  },
   pause() {
     notes([76, 69], 0.08, { type: 'triangle', gain: 0.06, release: 0.2 });
   },

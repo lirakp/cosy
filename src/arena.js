@@ -3,6 +3,7 @@ import { state } from './state.js';
 import * as buildings from './buildings.js';
 import { createParty } from './party.js';
 import * as buffs from './buffs.js';
+import * as magic from './magic.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
@@ -83,7 +84,8 @@ export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladi
 export function fight() {
   const boss = bossInfo();
   if (!boss || !teamPower()) return null;
-  const odds = winChance();
+  // Schutzschild aus dem Zauberbuch wird beim Kampf verbraucht
+  const odds = magic.useShield() ? magic.shielded(winChance()) : winChance();
   const result = { boss, odds, win: Math.random() < odds, stoff: 0, seide: 0 };
   if (result.win) {
     result.stoff = WIN_CLOTH;
