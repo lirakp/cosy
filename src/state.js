@@ -78,7 +78,7 @@ const fresh = () => ({
   garden: newGarden(),
   village: newVillage(),
   magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
-  companions: { owned: [], active: null },
+  companions: { owned: [], active: null, pts: {}, gifts: 0 },
 });
 
 // Ältere Spielstände zählten Fische nur nach Rang (0 … 5) – das waren genau diese Arten.

@@ -7,6 +7,7 @@ import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import { createTitle } from './title.js';
 import * as companions from './companions.js';
+import * as care from './companioncare.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
@@ -680,6 +681,11 @@ function frame(now) {
     background.update(dt);
     companions.update(dt, { where: place, night: lastNight > 0.5, playerX: player.x, bounds: player.bounds });
     companions.followUpdate(dt, player);
+    const present = care.giftTick(dt);
+    if (present) {
+      audio.play('pick');
+      ui.companionGift(present);
+    }
     if (place === 'outside') world.update(dt, player);
     if (place === 'mine') mineScene.update(dt, mineLevel, time);
     if (place === 'village') {

@@ -714,6 +714,7 @@ test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selte
 // ---------------------------------------------------------------- Begleiter
 
 import * as companions from '../src/companions.js';
+import * as care from '../src/companioncare.js';
 
 test('Begleiter: Streuner tauchen auf, lassen sich anfreunden und geben ihren Bonus', () => {
   state.companions.owned = [];
@@ -754,6 +755,55 @@ test('Begleiter: Seltenheit folgt den Rängen, gefundene kommen nicht wieder', (
     assert.ok(c.rows.every((r) => r.length === c.rows[0].length), `${c.name}: Zeilen gleich lang`);
     assert.ok([...c.rows.join('')].every((ch) => ch === '.' || c.colors[ch]), `${c.name}: Farben`);
   }
+  state.companions.owned = [];
+  state.companions.active = null;
+});
+
+test('Begleiter: Leckerlis heben die Freundschaft, der Bonus wächst bis aufs Doppelte', () => {
+  state.companions.owned = [];
+  state.companions.pts = {};
+  companions.befriend('hase');
+  companions.setActive('hase');
+  assert.equal(companions.level('hase'), 1);
+  assert.equal(companions.bonus('garden'), 0.1);
+  state.garden.crops.karotte = 100;
+  state.garden.crops.weizen = 0;
+  assert.equal(care.feed('hase', 'weizen'), null, 'ohne Ernte kein Leckerli');
+  assert.equal(care.treatPoints(companions.companion('hase'), 'karotte'), 2, 'Liebling zählt doppelt');
+  let ups = 0;
+  while (companions.level('hase') < companions.MAX_LEVEL) {
+    const r = care.feed('hase', 'karotte');
+    assert.ok(r);
+    if (r.up) ups++;
+  }
+  assert.equal(ups, 4);
+  assert.equal(state.garden.crops.karotte, 100 - companions.LEVEL_POINTS[4] / 2);
+  close(companions.bonus('garden'), 0.2, 1e-9, 'Stufe 5 = doppelt');
+  assert.equal(care.feed('hase', 'karotte'), null, 'mehr geht nicht');
+  // seltene Begleiter brauchen mehr
+  assert.ok(companions.need(companions.companion('sternenkitz'), 5) > companions.need(companions.companion('hase'), 5));
+});
+
+test('Begleiter: Geschenke bringen je nach Tier Gold, Saat, Fisch, Erz – selten ein Sammelstück', () => {
+  state.companions.owned = [];
+  state.companions.pts = {};
+  for (const id of ['hund', 'hase', 'igel', 'frosch']) companions.befriend(id);
+  const random = seeded(9);
+  const kinds = {};
+  let items = 0;
+  const n = 4000;
+  for (let i = 0; i < n; i++) {
+    const c = companions.companion(['hund', 'hase', 'igel', 'frosch'][i % 4]);
+    const g = care.gift(c, random);
+    if (g.item) items++;
+    else {
+      kinds[g.kind] = (kinds[g.kind] || 0) + 1;
+      assert.ok(c.gifts.includes(g.kind) || g.kind === 'gold', `${c.name}: ${g.kind}`);
+      assert.ok(g.n > 0);
+    }
+  }
+  for (const k of ['gold', 'seeds', 'crops', 'ore', 'fish']) assert.ok(kinds[k] > 0, k);
+  close(items / n, care.GIFT_ITEM_CHANCE + 0.01, 0.01, 'Sammelstücke selten');
   state.companions.owned = [];
   state.companions.active = null;
 });

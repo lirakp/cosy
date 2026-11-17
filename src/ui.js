@@ -16,6 +16,7 @@ import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import * as companions from './companions.js';
+import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -698,18 +699,28 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       const rank = companions.rankOf(c);
       const have = companions.owned(c.id);
       const on = act?.id === c.id;
+      const lvl = have ? companions.level(c.id) : 1;
+      const max = lvl >= companions.MAX_LEVEL;
+      const treats = have && !max ? garden.CROPS.filter((x) => garden.have(x.id)).map((x) =>
+        `<button class="treat${x.id === c.fav ? ' fav' : ''}" data-act="comp-feed" data-v="${c.id}" data-crop="${x.id}" title="${x.name}: +${care.treatPoints(c, x.id)} Freundschaft"><span data-crop-img="${x.id}"></span>${garden.have(x.id)}</button>`).join('') : '';
+      const friendship = have ? `
+        <div class="friend"><span class="hearts">${'♥'.repeat(lvl)}${'♡'.repeat(companions.MAX_LEVEL - lvl)}</span><span class="muted">Stufe ${lvl}${max ? ' · beste Freunde' : ''}</span></div>
+        ${max ? '' : `<div class="bar friend-bar"><i style="width:${Math.round(companions.progress(c.id) * 100)}%"></i></div>`}
+        <span class="muted">Liebling: ${garden.crop(c.fav).name} (zählt doppelt) · Geschenke: ${c.gifts.map((k) => care.GIFT_TEXT[k]).join(', ')}</span>
+        ${max ? '' : treats ? `<div class="treats">${treats}</div>` : '<span class="muted">Keine Leckerlis – ernte etwas im Garten.</span>'}` : '';
       return `<div class="companion r-${rank}${have ? '' : ' missing'}${on ? ' on' : ''}">
         <div class="line"><span class="comp-img" data-comp="${c.id}"></span>
           <div><b>${have ? c.name : '???'}</b><span class="evo">Rang ${rank}</span></div></div>
         <p>${have ? c.text : c.night ? 'Zeigt sich nur nachts …' : 'Streift irgendwo durchs Tal …'}</p>
-        <p class="gold-text">${companions.describeBonus(c)}</p>
+        <p class="gold-text">${companions.describeBonus(c, lvl)}</p>
+        ${friendship}
         ${have ? (on ? '<span class="tag">dabei</span>' : `<button data-act="comp-pick" data-v="${c.id}">Mitnehmen</button>`) : ''}
       </div>`;
     }).join('');
     overlay.innerHTML = `
       <section class="panel compspanel">
         ${head('Begleiter')}
-        <p class="muted">Auf dem Hof und im Dorf taucht ab und zu ein Tier mit einem Herz über dem Kopf auf. Geh hin und freunde dich an (<kbd>E</kbd>) – aber beeil dich, lange bleibt es nicht. Seltene Begleiter sind selten unterwegs, manche nur nachts. Einer kann dich begleiten und gibt dir seinen Bonus.</p>
+        <p class="muted">Auf dem Hof und im Dorf taucht ab und zu ein Tier mit einem Herz über dem Kopf auf. Geh hin und freunde dich an (<kbd>E</kbd>) – aber beeil dich, lange bleibt es nicht. Seltene Begleiter sind selten unterwegs, manche nur nachts. Einer kann dich begleiten, gibt dir seinen Bonus und bringt ab und zu ein Geschenk mit. Leckerlis aus dem Garten stärken die Freundschaft: bis Stufe 5 wird der Bonus doppelt so groß und Geschenke kommen öfter.</p>
         <div class="line"><span>Gefunden: <b>${companions.ownedCount()} / ${companions.COMPANIONS.length}</b>${act ? ` · Dabei: <b>${act.name}</b>` : ''}</span>
           ${act ? '<button data-act="comp-pick" data-v="">Allein gehen</button>' : ''}</div>
         <div class="companions">${cards}</div>
@@ -720,6 +731,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       if (!companions.owned(c.id)) pic.classList.add('silhouette');
       el.append(pic);
     }
+    for (const el of overlay.querySelectorAll('.companions [data-crop-img]')) el.append(picture(garden.cropImage(el.dataset.cropImg)));
   }
 
   function showCatch(res) {
@@ -1006,6 +1018,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     aufgaben: 'Aufgaben im Dorf',
     gartenhelfer: 'Gartenhelfer (Kasse)',
     sternschnuppe: 'Sternschnuppen',
+    begleiter: 'Geschenke der Begleiter',
     magie: 'Zauber',
     markt: 'Markt im Dorf',
     angeln: 'Angeln (Flaschenpost)',
@@ -1687,6 +1700,16 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (act === 'helper-res') { gardener.setReserve(gardener.info().reserve + Number(btn.dataset.v)); renderGarden(); }
     if (act === 'helper-deposit') { audio.play(gardener.deposit() ? 'coin' : 'error'); renderGarden(); }
     if (act === 'helper-withdraw') { if (gardener.withdraw()) audio.play('gold'); renderGarden(); }
+    if (act === 'comp-feed') {
+      const res = care.feed(btn.dataset.v, btn.dataset.crop);
+      if (!res) audio.play('error');
+      else {
+        audio.play(res.up ? 'levelUp' : 'pick');
+        if (companions.active()?.id === btn.dataset.v) companions.cheer();
+        if (res.up) toast(`♥ ${companions.companion(btn.dataset.v).name} ist jetzt auf Freundschaftsstufe ${res.level}!`);
+        renderCompanions();
+      }
+    }
     if (act === 'comp-pick') { companions.setActive(btn.dataset.v || null); audio.play('click'); renderCompanions(); }
     if (act === 'spell-school') { spellSchool = btn.dataset.v; renderTower(); }
     if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
@@ -1859,6 +1882,17 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     openTower: () => show('tower'),
     openCompanions: () => show('companions'),
     // neuer Begleiter: Pop-up
+    // Geschenk vom Begleiter
+    companionGift(res) {
+      if (res.item) {
+        toast(`🎁 ${res.c.name} bringt dir etwas Besonderes!`);
+        reveals.push({ item: res.item, isNew: res.isNew, source: `GESCHENK VON ${res.c.name.toUpperCase()}` });
+        if (!$('.reveal')) nextReveal();
+        return;
+      }
+      const what = res.kind === 'gold' ? `${fmt(res.n)} Gold` : res.kind === 'mana' ? `${res.n} Mana` : `${res.n}× ${res.what}${res.kind === 'seeds' ? ' (Saat)' : ''}`;
+      toast(`🎁 ${res.c.name} bringt dir ein Geschenk: ${what}`);
+    },
     foundCompanion(c) {
       reveals.push({ companion: c });
       if (!$('.reveal')) nextReveal();

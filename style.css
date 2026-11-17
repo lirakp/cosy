@@ -834,3 +834,10 @@ table.stats td { border-top: 1px solid #3a3170; }
 .comp-img canvas { width: 40px; height: 40px; image-rendering: pixelated; }
 .silhouette { filter: brightness(0) opacity(0.5); }
 .compspanel > .line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.friend { display: flex; justify-content: space-between; align-items: center; }
+.hearts { color: #e8577a; letter-spacing: 2px; font-size: 13px; }
+.friend-bar i { background: linear-gradient(90deg, #e8577a, #ffb0c8); }
+.treats { display: flex; flex-wrap: wrap; gap: 4px; }
+.treat { display: flex; align-items: center; gap: 2px; padding: 2px 6px 2px 2px; font-size: 11px; }
+.treat canvas { width: 16px; height: 16px; image-rendering: pixelated; }
+.treat.fav { box-shadow: 0 0 0 2px #e8577a; }

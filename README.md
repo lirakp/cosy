@@ -284,7 +284,25 @@ in die Mine und ins Dorf, und gibt seinen Bonus. Auswahl im Begleiter-Menü
 | Neunschwanzfuchs | S | Expedition +25 % Gold |
 | Sternenkitz (nachts, leuchtet) | SS | von allem etwas: +15 % überall, Münzen bis 20 Schritte |
 
-Werte in `src/companions.js`.
+### Freundschaft und Leckerlis
+
+Im Begleiter-Menü gibst du Ernte aus dem Garten als Leckerli. Punkte je Pflanze:
+Karotte/Weizen 1, Kartoffel 2, Beeren 3, Kürbis 5, Sternenblume 10. Das
+Lieblingsleckerli jedes Begleiters zählt doppelt. Die Freundschaft hat 5
+Stufen (♥): Stufe 2 … 5 ab 6 · 18 · 40 · 80 Punkten, bei seltenen Begleitern
+mehr (× 1 + 0,5 je Rang). Der Bonus wächst je Stufe auf × 1,25 · 1,5 · 1,75 · 2.
+
+### Geschenke
+
+Der Begleiter, der dich begleitet, bringt alle 4–8 Minuten Spielzeit etwas mit
+(mit jeder Freundschaftsstufe 10 % öfter). Über ihm erscheint kurz ein Päckchen.
+Jedes Tier hat seine Art Geschenk: Gold, Saatgut, Ernte, Fische, Erz oder
+Mana; die Menge wächst mit Rang und Stufe. Mit 3 % (+ 1 % je Stufe) ist es ein
+Sammelstück, Waschbär, Neunschwanzfuchs und Sternenkitz finden sie öfter.
+Geschenke zählen in der Statistik.
+
+Werte in `src/companions.js` (Tiere, Stufen) und `src/companioncare.js`
+(Leckerlis, Geschenke).
 
 ## Sternschnuppen
 
