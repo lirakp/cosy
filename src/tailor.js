@@ -1,6 +1,7 @@
 import { RARITIES } from './items.js';
 import { state } from './state.js';
 import { OUTFITS, getOutfit, sprite } from './sprites.js';
+import * as realm from './realm.js';
 
 // Schneiderei am Nähtisch im Haus: Aus Stoff und Seide der Bossarena entstehen
 // Heldenumhänge (Stärke in Arena und Dungeon), Kleidung mit Bonus und
@@ -79,9 +80,12 @@ export const SEWN = OUTFITS.filter((o) => o.sew);
 export const sewCost = (o) => [...(o.sew.stoff ? [S(o.sew.tier, o.sew.stoff)] : []), ...(o.sew.seide ? [K(o.sew.tier, o.sew.seide)] : [])];
 export const sewn = (id) => !getOutfit(id).sew || t().sewn.includes(id);
 
+// Kleidung der Portalwelten wird nur dort genäht (aus deren Stoff und Seide)
+export const canSewHere = (o) => !o.world || o.world === realm.current();
+
 export function sewOutfit(id) {
   const o = getOutfit(id);
-  if (!o.sew || sewn(id) || !pay(sewCost(o))) return false;
+  if (!o.sew || sewn(id) || !canSewHere(o) || !pay(sewCost(o))) return false;
   t().sewn.push(id);
   state.changed();
   return true;

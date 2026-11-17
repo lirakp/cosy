@@ -47,6 +47,49 @@ export function starflower(g) {
   return { [M.main]: ramp(275, 70, 66), [M.second]: ramp(140, 45, 38) };
 }
 
+// ---------------------------------------------------------------- Pflanzen der Portalwelten
+
+export function chili(g) {
+  g.pts(M.second, [[9, 1], [9, 2], [8, 3], [10, 2]]);
+  g.line(8, 4, 9, 5, M.main);
+  g.rows(5, [2, 2, 2, 2, 2, 1, 1, 1, 1], M.main);
+  g.pts(M.main, [[6, 13], [5, 14]]);
+  g.pts(M.white, [[6, 6], [6, 7]]);
+  return { [M.main]: ramp(4, 85, 48), [M.second]: ramp(110, 45, 30) };
+}
+
+export function ashroot(g) {
+  g.ellipse(7.5, 9, 5, 4.5, M.main);
+  g.pts(M.second, [[5, 8], [9, 7], [10, 11], [6, 12], [8, 10]]);
+  g.pts(M.glow, [[7, 9], [9, 9], [6, 11]]);
+  g.pts(M.wood, [[7, 3], [8, 4], [6, 4], [9, 3]]);
+  return { [M.main]: ramp(270, 15, 26), [M.second]: ramp(20, 30, 16), [M.wood]: ramp(20, 50, 30) };
+}
+
+export function lavamelon(g) {
+  g.ellipse(7.5, 9, 6.5, 5.5, M.main);
+  for (let y = 4; y <= 14; y++) for (const x of [4, 7, 11]) if (g.get(x, y)) g.set(x + (y % 3 === 0 ? 1 : 0), y, M.glow);
+  g.pts(M.wood, [[7, 3], [8, 3], [8, 2]]);
+  return { [M.main]: ramp(355, 40, 18), [M.wood]: ramp(20, 30, 20) };
+}
+
+export function cloudberry(g) {
+  g.pts(M.second, [[7, 1], [8, 2], [9, 2], [6, 2], [8, 3]]);
+  for (const [x, y] of [[5, 6], [9, 6], [7, 9], [4, 10], [10, 10], [7, 13]]) g.ellipse(x, y, 1.9, 1.9, M.main);
+  g.pts(M.white, [[4, 5], [8, 5], [6, 8], [3, 9]]);
+  return { [M.main]: ramp(200, 60, 82), [M.second]: ramp(50, 70, 60) };
+}
+
+export function angelapple(g) {
+  g.ellipse(7.5, 9.5, 5.5, 5, M.main);
+  g.pts(M.wood, [[7, 3], [8, 4]]);
+  g.pts(M.second, [[9, 3], [10, 2], [11, 2]]);
+  g.pts(M.white, [[5, 7], [6, 6]]);
+  for (let x = 5; x <= 10; x++) g.set(x, 1, x === 5 || x === 10 ? 0 : M.glow);
+  g.pts(M.glow, [[4, 2], [11, 2]]);
+  return { [M.main]: ramp(48, 90, 62), [M.second]: ramp(110, 45, 50), [M.wood]: ramp(30, 40, 40) };
+}
+
 export function teacup(g) {
   g.rows(6, [5, 5, 5, 4, 4, 3, 3], M.main);
   g.pts(M.main, [[13, 8], [14, 9], [13, 10]]);

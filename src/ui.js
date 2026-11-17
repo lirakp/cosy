@@ -1,5 +1,6 @@
 import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem, worldItems, worldPool } from './items.js';
 import * as realm from './realm.js';
+import * as dimension from './dimension.js';
 import { state, DUPE_EXTRA } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
@@ -51,7 +52,7 @@ function tile(item, { hidden = false, badge = '' } = {}) {
   return el;
 }
 
-export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
+export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal }) {
   const overlay = $('#overlay');
   const goldEl = $('#gold span');
   const toastEl = $('#toast');
@@ -466,7 +467,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         <div class="outfits" id="outfits"></div>
       </section>`;
     $('#outfits').replaceChildren(
-      ...OUTFITS.map((o) => {
+      ...OUTFITS.filter((o) => !o.world || dimension.known().includes(o.world)).map((o) => {
         const el = document.createElement('button');
         el.className = `outfit${o.id === state.outfit ? ' on' : ''}`;
         el.dataset.act = 'outfit';
@@ -552,7 +553,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   function renderTower() {
     if (!buildings.owned('tower')) return renderPurchase('tower', 'Magierturm');
     magic.tick();
-    const shown = magic.SPELLS.filter((sp) => spellSchool === 'alle' || sp.school === spellSchool);
+    // Heimat-Zauber nach Schule; Zauber der Portalwelten auf eigenen Reitern (sobald man sie kennt)
+    const inTab = (sp, id) => (id.startsWith('w:') ? sp.world === id.slice(2) : sp.world === 'normal' && (id === 'alle' || sp.school === id));
+    if (spellSchool.startsWith('w:') && !dimension.known().includes(spellSchool.slice(2))) spellSchool = 'alle';
+    const shown = magic.SPELLS.filter((sp) => inTab(sp, spellSchool));
     const card = (sp) => {
       const rank = RARITIES[sp.rank].id;
       const learned = magic.learned(sp.id);
@@ -576,9 +580,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       const list = shown.filter((sp) => sp.rank === t);
       return list.length ? `<h3 class="spell-rank r-${r.id}">Rang ${r.id}</h3><div class="spells">${list.map(card).join('')}</div>` : '';
     }).join('');
-    const count = (id) => magic.SPELLS.filter((sp) => (id === 'alle' || sp.school === id) && magic.learned(sp.id)).length;
-    const total = (id) => magic.SPELLS.filter((sp) => id === 'alle' || sp.school === id).length;
-    const tabs = [['alle', 'Alle'], ...magic.SCHOOLS.map((sc) => [sc.id, `${sc.icon} ${sc.name}`])]
+    const count = (id) => magic.SPELLS.filter((sp) => inTab(sp, id) && magic.learned(sp.id)).length;
+    const total = (id) => magic.SPELLS.filter((sp) => inTab(sp, id)).length;
+    const tabs = [['alle', 'Heimat'], ...magic.SCHOOLS.map((sc) => [sc.id, `${sc.icon} ${sc.name}`]), ...dimension.known().map((w) => [`w:${w}`, `◆ ${realm.WORLDS[w].name}`])]
       .map(([id, name]) => `<button class="tab${spellSchool === id ? ' on' : ''}" data-act="spell-school" data-v="${id}">${name} <span class="muted">${count(id)}/${total(id)}</span></button>`).join('');
     const pending = magic.pending();
     overlay.innerHTML = `
@@ -750,12 +754,24 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         </section>`;
       return;
     }
-    const name = state.realm.visited ? realm.WORLDS[state.realm.type].name : '???';
+    const label = (w) => (dimension.visited(w) ? realm.WORLDS[w].name : '???');
+    const dest = dimension.destinations();
+    const card = (w) => `<div class="realm-card realm-${dimension.visited(w) ? w : 'unknown'}">
+        <b>${label(w)}</b>
+        ${dimension.visited(w) ? `<ul>${realm.BONUS_TEXT[w].map((t) => `<li>${t}</li>`).join('')}</ul>` : '<p class="muted">Noch nie betreten.</p>'}
+        <button class="big" data-act="portal-go" data-v="${w}">Hindurchgehen</button>
+      </div>`;
+    const second = dimension.second();
     overlay.innerHTML = `
       <section class="panel portalpanel">
         ${head('Dimensionsportal')}
-        <p class="lead">${realm.inRealm() ? 'Das Portal führt zurück in deine Heimat.' : `Hinter dem Portal liegt: <b>${name}</b>.`}</p>
-        <p class="muted">Stell dich vor das Portal und drücke <kbd>E</kbd>, um hindurchzugehen.</p>
+        ${realm.inRealm()
+          ? `<p class="lead">Du bist in ${realm.current() === 'hoelle' ? 'der Hölle' : 'dem Himmel'}.</p><button class="big" data-act="portal-go" data-v="normal">Zurück in die Heimat</button>`
+          : `<p class="lead">Wohin soll es gehen?</p><div class="realm-cards">${dest.map(card).join('')}</div>`}
+        <div class="chest">
+          <p class="muted">In den Portalwelten starten alle Gebäude bei Rang B – teurer (× ${realm.PRICE}), dafür bringen Expedition, Dungeon und Münzen doppelt so viel Gold. Wünsche kosten das Doppelte. Jede Dimension hat eigene Boni, Zauber, Kleidung, Pflanzen und Gerichte.</p>
+          ${dest.length < 2 ? `<p>Die zweite Dimension (${dimension.visited(second) ? realm.WORLDS[second].name : '???'}) öffnet sich, sobald in der Heimat <b>alle Gebäude auf Rang SS</b> stehen: <b class="gold-text">${dimension.homeProgress()} / ${dimension.HOME_BUILDINGS.length}</b>.</p>` : ''}
+        </div>
       </section>`;
   }
 
@@ -799,11 +815,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
             <button data-act="sew-cape" data-v="${t}" ${tailor.affordable(tailor.capeCost(t)) ? '' : 'disabled'}>Nähen</button></div>`).join('')}</div>`;
     } else if (tailorTab === 'kleidung') {
       body = `<p class="muted">Genähte Kleidung trägst du über den Kleiderschrank. Solange du sie trägst, wirkt ihr Bonus.</p>
-        <div class="sew-list">${tailor.SEWN.map((o) => {
+        <div class="sew-list">${tailor.SEWN.filter((o) => !o.world || dimension.known().includes(o.world)).map((o) => {
           const done = tailor.sewn(o.id);
           return `<div class="sew r-${RARITIES[o.sew.tier].id}"><span class="sew-img" data-outfit="${o.id}"></span>
             <div><b>${o.name}</b><span class="gold-text">${companions.describeBonus({ bonus: o.bonus })}</span><span>${done ? (state.outfit === o.id ? 'genäht · angezogen' : 'genäht') : matHtml(tailor.sewCost(o))}</span></div>
-            ${done ? (state.outfit === o.id ? '<span class="tag">an</span>' : `<button data-act="outfit" data-id="${o.id}">Anziehen</button>`) : `<button data-act="sew-outfit" data-v="${o.id}" ${tailor.affordable(tailor.sewCost(o)) ? '' : 'disabled'}>Nähen</button>`}</div>`;
+            ${done ? (state.outfit === o.id ? '<span class="tag">an</span>' : `<button data-act="outfit" data-id="${o.id}">Anziehen</button>`) : (tailor.canSewHere(o) ? `<button data-act="sew-outfit" data-v="${o.id}" ${tailor.affordable(tailor.sewCost(o)) ? '' : 'disabled'}>Nähen</button>` : `<span class="muted">nur ${o.world === 'hoelle' ? 'in der Hölle' : 'im Himmel'}</span>`)}</div>`;
         }).join('')}</div>`;
     } else if (tailorTab === 'einrichtung') {
       body = `<p class="muted">Gemütlichkeit <b class="gold-text">${tailor.cozy()} / ${tailor.MAX_COZY}</b> – jeder Punkt erhöht die Chance auf einen Rausch beim Schlafen um 1 % (jetzt ${percent(buffs.sleepChance())}).</p>
@@ -850,7 +866,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       const on = act?.id === c.id;
       const lvl = have ? companions.level(c.id) : 1;
       const max = lvl >= companions.MAX_LEVEL;
-      const treats = have && !max ? garden.CROPS.filter((x) => garden.have(x.id)).map((x) =>
+      const treats = have && !max ? garden.available().filter((x) => garden.have(x.id)).map((x) =>
         `<button class="treat${x.id === c.fav ? ' fav' : ''}" data-act="comp-feed" data-v="${c.id}" data-crop="${x.id}" title="${x.name}: +${care.treatPoints(c, x.id)} Freundschaft"><span data-crop-img="${x.id}"></span>${garden.have(x.id)}</button>`).join('') : '';
       const friendship = have ? `
         <div class="friend"><span class="hearts">${'♥'.repeat(lvl)}${'♡'.repeat(companions.MAX_LEVEL - lvl)}</span><span class="muted">Stufe ${lvl}${max ? ' · beste Freunde' : ''}</span></div>
@@ -910,7 +926,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     let body = '';
     if (marketTab === 'saat') {
       body = `<p class="muted">Saatpäckchen auf Vorrat sind 20 % günstiger. Beim Pflanzen im Garten werden sie zuerst verbraucht.</p>
-        <div class="seeds">${garden.CROPS.map((c) => `
+        <div class="seeds">${garden.available().map((c) => `
           <div class="seed" data-crop-img="${c.id}"><b>${c.name}</b><span>Vorrat: ${village.seeds(c.id)}</span>
             <span class="gold-text">${village.seedPrice(c.id)} Gold</span>
             <span><button data-act="buy-seed" data-v="${c.id}" data-n="1" ${state.gold >= village.seedPrice(c.id) ? '' : 'disabled'}>1×</button>
@@ -918,7 +934,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
           </div>`).join('')}</div>`;
     }
     if (marketTab === 'verkauf') {
-      const crops = garden.CROPS.map((c) => `
+      const crops = garden.available().map((c) => `
         <div class="seed" data-crop-img="${c.id}"><b>${c.name}</b><span>Vorrat: ${garden.have(c.id)}</span>
           <span class="gold-text">${village.CROP_PRICE[c.id]} Gold je Stück</span>
           <button data-act="sell-crop" data-v="${c.id}" ${garden.have(c.id) ? '' : 'disabled'}>Alle verkaufen</button></div>`).join('');
@@ -1000,7 +1016,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       const last = state.garden.last[i];
       return `<select data-act="helper-plan" data-i="${i}">
         <option value="" ${cur === '' ? 'selected' : ''}>wie zuletzt${last ? ` (${garden.crop(last).name})` : ''}</option>
-        ${garden.CROPS.map((cr) => `<option value="${cr.id}" ${cur === cr.id ? 'selected' : ''}>${cr.name}</option>`).join('')}
+        ${garden.available().map((cr) => `<option value="${cr.id}" ${cur === cr.id ? 'selected' : ''}>${cr.name}</option>`).join('')}
         <option value="none" ${cur === 'none' ? 'selected' : ''}>leer lassen</option>
       </select>`;
     };
@@ -1043,7 +1059,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     const seeds = gardenSel === null ? '' : `
       <div class="chest picker">
         <div class="line"><span>Was soll in Beet ${gardenSel + 1} wachsen?</span><button data-act="bed-close">Abbrechen</button></div>
-        <div class="seeds">${garden.CROPS.map((c) => `
+        <div class="seeds">${garden.available().map((c) => `
           <button class="seed" data-act="plant" data-v="${c.id}" data-crop-img="${c.id}" ${state.gold >= c.seed ? '' : 'disabled'}>
             <b>${c.name}</b><span>${c.minutes} min · ${c.yield}× Ernte</span><span class="gold-text">${c.seed} Gold</span>
           </button>`).join('')}</div>
@@ -1059,7 +1075,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${seeds}
         <div class="beds">${bedCards}</div>
         <h4>Vorrat</h4>
-        <div class="ores">${garden.CROPS.map((c) => cropChip(c.id, garden.have(c.id))).join('')}</div>
+        <div class="ores">${garden.available().map((c) => cropChip(c.id, garden.have(c.id))).join('')}</div>
         <h4>Gartenhelfer</h4>
         ${helperHtml()}
       </section>`;
@@ -1099,7 +1115,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
 
   function renderKitchen() {
     const b = buffs.current();
-    const cards = garden.RECIPES.map((r) => {
+    const cards = garden.recipes().map((r) => {
       const effect = r.buff
         ? `${buffs.BUFFS[r.buff].name} für ${r.minutes} Minuten`
         : `Verlängert einen laufenden Rausch um ${r.extend} Minuten`;
@@ -1119,7 +1135,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         <div class="recipes">${cards}</div>
       </section>`;
     for (const el of overlay.querySelectorAll('[data-recipe]')) {
-      const r = garden.RECIPES.find((x) => x.id === el.dataset.recipe);
+      const r = garden.recipes().find((x) => x.id === el.dataset.recipe);
       const frame = document.createElement('div');
       frame.className = 'frame small';
       frame.append(picture(r.buff ? buffs.icon(r.buff) : garden.teaImage()));
@@ -1421,10 +1437,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${head(title)}
         <p class="lead">${b.pitch}</p>
         <div class="chest">
-          <p><b>${b.name}</b> – noch nicht gebaut. Nach dem Bau hat die Anlage Rang <b class="r-D evo">D</b>;
+          <p><b>${b.name}</b> – noch nicht gebaut. Nach dem Bau hat die Anlage Rang <b class="r-${realm.inRealm() ? 'B' : 'D'} evo">${realm.inRealm() ? 'B' : 'D'}</b>${realm.inRealm() ? ' (Portalwelt)' : ''};
           jeder Ausbau schaltet den nächsten Rang frei.</p>
           <p class="muted">${b.unlocks}</p>
-          <div class="line"><button class="big" data-act="build" data-id="${id}" ${state.gold >= b.buy ? '' : 'disabled'}>Bauen<small>${fmt(b.buy)} Gold</small></button></div>
+          <div class="line"><button class="big" data-act="build" data-id="${id}" ${state.gold >= buildings.nextCost(id) ? '' : 'disabled'}>Bauen<small>${fmt(buildings.nextCost(id))} Gold</small></button></div>
         </div>
       </section>`;
   }
@@ -1711,14 +1727,15 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   function renderGallery() {
-    if (filter.world !== 'normal' && filter.world !== state.realm.type) filter.world = 'normal';
+    const realmsShown = state.realm.type ? [...new Set([state.realm.type, ...dimension.known()])] : [];
+    if (filter.world !== 'normal' && !realmsShown.includes(filter.world)) filter.world = 'normal';
     const W = filter.world;
     const all = worldItems(W);
     // Welten: Heimat und – sobald das Portal steht – die Portalwelt
     const worlds = state.realm.type
-      ? `<nav class="tabs worlds">${['normal', state.realm.type].map((w) => {
+      ? `<nav class="tabs worlds">${['normal', ...realmsShown].map((w) => {
           const have = state.collected(worldItems(w));
-          return `<button class="tab world-${w}${W === w ? ' on' : ''}" data-act="gal-world" data-v="${w}">${w === 'normal' ? 'Heimat' : state.realm.visited ? realm.WORLDS[w].name : '??? (Portalwelt)'}<small>${have}/${worldItems(w).length}</small></button>`;
+          return `<button class="tab world-${w}${W === w ? ' on' : ''}" data-act="gal-world" data-v="${w}">${w === 'normal' ? 'Heimat' : dimension.visited(w) ? realm.WORLDS[w].name : '??? (Portalwelt)'}<small>${have}/${worldItems(w).length}</small></button>`;
         }).join('')}</nav>`
       : '';
     const cats = CATEGORIES.map((c) => {
@@ -1881,6 +1898,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       }
     }
     if (act === 'comp-pick') { companions.setActive(btn.dataset.v || null); audio.play('click'); renderCompanions(); }
+    if (act === 'portal-go') { show(null); onPortal?.(btn.dataset.v); return; }
     if (act === 'tailor-tab') { tailorTab = btn.dataset.v; renderTailor(); }
     if (act === 'sew-cape') { audio.play(tailor.sewCape(Number(btn.dataset.v)) ? 'build' : 'error'); renderTailor(); }
     if (act === 'sew-outfit') {

@@ -289,7 +289,40 @@ Mine, Gartenhelfer) und das Leveln nutzen nur deren Stücke. Man baut dort also
 wirklich neu auf. Die Galerie hat oben einen Reiter je Welt. Sammel-Sets und
 Zauber-Schriftrollen gibt es nur in der Heimat.
 
-Logik in `src/realm.js` und `state.switchWorld()`, Stücke in `src/items.js`,
+### Regeln und Boni der Dimensionen
+
+- **Start bei Rang B:** Gebäude werden in einer Dimension direkt auf Rang B
+  gebaut, der Brunnen steht dort schon auf B. Sie kosten mehr: Bau = (Bau +
+  Ausbau auf C + Ausbau auf B der Heimat) × 2,5, jeder weitere Ausbau × 2,5.
+- **Höhere Belohnungen:** Gold aus Expedition, Dungeon und Münzen × 2. Wünsche
+  am Brunnen kosten das Doppelte.
+- **Eigene Boni**, solange man dort ist:
+  - Hölle: Expedition +50 % Gold, Mine +30 % Erz, Arena und Dungeon +15 % Stärke
+  - Himmel: Beete wachsen 40 % schneller, Mana +40 %, Sternschnuppen +50 %, am
+    Brunnen und beim Händler immer Glück wie im Glücksrausch
+- **Pflanzen (nur dort anbaubar):**
+  - Hölle: Feuerchili, Aschenknolle, Lavamelone
+  - Himmel: Wolkenbeere, Sonnenweizen, Engelsapfel
+- **Gerichte (nur dort kochbar):**
+  - Hölle: Feuereintopf → *Höllenfeuer* (Gold- und Gladiatorrausch zugleich,
+    10 min), Glutkuchen → Goldrausch 12 min, Lavasuppe verlängert um 12 min
+  - Himmel: Wolkenbrot → *Himmelssegen* (Glücks- und Goldrausch zugleich,
+    10 min), Engelstorte → Glücksrausch 15 min, Himmelstee verlängert um 12 min
+- **Zauber:** Die 30 Schriftrollen jeder Dimension lehren eigene Zauber, etwa
+  „Funkenregen“, „Höllenpakt“, „Schwert des Seraphen“ oder „Tausend Engel“. Sie
+  sind stärker als die der Heimat. Höllenzauber schenken zusätzlich Erz für die
+  Mine, Himmelszauber ab Rang B einen Gratiswunsch. Im Zauberbuch haben sie einen
+  eigenen Reiter.
+- **Kleidung** (am Nähtisch, nur in der jeweiligen Dimension aus deren Stoff und
+  Seide):
+  - Hölle: Glutpanzer, Aschemantel, Dämonenrobe, Gewand des Höllenfürsten
+  - Himmel: Federkleid, Wolkenmantel, Engelsrobe, Seraphengewand
+  - Jede mit eigenem Bonus von Rang B bis SS.
+- **Die zweite Dimension:** Stehen in der Heimat **alle Gebäude auf Rang SS**
+  (Lager, Dungeon, Arena, Mine, Schmiede, Turm, Brunnen), öffnet das Portal auch
+  die andere Dimension. Am Portal wählt man dann das Ziel.
+
+Logik in `src/realm.js`, `src/dimension.js` und `state.switchWorld()`, Stücke in `src/items.js`,
 Stil in `src/art/core.js`, Landschaften in `src/themes.js`.
 
 ## Nähtisch (Schneiderei)

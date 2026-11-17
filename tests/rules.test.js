@@ -2,7 +2,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, tierChances, rollTier } from '../src/items.js';
+import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, tierChances, rollTier, ALL_ITEMS, worldItems, rollItem } from '../src/items.js';
 import { state } from '../src/state.js';
 import * as forge from '../src/forge.js';
 import { payWithDuplicates, dupValue } from '../src/dupes.js';
@@ -550,11 +550,11 @@ test('Magie: Mana lädt nach Zeit, nachts doppelt, bis zum Vorrat des Turms', ()
 });
 
 // Zauber einer Schule in einem Rang
-const spellAt = (school, rank) => magic.SPELLS.find((sp) => sp.school === school && sp.rank === rank);
+const spellAt = (school, rank, world = 'normal') => magic.SPELLS.find((sp) => sp.school === school && sp.rank === rank && sp.world === world);
 
 test('Magie: jede Schriftrolle lehrt einen eigenen Zauber, je Schule wird er mit dem Rang stärker', () => {
-  const scrolls = ITEMS.filter((i) => i.kind === 'Schriftrolle');
-  assert.equal(magic.SPELLS.length, scrolls.length);
+  const scrolls = ALL_ITEMS.filter((i) => i.kind === 'Schriftrolle');
+  assert.equal(magic.SPELLS.length, scrolls.length, 'Heimat, Hölle und Himmel: je 30');
   assert.equal(new Set(magic.SPELLS.map((sp) => sp.name)).size, scrolls.length, 'jeder Zauber hat einen eigenen Namen');
   for (const s of scrolls) assert.equal(magic.spellOf(s.id).rank, s.tier);
   for (const sc of magic.SCHOOLS) {
@@ -952,7 +952,6 @@ test('Brunnen: Preise 100/850, Duplikat-Wunsch bringt nur Eigenes und kostet 50 
 // ---------------------------------------------------------------- Dimensionsportal
 
 import * as realm from '../src/realm.js';
-import { ALL_ITEMS, worldItems, rollItem } from '../src/items.js';
 import * as buildings from '../src/buildings.js';
 
 test('Portal: Hölle und Himmel haben je 2100 eigene Stücke mit eigenen Namen', () => {
@@ -1020,4 +1019,98 @@ test('Portal: der Spielstand mit beiden Welten übersteht Speichern und Laden', 
   assert.equal(realm.current(), 'normal');
   state.reset();
   assert.equal(realm.current(), 'normal', 'Neustart beginnt in der Heimat');
+});
+
+test('Dimensionen: Gebäude starten bei Rang B, kosten mehr, Wünsche kosten das Doppelte, Gold doppelt', () => {
+  state.addGold(1e6);
+  state.realm.type = 'hoelle';
+  state.buildings.portal = 0;
+  state.buildings.camp = 0;
+  state.addItems(getGroup('lebewesen', 'D').slice(0, 4));
+  expedition.tick();
+  const homeRate = expedition.goldPerMinute();
+  assert.equal(well.cost(1), 100);
+  state.switchWorld('hoelle');
+  assert.equal(buildings.tier('well'), 2, 'Brunnen steht schon auf B');
+  assert.equal(well.cost(1), Math.round(100 * (1 - well.DISCOUNT[2])) * 2, 'doppelt, mit Rabatt des B-Brunnens');
+  const price = buildings.nextCost('camp');
+  assert.equal(price, buildings.realmBuy('camp'));
+  assert.ok(price > buildings.BUILDINGS.camp.buy * 10);
+  assert.ok(buildings.advance('camp'));
+  assert.equal(buildings.tier('camp'), 2, 'gleich Rang B');
+  assert.equal(buildings.nextCost('camp'), Math.round((buildings.BUILDINGS.camp.upgrades[2] * 2.5) / 500) * 500);
+  state.addItems(getGroup('lebewesen', 'D', 'hoelle').slice(0, 4));
+  expedition.tick();
+  // vier D-Lebewesen: Lager B (×4), Gold ×2, Hölle +50 %
+  close(expedition.goldPerMinute(), homeRate * 4 * 2 * 1.5, 0.01, 'Hölle');
+  assert.equal(buffs.coinValue(), buffs.COIN_NORMAL * 2);
+});
+
+test('Dimensionen: eigene Boni – Hölle Stärke, Himmel Glück und Wachstum', () => {
+  state.realm.type = 'himmel';
+  state.buildings.portal = 0;
+  assert.equal(buffs.lucky(), false);
+  state.switchWorld('himmel');
+  assert.equal(buffs.lucky(), true, 'im Himmel immer Glück');
+  assert.equal(companions.bonus('garden'), 0.4);
+  state.switchWorld('normal');
+  state.realm.type = 'hoelle';
+  state.switchWorld('hoelle');
+  assert.equal(companions.bonus('expedition'), 0.5);
+  state.buildings.arena = 2;
+  state.addItems([getGroup('helden', 'B', 'hoelle')[0]]);
+  arena.party.autoEquip();
+  close(arena.party.teamPower(), Math.round(arena.party.memberPower(state.arena.team[0]) * 1.15), 1, '+15 % Stärke');
+});
+
+test('Dimensionen: die zweite Welt öffnet sich erst, wenn in der Heimat alle Gebäude auf SS stehen', async () => {
+  const dimension = await import('../src/dimension.js');
+  state.realm.type = 'hoelle';
+  state.buildings.portal = 0;
+  assert.deepEqual(dimension.destinations(), ['hoelle']);
+  for (const id of dimension.HOME_BUILDINGS) state.buildings[id] = 5;
+  assert.deepEqual(dimension.destinations(), ['hoelle', 'himmel']);
+  state.switchWorld('himmel');
+  assert.equal(realm.current(), 'himmel');
+  assert.ok(dimension.homeMaxed(), 'auch von drüben aus gilt der Stand der Heimat');
+  state.switchWorld('normal');
+  state.switchWorld('hoelle');
+  assert.equal(realm.current(), 'hoelle');
+  state.switchWorld('normal');
+  assert.equal(buildings.tier('camp'), 5);
+});
+
+test('Dimensionen: eigene Pflanzen, Gerichte, Zauber und Kleidung', () => {
+  state.realm.type = 'hoelle';
+  state.buildings.portal = 0;
+  assert.ok(!garden.available().some((c) => c.world));
+  assert.ok(!garden.recipes().some((r) => r.world));
+  state.switchWorld('hoelle');
+  assert.deepEqual(garden.available().filter((c) => c.world).map((c) => c.id), ['feuerchili', 'aschenknolle', 'lavamelone']);
+  state.garden.crops.feuerchili = 3;
+  state.garden.crops.aschenknolle = 2;
+  assert.equal(garden.cook('feuereintopf').buff, 'inferno');
+  assert.ok(buffs.active('gold') && buffs.active('gladiator'), 'Höllenfeuer wirkt wie zwei Rausche');
+  // Zauber
+  const fire = magic.SPELLS.filter((sp) => sp.world === 'hoelle');
+  assert.equal(fire.length, 30);
+  const sp = fire.find((s) => s.school === 'gold' && s.rank === 2);
+  assert.equal(sp.fx.gold, spellAt('gold', 2).fx.gold * 2, 'stärker als in der Heimat');
+  state.buildings.tower = 2;
+  state.addItems([sp.scroll]);
+  assert.ok(magic.learn(sp.id));
+  state.magic.mana = 100;
+  const ore = state.mine.ore[2];
+  assert.ok(magic.cast(sp.id));
+  assert.equal(state.mine.ore[2], ore + sp.fx.ore.n, 'Hölle schenkt Erz');
+  // Kleidung nur dort nähbar
+  const o = tailor.SEWN.find((x) => x.id === 'glutpanzer');
+  state.arena.mats.stoff[2] = 6;
+  state.arena.mats.seide[2] = 2;
+  assert.ok(tailor.sewOutfit(o.id));
+  state.switchWorld('normal');
+  const sky = tailor.SEWN.find((x) => x.id === 'federkleid');
+  state.arena.mats.stoff[2] = 6;
+  state.arena.mats.seide[2] = 2;
+  assert.equal(tailor.sewOutfit(sky.id), false, 'Himmelskleidung nur im Himmel');
 });

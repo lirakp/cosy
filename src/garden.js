@@ -2,8 +2,9 @@ import { state } from './state.js';
 import * as village from './village.js';
 import * as buffs from './buffs.js';
 import * as companions from './companions.js';
-import { render } from './art/core.js';
-import { carrot, wheat, potato, berries, pumpkin, starflower, teacup } from './art/crops.js';
+import { render, M, ramp } from './art/core.js';
+import { carrot, wheat, potato, berries, pumpkin, starflower, teacup, chili, ashroot, lavamelon, cloudberry, angelapple } from './art/crops.js';
+import * as realm from './realm.js';
 
 // Garten: Pflanzen wachsen in echter Zeit (auch offline) und werden geerntet.
 // Küche: Aus der Ernte entstehen Gerichte, die gezielt einen Rausch geben.
@@ -16,7 +17,19 @@ export const CROPS = [
   { id: 'kuerbis', name: 'Kürbis', seed: 50, minutes: 30, yield: 1, art: pumpkin, tier: 3 },
   { id: 'sternenblume', name: 'Sternenblume', seed: 150, minutes: 60, yield: 1, art: starflower, tier: 4 },
 ];
-export const crop = (id) => CROPS.find((c) => c.id === id);
+// Pflanzen der Portalwelten: wachsen nur dort, sind wertvoller und Zutaten für eigene Gerichte
+export const REALM_CROPS = [
+  { id: 'feuerchili', name: 'Feuerchili', world: 'hoelle', seed: 120, minutes: 15, yield: 3, art: chili, tier: 2 },
+  { id: 'aschenknolle', name: 'Aschenknolle', world: 'hoelle', seed: 200, minutes: 25, yield: 2, art: ashroot, tier: 3 },
+  { id: 'lavamelone', name: 'Lavamelone', world: 'hoelle', seed: 500, minutes: 50, yield: 1, art: lavamelon, tier: 4 },
+  { id: 'wolkenbeere', name: 'Wolkenbeere', world: 'himmel', seed: 120, minutes: 15, yield: 3, art: cloudberry, tier: 2 },
+  { id: 'sonnenweizen', name: 'Sonnenweizen', world: 'himmel', seed: 200, minutes: 25, yield: 2, art: (g, r, f) => ({ ...wheat(g, r, f), [M.main]: ramp(48, 95, 66) }), tier: 3 },
+  { id: 'engelsapfel', name: 'Engelsapfel', world: 'himmel', seed: 500, minutes: 50, yield: 1, art: angelapple, tier: 4 },
+];
+const ALL_CROPS = [...CROPS, ...REALM_CROPS];
+export const crop = (id) => ALL_CROPS.find((c) => c.id === id);
+// Was sich hier anbauen lässt: überall die Heimat-Pflanzen, in einer Portalwelt dazu ihre eigenen
+export const available = () => [...CROPS, ...REALM_CROPS.filter((c) => c.world === realm.current())];
 
 export const MAX_BEDS = 6;
 // Preis für Beet 3, 4, 5 und 6 (zwei Beete gibt es von Anfang an)
@@ -29,7 +42,16 @@ export const RECIPES = [
   { id: 'kuchen', name: 'Glückskuchen', needs: { weizen: 3, beeren: 2 }, buff: 'luck', minutes: 6 },
   { id: 'eintopf', name: 'Kraft-Eintopf', needs: { kartoffel: 2, kuerbis: 1, karotte: 2 }, buff: 'gladiator', minutes: 6 },
   { id: 'tee', name: 'Sternenblüten-Tee', needs: { sternenblume: 1, beeren: 2 }, extend: 5 },
+  // Gerichte der Portalwelten (nur dort kochbar)
+  { id: 'feuereintopf', world: 'hoelle', name: 'Feuereintopf', needs: { feuerchili: 3, aschenknolle: 2 }, buff: 'inferno', minutes: 10 },
+  { id: 'glutkuchen', world: 'hoelle', name: 'Glutkuchen', needs: { feuerchili: 2, weizen: 3 }, buff: 'gold', minutes: 12 },
+  { id: 'lavasuppe', world: 'hoelle', name: 'Lavasuppe', needs: { lavamelone: 1, aschenknolle: 1 }, extend: 12 },
+  { id: 'wolkenbrot', world: 'himmel', name: 'Wolkenbrot', needs: { sonnenweizen: 2, wolkenbeere: 3 }, buff: 'segen', minutes: 10 },
+  { id: 'engelstorte', world: 'himmel', name: 'Engelstorte', needs: { engelsapfel: 1, wolkenbeere: 2 }, buff: 'luck', minutes: 15 },
+  { id: 'himmelstee', world: 'himmel', name: 'Himmelstee', needs: { sonnenweizen: 1, wolkenbeere: 2 }, extend: 12 },
 ];
+// Gerichte, die man hier kochen kann
+export const recipes = () => RECIPES.filter((r) => !r.world || r.world === realm.current());
 
 const gd = () => state.garden;
 
@@ -91,7 +113,7 @@ export function harvestAll(now = Date.now()) {
 export const canCook = (r) => Object.entries(r.needs).every(([id, n]) => have(id) >= n) && (!r.extend || !!buffs.current());
 
 export function cook(recipeId) {
-  const r = RECIPES.find((x) => x.id === recipeId);
+  const r = recipes().find((x) => x.id === recipeId);
   if (!r || !canCook(r)) return null;
   for (const [id, n] of Object.entries(r.needs)) gd().crops[id] -= n;
   if (r.buff) buffs.grant(r.buff, Date.now(), r.minutes);

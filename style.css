@@ -900,3 +900,12 @@ table.stats td { border-top: 1px solid #3a3170; }
 .heaven-text { color: #ffe070; }
 .tabs.worlds .world-hoelle.on { box-shadow: 0 0 0 2px #ff6a2a; }
 .tabs.worlds .world-himmel.on { box-shadow: 0 0 0 2px #ffe070; }
+.realm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.realm-card { background: #1b1730; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; box-shadow: 0 0 0 2px #6a549e; }
+.realm-card b { font-size: 16px; }
+.realm-card ul { margin: 0; padding-left: 16px; }
+.realm-card.realm-hoelle { box-shadow: 0 0 0 2px #ff6a2a; }
+.realm-card.realm-hoelle b { color: #ff6a2a; }
+.realm-card.realm-himmel { box-shadow: 0 0 0 2px #ffe070; }
+.realm-card.realm-himmel b { color: #ffe070; }
+.realm-card .big, .portalpanel > .big { flex: none; padding: 10px 14px; }

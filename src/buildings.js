@@ -1,5 +1,6 @@
 import { RARITIES } from './items.js';
 import { state } from './state.js';
+import * as realm from './realm.js';
 
 // Zusatzanlagen: Sie müssen erst gebaut werden und starten auf Rang D.
 // Jeder Ausbau schaltet den nächsten Rang frei (C, B, A, S, SS).
@@ -72,16 +73,24 @@ export const owned = (id) => tier(id) >= 0;
 export const rank = (id) => (owned(id) ? RARITIES[tier(id)].id : null);
 
 // Preis des nächsten Schritts (Bau oder Ausbau); null, wenn alles ausgebaut ist.
+// In den Portalwelten starten Gebäude direkt auf Rang B und kosten mehr.
+const round = (v, step) => Math.round(v / step) * step;
+export const realmBuy = (id) => {
+  const b = BUILDINGS[id];
+  return round((b.buy + b.upgrades[0] + b.upgrades[1]) * realm.PRICE, 250);
+};
 export function nextCost(id) {
   const t = tier(id);
-  if (t < 0) return BUILDINGS[id].buy;
-  return t < MAX_TIER && t < BUILDINGS[id].upgrades.length ? BUILDINGS[id].upgrades[t] : null;
+  const b = BUILDINGS[id];
+  if (t < 0) return realm.inRealm() && b.upgrades.length ? realmBuy(id) : b.buy;
+  if (t >= MAX_TIER || t >= b.upgrades.length) return null;
+  return realm.inRealm() ? round(b.upgrades[t] * realm.PRICE, 500) : b.upgrades[t];
 }
 
 export function advance(id) {
   const cost = nextCost(id);
   if (cost === null || !state.spend(cost, 'anlagen')) return false;
-  state.buildings[id] = tier(id) + 1;
+  state.buildings[id] = tier(id) < 0 && realm.inRealm() ? realm.START_TIER : tier(id) + 1;
   state.changed();
   return true;
 }

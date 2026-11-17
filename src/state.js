@@ -86,7 +86,9 @@ const fresh = () => ({
   tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
   // Dimensionsportal: welche Welt dahinter liegt, ob man gerade dort ist, und
   // der Spielstand der Welt, in der man gerade NICHT ist
-  realm: { type: null, inside: false, other: null },
+  // type: die erste Portalwelt (Zufall beim Bau) · inside: Welt, in der man gerade ist (null = Heimat)
+  // stash: gemerkter Stand der Welten, in denen man gerade NICHT ist · visited: schon betreten
+  realm: { type: null, inside: null, stash: {}, visited: {} },
 });
 
 // Diese Teile hat jede Welt für sich (Gebäude, Expedition, Dungeon, Arena,
@@ -98,7 +100,8 @@ export const WORLD_KEYS = ['buildings', 'exp', 'dungeon', 'arena', 'mine', 'forg
 function freshRealmWorld() {
   const f = fresh();
   const w = Object.fromEntries(WORLD_KEYS.map((k) => [k, f[k]]));
-  w.buildings = { ...w.buildings, portal: 0 };
+  // Portalwelten starten bei Rang B: der Brunnen steht schon auf B, das Portal für den Rückweg ist da
+  w.buildings = { ...w.buildings, well: 2, portal: 0 };
   return w;
 }
 
@@ -164,14 +167,22 @@ function normalize(saved) {
   merged.village.fish = migrateFish(merged.village.fish);
   merged.village.caughtBy = migrateFish(merged.village.caughtBy);
   merged.magic = migrateMagic(merged.magic);
-  // Spielstand der anderen Welt ebenfalls ergänzen (in der Portalwelt ist die Heimat „die andere“)
-  if (merged.realm.other) {
-    const otherBase = merged.realm.inside ? fresh() : freshRealmWorld();
-    merged.realm.other = mergeWorld(merged.realm.other, otherBase);
-  }
-  if (merged.realm.inside && !merged.realm.type) merged.realm.inside = false;
+  merged.realm = migrateRealm(merged.realm);
+  // gemerkte Welten ebenfalls ergänzen
+  for (const [w, part] of Object.entries(merged.realm.stash)) merged.realm.stash[w] = mergeWorld(part, w === 'normal' ? fresh() : freshRealmWorld());
   if (merged.realm.inside) merged.buildings.portal = 0;
   return merged;
+}
+
+// Ältere Spielstände kannten nur eine Portalwelt: { type, inside: true/false, other, visited: true/false }
+function migrateRealm(r) {
+  const out = { type: r.type || null, inside: null, stash: { ...r.stash }, visited: typeof r.visited === 'object' && r.visited ? { ...r.visited } : {} };
+  if (r.visited === true && r.type) out.visited[r.type] = true;
+  if (typeof r.inside === 'string') out.inside = r.inside;
+  else if (r.inside === true && r.type) out.inside = r.type;
+  if (r.other) out.stash[out.inside ? 'normal' : r.type] = r.other;
+  if (out.inside && !out.type) out.inside = null;
+  return out;
 }
 
 const listeners = new Set();
@@ -180,7 +191,7 @@ syncRealm();
 
 // Merkt sich für die übrigen Module, in welcher Welt man gerade ist
 function syncRealm() {
-  realm.setCurrent(data.realm.inside ? data.realm.type : 'normal');
+  realm.setCurrent(data.realm.inside || 'normal');
 }
 
 function load() {
@@ -437,17 +448,26 @@ export const state = {
   get realm() {
     return data.realm;
   },
-  // Wechselt die Welt: tauscht die Welt-Teile mit dem gemerkten Stand der anderen Welt.
-  switchWorld() {
-    if (!data.realm.type) return false;
-    const other = data.realm.other || freshRealmWorld();
-    const leaving = Object.fromEntries(WORLD_KEYS.map((k) => [k, data[k]]));
-    for (const k of WORLD_KEYS) data[k] = other[k];
-    data.realm.other = leaving;
-    data.realm.inside = !data.realm.inside;
+  // Wechselt die Welt: merkt sich die Welt-Teile der aktuellen Welt und lädt die der Ziel-Welt.
+  // Ohne Ziel: von der Heimat in die erste Portalwelt bzw. zurück in die Heimat.
+  switchWorld(target) {
+    const r = data.realm;
+    if (!r.type) return false;
+    const from = r.inside || 'normal';
+    target ??= from === 'normal' ? r.type : 'normal';
+    if (target === from || (target !== 'normal' && !realm.WORLDS[target])) return false;
+    r.stash[from] = Object.fromEntries(WORLD_KEYS.map((k) => [k, data[k]]));
+    const next = r.stash[target] || (target === 'normal' ? fresh() : freshRealmWorld());
+    delete r.stash[target];
+    for (const k of WORLD_KEYS) data[k] = next[k];
+    r.inside = target === 'normal' ? null : target;
     syncRealm();
     changed();
     return true;
+  },
+  // Gebäude-Stand der Heimat (auch wenn man gerade in einer Portalwelt ist)
+  homeBuildings() {
+    return data.realm.inside ? data.realm.stash.normal?.buildings || {} : data.buildings;
   },
 
   collected: (items = ITEMS) => items.reduce((n, item) => n + (data.owned[item.id] ? 1 : 0), 0),

@@ -3,6 +3,7 @@ import { render } from './art/core.js';
 import { goldIcon, luckIcon, gladiatorIcon } from './art/buffs.js';
 import * as sets from './sets.js';
 import * as tailor from './tailor.js';
+import * as realm from './realm.js';
 
 // Rausch-Effekte, die man mit etwas Glück beim Schlafen bekommt.
 
@@ -25,9 +26,24 @@ export const BUFFS = {
     rank: 'SS',
     text: 'Dungeon und Bossarena: Erfolgschance +10 Prozentpunkte (bis 99 %).',
   },
+  // Rausch-Arten der Portalwelten (aus deren Gerichten): wirken wie zwei Rausche zugleich
+  inferno: {
+    name: 'Höllenfeuer',
+    rank: 'SS',
+    realm: true,
+    with: ['gold', 'gladiator'],
+    text: 'Goldrausch und Gladiatorrausch zugleich.',
+  },
+  segen: {
+    name: 'Himmelssegen',
+    rank: 'SS',
+    realm: true,
+    with: ['luck', 'gold'],
+    text: 'Glücksrausch und Goldrausch zugleich.',
+  },
 };
 
-const ICONS = { gold: [goldIcon, 4], luck: [luckIcon, 3], gladiator: [gladiatorIcon, 4] };
+const ICONS = { gold: [goldIcon, 4], luck: [luckIcon, 3], gladiator: [gladiatorIcon, 4], inferno: [gladiatorIcon, 5], segen: [luckIcon, 5] };
 const iconCache = new Map();
 export function icon(id) {
   if (!iconCache.has(id)) iconCache.set(id, render(ICONS[id][0], 5150 + id.length, ICONS[id][1]));
@@ -45,7 +61,11 @@ export function current(now = Date.now()) {
   const b = state.buff;
   return b && b.until > now && BUFFS[b.id] ? b : null;
 }
-export const active = (id) => current()?.id === id;
+// auch die kombinierten Rausche der Portalwelten zählen
+export const active = (id) => {
+  const c = current();
+  return !!c && (c.id === id || !!BUFFS[c.id].with?.includes(id));
+};
 export const remaining = (now = Date.now()) => (current(now) ? Math.ceil((current(now).until - now) / 1000) : 0);
 
 export function grant(id, now = Date.now(), minutes = BUFF_MINUTES) {
@@ -66,14 +86,15 @@ export const sleepChance = () => SLEEP_BUFF_CHANCE + tailor.cozy() * tailor.COZY
 // Würfelt beim Aufwachen: mit 10 % ein zufälliger der drei Rausche, sonst nichts.
 export function rollSleep(random = Math.random) {
   if (random() >= sleepChance()) return null;
-  const ids = Object.keys(BUFFS);
+  const ids = Object.keys(BUFFS).filter((id) => !BUFFS[id].realm);
   const id = ids[Math.floor(random() * ids.length)];
   grant(id);
   return id;
 }
 
-export const coinValue = () => (active('gold') ? COIN_GOLD_RUSH : COIN_NORMAL) + sets.bonus('coins');
+export const coinValue = () => ((active('gold') ? COIN_GOLD_RUSH : COIN_NORMAL) + sets.bonus('coins')) * realm.goldFactor();
 export const expeditionFactor = () => (active('gold') ? 1 + EXPEDITION_BONUS : 1);
-export const lucky = () => active('luck');
+// Im Himmel gilt am Brunnen und beim Händler immer Glück
+export const lucky = () => active('luck') || realm.bonus('luck') > 0;
 // verschiebt eine Erfolgschance unter Gladiatorrausch nach oben
 export const gladiator = (chance) => (active('gladiator') && chance > 0 ? Math.min(GLADIATOR_MAX, chance + GLADIATOR_BONUS) : chance);

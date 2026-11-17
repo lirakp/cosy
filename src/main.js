@@ -9,6 +9,7 @@ import { createTitle } from './title.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
 import * as realm from './realm.js';
+import * as dimension from './dimension.js';
 import * as care from './companioncare.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
@@ -54,6 +55,7 @@ const ui = createUI({
   onToggle: (open) => setBlocked(open || sleeping),
   onOutfit: (id) => player.setOutfit(id),
   onTravel: (level) => travel(level),
+  onPortal: (target) => travelRealm(target),
   where: () => ({ place, mineLevel }),
   onCast: (id, seconds) => {
     spellFx = 1.6;
@@ -210,17 +212,25 @@ function leaveHouse() {
 
 // ---------------------------------------------------------------- Dimensionsportal
 
-function travelRealm() {
+// target: Ziel-Welt; ohne Ziel aus der Portalwelt nach Hause bzw. von zu Hause
+// in die einzige erreichbare Portalwelt (bei zweien öffnet sich die Auswahl)
+function travelRealm(target) {
   if (sleeping || !buildings.owned('portal') || !state.realm.type) return;
-  const first = !state.realm.visited && !state.realm.inside;
+  if (!target) {
+    if (realm.inRealm()) target = 'normal';
+    else if (dimension.destinations().length > 1) return ui.openPortal();
+    else target = state.realm.type;
+  }
+  if (target === realm.current()) return;
+  const first = target !== 'normal' && !dimension.visited(target);
   audio.play('wish');
   fadeThrough(() => {
     // Erträge bis jetzt gutschreiben – die verlassene Welt läuft „offline“ weiter
     expedition.tick();
     mine.tick();
-    state.switchWorld();
+    state.switchWorld(target);
     if (first) {
-      state.realm.visited = true;
+      state.realm.visited[target] = true;
       state.changed();
     }
     expedition.tick();
@@ -233,7 +243,7 @@ function travelRealm() {
     player.bounds = [10, WORLD_W - 10];
     camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
   });
-  setTimeout(() => (first ? ui.realmArrived(state.realm.type) : ui.toast(state.realm.inside ? `◈ ${realm.WORLDS[state.realm.type].name}` : '◈ Zurück in der Heimat')), 320);
+  setTimeout(() => (first ? ui.realmArrived(target) : ui.toast(target !== 'normal' ? `◈ ${realm.WORLDS[target].name}` : '◈ Zurück in der Heimat')), 320);
 }
 
 // ---------------------------------------------------------------- Dorf
@@ -515,7 +525,7 @@ addEventListener('pagehide', () => state.save());
 // Landschaft: Hintergrund, Hof und Dorf werden in ihren Farben gezeichnet und
 // beim Wechsel neu aufgebaut.
 // Hinter dem Portal gilt immer die Landschaft der Portalwelt
-const wantedTheme = () => (state.realm.inside ? state.realm.type : themes.resolve(state.theme, state.dayCount));
+const wantedTheme = () => (realm.inRealm() ? realm.current() : themes.resolve(state.theme, state.dayCount));
 let themeId = wantedTheme();
 let background;
 let world;
@@ -765,8 +775,8 @@ function frame(now) {
     : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
     : near === 'trader' ? '✦ Erzhändler'
     : near === 'well' ? (well.spiritGift() ? '✦ Wunschbrunnen · Der Geist hat ein Geschenk!' : well.freeSingle() ? '✦ Wunschbrunnen · Gratiswunsch!' : '✦ Wunschbrunnen')
-    : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy.toLocaleString('de-DE')} Gold`
-    : near === 'portal' ? (realm.inRealm() ? '◈ Durch das Portal zurück in die Heimat' : `◈ Durch das Portal${state.realm.visited ? ` · ${realm.WORLDS[state.realm.type].name}` : ' · ins Ungewisse'}`)
+    : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.nextCost(near).toLocaleString('de-DE')} Gold`
+    : near === 'portal' ? (realm.inRealm() ? '◈ Durch das Portal zurück in die Heimat' : dimension.destinations().length > 1 ? '◈ Dimensionsportal · Ziel wählen' : `◈ Durch das Portal${dimension.visited(state.realm.type) ? ` · ${realm.WORLDS[state.realm.type].name}` : ' · ins Ungewisse'}`)
     : near === 'arena' ? 'Bossarena'
     : near === 'forge' ? '⚒ Schmiede'
     : near === 'tower' ? '✦ Magierturm'

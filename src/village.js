@@ -237,7 +237,8 @@ export const tierCount = (tier) => FISH.filter((f) => f.tier === tier).reduce((n
 // ---------------------------------------------------------------- Markt
 
 // Ernte-Preise beim Verkauf
-export const CROP_PRICE = { karotte: 8, weizen: 10, kartoffel: 14, beeren: 14, kuerbis: 70, sternenblume: 220 };
+export const CROP_PRICE = { karotte: 8, weizen: 10, kartoffel: 14, beeren: 14, kuerbis: 70, sternenblume: 220,
+  feuerchili: 60, aschenknolle: 140, lavamelone: 700, wolkenbeere: 60, sonnenweizen: 140, engelsapfel: 700 };
 // Saatgut auf Vorrat: 20 % günstiger als direkt im Garten
 export const SEED_DISCOUNT = 0.8;
 export const seedPrice = (id) => Math.round(garden.crop(id).seed * SEED_DISCOUNT);

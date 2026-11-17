@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES } from './items.js';
+import { ITEMS, RARITIES, worldItems } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
@@ -113,6 +113,8 @@ export function describe(fx) {
   if (fx.stars) out.push(`${fx.stars} Sternschnuppen ziehen kurz nacheinander vorbei – auch am Tag.`);
   if (fx.shield) out.push(`${fx.shield.n === 1 ? 'Nächste Dungeon-Erkundung oder nächster Bosskampf' : `Die nächsten ${fx.shield.n} Dungeon-Erkundungen oder Bosskämpfe`}: ${pct(fx.shield.v)} Erfolg.`);
   if (fx.buff) out.push(`${buffs.BUFFS[fx.buff.id].name} für ${fx.buff.min} Minuten.`);
+  if (fx.ore) out.push(`${fx.ore.n} Erz vom Rang ${rankId(fx.ore.tier)} für die Mine.`);
+  if (fx.wish) out.push('Der nächste Einzelwunsch am Brunnen ist gratis.');
   return out.join(' ');
 }
 
@@ -127,6 +129,54 @@ for (let t = 0; t < RARITIES.length; t++) {
     SPELLS.push({ id: scroll.id, scroll, school: sc.id, name, rank: t, cost: COST[t], cooldown: COOLDOWN[t], fx, text: describe(fx) });
   });
 }
+
+// Zauber der Portalwelten: eigene Namen, stärkere Wirkungen und je Welt eine
+// besondere Zugabe – die Hölle schenkt Erz, der Himmel einen Gratiswunsch.
+const REALM_NAMES = {
+  hoelle: {
+    natur: ['Aschekeim', 'Glutsaat', 'Schwefelernte', 'Höllenzeit', 'Feuerfrühling', 'Ewige Glutreife'],
+    gold: ['Funkenregen', 'Schwefelgold', 'Höllenschatz', 'Goldglut', 'Dämonengold', 'Infernogold'],
+    wasser: ['Lavaköder', 'Schwefelflut', 'Magmaruf', 'Glutgezeiten', 'Höllenstrom', 'Ruf des Feuersees'],
+    glueck: ['Teufelsglück', 'Dämonenwurf', 'Feuerfunke', 'Sternenbrand', 'Höllenpakt', 'Tausend Flammen'],
+    kampf: ['Aschehaut', 'Glutpanzer', 'Dämonenschild', 'Höllenwut', 'Feuerbollwerk', 'Zorn des Abgrunds'],
+  },
+  himmel: {
+    natur: ['Taukeim', 'Wolkensaat', 'Himmelsernte', 'Engelszeit', 'Lichtfrühling', 'Ewiger Garten'],
+    gold: ['Lichtregen', 'Wolkengold', 'Himmelsschatz', 'Sonnenregen', 'Engelsgold', 'Goldenes Paradies'],
+    wasser: ['Wolkenköder', 'Himmelsquelle', 'Regenbogenruf', 'Lichtgezeiten', 'Engelsflut', 'Ruf des Wolkensees'],
+    glueck: ['Engelsglück', 'Federwurf', 'Lichtfunke', 'Sternenchor', 'Segensspruch', 'Tausend Engel'],
+    kampf: ['Federhaut', 'Lichtpanzer', 'Engelsschild', 'Himmelszorn', 'Lichtbollwerk', 'Schwert des Seraphen'],
+  },
+};
+// stärkere Fassung einer Heimat-Wirkung
+function stronger(fx) {
+  const o = { ...fx };
+  if (o.crops) o.crops += 1;
+  if (o.skip) o.skip = Math.round(o.skip * 1.5);
+  if (o.rain) o.rain = Math.round(o.rain * 1.5);
+  if (o.gold) o.gold *= 2;
+  if (o.trap) o.trap = Math.round(o.trap * 1.5);
+  if (o.stars) o.stars = Math.ceil(o.stars * 1.5);
+  if (o.lure) o.lure = { n: o.lure.n + 1, v: Math.min(3, o.lure.v + (o.lure.v < 2 ? 1 : 0)) };
+  if (o.luck) o.luck = { n: o.luck.n + 1, v: o.luck.v };
+  if (o.shield) o.shield = { n: o.shield.n + 1, v: Math.round((o.shield.v + 0.05) * 100) / 100 };
+  if (o.buff) o.buff = { ...o.buff, min: Math.round(o.buff.min * 1.5) };
+  return o;
+}
+for (const w of ['hoelle', 'himmel']) {
+  const scrolls = worldItems(w).filter((i) => i.kind === 'Schriftrolle');
+  for (let t = 0; t < RARITIES.length; t++) {
+    scrolls.filter((s) => s.tier === t).forEach((scroll, i) => {
+      const sc = SCHOOLS[i % SCHOOLS.length];
+      const fx = stronger(sc.spells[t][1]);
+      if (w === 'hoelle') fx.ore = { tier: t, n: (t + 1) * 2 };
+      if (w === 'himmel' && t >= 2) fx.wish = true;
+      SPELLS.push({ id: scroll.id, scroll, world: w, school: sc.id, name: REALM_NAMES[w][sc.id][t], rank: t, cost: COST[t], cooldown: COOLDOWN[t], fx, text: describe(fx) });
+    });
+  }
+}
+for (const sp of SPELLS) sp.world ||= 'normal';
+
 export const spell = (id) => SPELLS.find((s) => s.id === id);
 export const spellOf = (scrollId) => spell(scrollId);
 
@@ -266,6 +316,14 @@ export function cast(id, { onRain } = {}, now = Date.now()) {
     if (cur?.id === fx.buff.id) buffs.extend(fx.buff.min, now);
     else buffs.grant(fx.buff.id, now, fx.buff.min);
     notes.push(`${buffs.BUFFS[fx.buff.id].name} ${fx.buff.min} min`);
+  }
+  if (fx.ore) {
+    state.mine.ore[fx.ore.tier] += fx.ore.n;
+    notes.push(`+${fx.ore.n} Erz ${rankId(fx.ore.tier)}`);
+  }
+  if (fx.wish) {
+    state.well.freeNext = true;
+    notes.push('nächster Wunsch gratis');
   }
   state.changed();
   return notes.join(', ') || sp.text;

@@ -4,6 +4,7 @@ import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
 import * as sets from './sets.js';
 import * as magic from './magic.js';
+import * as realm from './realm.js';
 
 // Wunschbrunnen: Glückszähler (Pity), tägliche Gratiswünsche, ein zufälliger
 // Gratis-Folgezug und der Brunnengeist, der selten einen Wunsch mit
@@ -24,7 +25,8 @@ export const SPIRIT_MIN_TIER = 3; // Geschenk des Brunnengeists: mindestens Rang
 const w = () => state.well;
 export const tier = () => Math.max(0, buildings.tier('well'));
 
-export const cost = (n, dupes = false) => sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + (dupes ? DUPE_EXTRA * n : 0);
+// In den Portalwelten kostet ein Wunsch das Doppelte.
+export const cost = (n, dupes = false) => (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + (dupes ? DUPE_EXTRA * n : 0)) * (realm.inRealm() ? realm.PULL : 1);
 
 // Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
 // aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).

@@ -1055,7 +1055,7 @@ export function createWorld(theme = {}) {
       if (buildings.owned('portal')) {
         const px0 = PORTAL_X - cam;
         const py = GROUND_Y + 4 - 18;
-        const target = realm.inRealm() ? 'normal' : state.realm.type;
+        const target = realm.inRealm() ? 'normal' : state.realm.visited[state.realm.type] ? state.realm.type : null;
         const cols = target === 'hoelle' ? ['#ff5a2a', '#ffb03a', '#c0201c'] : target === 'himmel' ? ['#ffe070', '#ffffff', '#9be8ff'] : target === 'normal' ? ['#6fbf6a', '#5aa0e0', '#9be8e0'] : ['#b888f0', '#9be8e0', '#ffffff'];
         ctx.fillStyle = cols[0];
         ctx.globalAlpha = 0.55;

@@ -43,7 +43,7 @@ export const planFor = (i) => {
 function sellSurplus() {
   if (!h().sell) return 0;
   let gain = 0;
-  for (const c of garden.CROPS) {
+  for (const c of garden.available()) {
     const extra = garden.have(c.id) - h().reserve;
     if (extra <= 0) continue;
     state.garden.crops[c.id] -= extra;
@@ -61,7 +61,7 @@ function getSeed(cropId) {
   const price = village.seedPrice(cropId);
   // Notfalls auch aus dem Vorrat verkaufen – die Beete sollen nicht stillstehen.
   // Zuerst die Pflanze selbst, dann die anderen.
-  const order = [cropId, ...garden.CROPS.map((c) => c.id).filter((id) => id !== cropId)];
+  const order = [cropId, ...garden.available().map((c) => c.id).filter((id) => id !== cropId)];
   for (const id of order) {
     while (h().purse < price && garden.have(id) > 0) {
       state.garden.crops[id]--;
