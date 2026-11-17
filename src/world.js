@@ -423,7 +423,233 @@ function glow(ctx, cx, cy, radius, alpha, color = PAL.glow) {
   ctx.globalAlpha = 1;
 }
 
-// Eine Anlage als eigenes Bild, damit sie je nach Baustand ein- oder ausgeblendet werden kann.
+// ---------------------------------------------------------------- Ausbaustufen der Anlagen
+
+// Rangfarben wie in den Menüs (D … SS); SS schimmert zusätzlich in den Lichtern
+export const RANK_COLORS = ['#9a9aa8', '#6fbf6a', '#5aa0e0', '#b888f0', '#ffc940', '#ff6a9a'];
+const GOLD = '#ffd04a';
+const GOLD_DARK = '#c98a2a';
+const CRYSTAL = '#9be8e0';
+const CRYSTAL_DARK = '#4fa8b0';
+
+// Fahne an einer Stange; dir 1 = weht nach rechts, -1 = nach links
+function rankFlag(ctx, x, top, height, tier, dir = 1) {
+  rect(ctx, x, top, 1, height, PAL.woodDark);
+  px(ctx, x, top - 1, GOLD);
+  const fx = dir > 0 ? x + 1 : x - 7;
+  rect(ctx, fx, top + 1, 7, 4, RANK_COLORS[tier]);
+  rect(ctx, fx, top + 5, 7, 1, 'rgba(42, 33, 64, 0.35)');
+}
+
+function crate(ctx, x, y) {
+  rect(ctx, x, y, 6, 5, PAL.wood);
+  rect(ctx, x, y, 6, 1, PAL.woodLight);
+  rect(ctx, x, y + 2, 6, 1, PAL.woodDark);
+  rect(ctx, x + 2, y, 1, 5, PAL.woodDark);
+}
+
+function crystals(ctx, x, y) {
+  for (const [dx, h] of [[0, 6], [2, 9], [4, 5]]) {
+    rect(ctx, x + dx, y - h, 2, h, CRYSTAL);
+    px(ctx, x + dx, y - h, '#fdf6e3');
+    rect(ctx, x + dx + 1, y - h + 2, 1, h - 2, CRYSTAL_DARK);
+  }
+}
+
+// Jede Anlage bekommt pro Rang etwas dazu (kumulativ). x ist die Mitte der Anlage.
+const UPGRADES = {
+  camp(ctx, x, t) {
+    const base = GROUND_Y + 4;
+    rect(ctx, x + 1, base - 24, 4, 2, RANK_COLORS[t]); // Zeltwimpel in Rangfarbe
+    px(ctx, x + 5, base - 23, RANK_COLORS[t]);
+    if (t >= 1) rankFlag(ctx, x - 21, base - 26, 26, t, -1);
+    if (t >= 2) {
+      crate(ctx, x + 13, base - 6);
+      crate(ctx, x + 15, base - 11);
+      // Feuerstelle mit Steinen (Flammen in den Lichtern)
+      for (const dx of [-30, -28, -26, -24, -22]) rect(ctx, x + dx, base - 2, 2, 2, PAL.stone);
+      rect(ctx, x - 28, base - 4, 5, 2, PAL.woodDark);
+    }
+    if (t >= 3) {
+      // zweites, kleineres Zelt
+      for (let i = 0; i < 12; i++) {
+        const half = Math.floor(i * 0.7) + 1;
+        rect(ctx, x - 40 - half, base - 12 + i, half * 2, 1, i % 3 ? '#c8b088' : '#b09870');
+      }
+      rect(ctx, x - 41, base - 4, 2, 4, PAL.ink);
+    }
+    if (t >= 4) {
+      // Goldsaum am Zelt und Wimpelkette
+      for (let i = 0; i < 19; i++) px(ctx, x - Math.floor(i * 0.75) - 1, base - 19 + i, GOLD);
+      for (let i = 0; i < 14; i++) px(ctx, x - 20 + i, base - 25 + Math.floor(i / 3), i % 3 ? RANK_COLORS[i % 6] : GOLD);
+    }
+    if (t >= 5) {
+      // Sternenmuster auf dem Zelt
+      for (const [dx, dy] of [[-4, -12], [3, -8], [-7, -5], [6, -3], [0, -15]]) {
+        px(ctx, x + dx, base + dy, '#fdf6e3');
+        px(ctx, x + dx + 1, base + dy, '#b888f0');
+      }
+    }
+  },
+
+  dungeon(ctx, x, t) {
+    const base = GROUND_Y + 4;
+    rankFlag(ctx, x + 19, base - 34, 34, t, 1);
+    if (t >= 1) {
+      // hochgezogenes Fallgitter
+      for (let gx = x - 6; gx <= x + 5; gx += 2) rect(ctx, gx, base - 18, 1, 5, PAL.stone);
+      rect(ctx, x - 7, base - 13, 14, 1, PAL.stone);
+    }
+    if (t >= 2) {
+      // Banner an den Seiten
+      for (const bx of [x - 14, x + 11]) {
+        rect(ctx, bx, base - 22, 3, 9, '#8a3c44');
+        px(ctx, bx + 1, base - 13, '#8a3c44');
+        px(ctx, bx + 1, base - 19, GOLD);
+      }
+    }
+    if (t >= 3) {
+      // goldener Schlussstein und Zierkante
+      rect(ctx, x - 13, base - 28, 26, 1, GOLD);
+      rect(ctx, x - 2, base - 23, 4, 3, GOLD);
+      px(ctx, x - 1, base - 22, GOLD_DARK);
+    }
+    if (t >= 4) {
+      // Obelisken mit Runen (Leuchten in den Lichtern)
+      for (const ox of [x - 23, x + 22]) {
+        rect(ctx, ox, base - 18, 4, 18, PAL.stone);
+        rect(ctx, ox + 1, base - 20, 2, 2, PAL.stone);
+        rect(ctx, ox, base - 18, 1, 18, PAL.stoneLight);
+      }
+    }
+    if (t >= 5) crystals(ctx, x - 3, base - 28);
+  },
+
+  arena(ctx, x, t) {
+    const base = GROUND_Y + 4;
+    // vorhandene Fahnen in Rangfarbe
+    rect(ctx, x - 20, base - 36, 5, 3, RANK_COLORS[t]);
+    rect(ctx, x + 15, base - 36, 5, 3, RANK_COLORS[t]);
+    if (t >= 1) {
+      for (const bx of [x - 15, x + 9]) {
+        rect(ctx, bx, base - 21, 5, 8, RANK_COLORS[t]);
+        px(ctx, bx + 2, base - 13, RANK_COLORS[t]);
+        rect(ctx, bx, base - 21, 5, 1, PAL.woodDark);
+      }
+    }
+    const tower = (tx) => {
+      rect(ctx, tx, base - 32, 8, 32, PAL.stone);
+      rect(ctx, tx, base - 32, 1, 32, PAL.stoneLight);
+      for (let i = 0; i < 3; i++) rect(ctx, tx + i * 3, base - 35, 2, 3, PAL.stone);
+      rect(ctx, tx + 3, base - 24, 2, 4, PAL.ink);
+    };
+    if (t >= 2) tower(x + 22);
+    if (t >= 3) {
+      // Goldwappen über dem Tor und Goldzinnen
+      rect(ctx, x - 4, base - 21, 8, 6, GOLD);
+      rect(ctx, x - 3, base - 20, 6, 4, GOLD_DARK);
+      px(ctx, x, base - 19, GOLD);
+      for (let i = 0; i < 8; i++) rect(ctx, x - 22 + i * 6, base - 25, 3, 1, GOLD);
+    }
+    if (t >= 4) {
+      tower(x - 30);
+      rankFlag(ctx, x - 27, base - 47, 12, t, -1);
+      rankFlag(ctx, x + 26, base - 47, 12, t, 1);
+    }
+    if (t >= 5) crystals(ctx, x - 3, base - 25);
+  },
+
+  mine(ctx, x, t) {
+    const base = GROUND_Y + 4;
+    rankFlag(ctx, x + 6, base - 50, 18, t, 1);
+    if (t >= 1) {
+      // Laterne am Stollenrahmen (Licht in den Lichtern)
+      rect(ctx, x - 1, base - 27, 1, 3, PAL.woodDark);
+      rect(ctx, x - 2, base - 24, 3, 3, PAL.ink);
+    }
+    if (t >= 2) {
+      // zweite Lore
+      rect(ctx, x - 31, base - 9, 15, 9, PAL.ink);
+      rect(ctx, x - 30, base - 8, 13, 7, PAL.wood);
+      rect(ctx, x - 30, base - 8, 13, 1, PAL.woodLight);
+      rect(ctx, x - 30, base - 5, 13, 1, PAL.woodDark);
+      for (let i = 0; i < 4; i++) circle(ctx, x - 28 + i * 3, base - 9 - (i % 2), 1, i % 2 ? '#a8b0c0' : '#d07a4a');
+      circle(ctx, x - 27, base - 1, 1, PAL.ink);
+      circle(ctx, x - 20, base - 1, 1, PAL.ink);
+    }
+    if (t >= 3) {
+      // Golderz-Haufen
+      for (const [dx, dy] of [[30, -2], [33, -2], [36, -2], [31, -4], [34, -4], [32, -6]]) {
+        rect(ctx, x + dx, base + dy, 3, 2, GOLD);
+        px(ctx, x + dx, base + dy, '#fff1b8');
+      }
+    }
+    if (t >= 4) {
+      crystals(ctx, x - 22, base - 22);
+      crystals(ctx, x + 18, base - 26);
+    }
+    if (t >= 5) {
+      // Sternenerz in der Felswand
+      for (const [dx, dy] of [[-12, -30], [8, -34], [-24, -12], [22, -16]]) {
+        rect(ctx, x + dx, base + dy, 2, 2, '#ff8ad0');
+        px(ctx, x + dx, base + dy, '#fdf6e3');
+      }
+    }
+  },
+
+  forge(ctx, x, t) {
+    const base = GROUND_Y + 3;
+    const left = x - 14;
+    rankFlag(ctx, x + 11, base - 36, 16, t, 1);
+    if (t >= 1) {
+      // höhere Esse
+      rect(ctx, left + 4, base - 44, 6, 8, PAL.brick);
+      rect(ctx, left + 3, base - 45, 8, 2, PAL.stone);
+      px(ctx, left + 6, base - 41, PAL.ink);
+    }
+    if (t >= 2) {
+      // Waffen an der Wand
+      rect(ctx, x + 10, base - 15, 1, 9, PAL.stoneLight);
+      rect(ctx, x + 9, base - 8, 3, 1, PAL.woodDark);
+      rect(ctx, x + 12, base - 14, 1, 8, PAL.stoneLight);
+      rect(ctx, x + 11, base - 8, 3, 1, PAL.woodDark);
+    }
+    if (t >= 3) {
+      // Goldrahmen ums Schild
+      rect(ctx, left - 7, base - 14, 11, 1, GOLD);
+      rect(ctx, left - 7, base - 6, 11, 1, GOLD);
+      rect(ctx, left - 7, base - 14, 1, 9, GOLD);
+      rect(ctx, left + 3, base - 14, 1, 9, GOLD);
+    }
+    if (t >= 4) {
+      // zweiter Amboss mit Goldkante
+      rect(ctx, left - 32, base - 6, 9, 2, PAL.stone);
+      rect(ctx, left - 34, base - 6, 2, 1, PAL.stone);
+      rect(ctx, left - 30, base - 4, 4, 2, PAL.ink);
+      rect(ctx, left - 31, base - 2, 7, 2, PAL.woodDark);
+      rect(ctx, left - 32, base - 6, 9, 1, GOLD);
+    }
+    if (t >= 5) crystals(ctx, left + 5, base - 45);
+  },
+};
+
+// Bild einer Anlage im angegebenen Rang (breite Leinwand, Mitte bei 56)
+const PROP_W = 112;
+// Grundbilder (Funktionsdeklarationen weiter oben, daher hier schon verfügbar)
+const BASE_DRAW = { camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge };
+const propCache = new Map();
+export function buildingProp(name, tier) {
+  const key = `${name}-${tier}`;
+  if (!propCache.has(key)) {
+    const [c, ctx] = makeCanvas(PROP_W, VIEW_H);
+    BASE_DRAW[name](ctx, PROP_W / 2);
+    UPGRADES[name](ctx, PROP_W / 2, tier);
+    propCache.set(key, c);
+  }
+  return propCache.get(key);
+}
+
+// einfache Requisite (Bauplatz)
 function prop(draw) {
   const [c, ctx] = makeCanvas(48, VIEW_H);
   draw(ctx, 24);
@@ -432,20 +658,13 @@ function prop(draw) {
 
 export function createWorld() {
   const ground = makeGround();
-  const tent = prop(drawTent);
-  const gate = prop(drawDungeonGate);
   const site = prop(drawSite);
-  const arenaProp = prop(drawArena);
-  const forgeProp = (() => {
-    const [c, ctx] = makeCanvas(64, VIEW_H);
-    drawForge(ctx, 40);
-    return c;
-  })();
-  const mineProp = (() => {
-    const [c, ctx] = makeCanvas(80, VIEW_H);
-    drawMineEntrance(ctx, 40);
-    return c;
-  })();
+  // gebaute Anlage im aktuellen Rang, sonst Bauplatz
+  const drawBuilding = (ctx, name, x, cam) => {
+    const t = buildings.tier(name);
+    if (t < 0) ctx.drawImage(site, x - 24 - cam, 0);
+    else ctx.drawImage(buildingProp(name, t), x - PROP_W / 2 - cam, 0);
+  };
   const foreground = makeForeground();
   const r = rng(1234);
 
@@ -491,7 +710,7 @@ export function createWorld() {
   }
 
   function drawTeam(ctx, cam, time) {
-    ctx.drawImage(buildings.owned('camp') ? tent : site, CAMP_X - 30 - 24 - cam, 0);
+    drawBuilding(ctx, 'camp', CAMP_X - 30, cam);
     if (!buildings.owned('camp')) return;
     ctx.drawImage(expedition.leaderImage(), CAMP_X - 6 - cam, GROUND_Y - 10);
     for (const a of [...actors.values()].sort((p, q) => p.slot - q.slot)) {
@@ -552,12 +771,10 @@ export function createWorld() {
 
       drawTeam(ctx, cam, time);
 
-      ctx.drawImage(buildings.owned('dungeon') ? gate : site, DUNGEON_X - 24 - cam, 0);
-      if (buildings.owned('forge')) ctx.drawImage(forgeProp, FORGE_X - 40 - cam, 0);
-      else ctx.drawImage(site, FORGE_X - 30 - cam, 0);
-      ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
-      if (buildings.owned('mine')) ctx.drawImage(mineProp, MINE_X - 40 - cam, 0);
-      else ctx.drawImage(site, MINE_X - 24 - cam, 0);
+      drawBuilding(ctx, 'dungeon', DUNGEON_X, cam);
+      drawBuilding(ctx, 'forge', FORGE_X, cam);
+      drawBuilding(ctx, 'arena', ARENA_X, cam);
+      drawBuilding(ctx, 'mine', MINE_X, cam);
 
       // Gartenbeete vor dem Zaun
       const now = Date.now();
@@ -629,6 +846,62 @@ export function createWorld() {
 
       glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
 
+      // Ausbaustufen, die leuchten oder sich bewegen
+      const tierOf = (n) => buildings.tier(n);
+      const twinkle = (x, y, i) => {
+        if (Math.floor(time * 3 + i * 1.3) % 3 === 0) return;
+        rect(ctx, x - 1, y, 3, 1, PAL.glowLight);
+        rect(ctx, x, y - 1, 1, 3, PAL.glowLight);
+      };
+      // Lagerfeuer am Expeditionslager
+      if (tierOf('camp') >= 2) {
+        const fx = CAMP_X - 30 - 26 - cam;
+        const fy = GROUND_Y + 4;
+        for (let i = 0; i < 3; i++) {
+          const h = 2 + Math.round((Math.sin(time * 11 + i * 2) + 1) * 1.5);
+          rect(ctx, fx - 1 + i, fy - 4 - h, 1, h, i === 1 ? PAL.glow : PAL.roofLight);
+        }
+        glow(ctx, fx, fy - 5, 8 + Math.round(night * 6), 0.18 + 0.25 * night, PAL.roofLight);
+      }
+      // Laterne an der Mine
+      if (tierOf('mine') >= 1) {
+        rect(ctx, MINE_X - 1 - cam, GROUND_Y - 19, 1, 2, PAL.glow);
+        glow(ctx, MINE_X - 1 - cam, GROUND_Y - 18, 7 + Math.round(night * 5), 0.15 + 0.3 * night);
+      }
+      // Runen an den Dungeon-Obelisken und Portal im Tor
+      if (tierOf('dungeon') >= 4) {
+        const pulse = 0.5 + 0.5 * Math.sin(time * 2);
+        for (const ox of [DUNGEON_X - 22, DUNGEON_X + 23]) {
+          ctx.globalAlpha = 0.5 + 0.5 * pulse;
+          for (let k = 0; k < 3; k++) px(ctx, ox + (k % 2) - cam, GROUND_Y - 10 + k * 4, PAL.magic);
+          ctx.globalAlpha = 1;
+          glow(ctx, ox - cam, GROUND_Y - 6, 5, 0.15 + 0.15 * pulse, PAL.magic);
+        }
+      }
+      if (tierOf('dungeon') >= 5) {
+        const gx2 = DUNGEON_X - cam;
+        for (let k = 0; k < 8; k++) {
+          const a = time * 2 + k * 0.8;
+          px(ctx, gx2 + Math.round(Math.cos(a) * 4), GROUND_Y - 5 + Math.round(Math.sin(a) * 6), k % 2 ? '#b888f0' : PAL.magic);
+        }
+      }
+      // Kristalle und Sternenerz funkeln
+      if (tierOf('mine') >= 5) [[-12, -26], [8, -30], [-24, -8], [22, -12]].forEach(([dx, dy], i) => twinkle(MINE_X + dx - cam, GROUND_Y + dy, i));
+      if (tierOf('arena') >= 5) twinkle(ARENA_X - 1 - cam, GROUND_Y - 30, 1);
+      if (tierOf('dungeon') >= 5) twinkle(DUNGEON_X - 1 - cam, GROUND_Y - 34, 2);
+      if (tierOf('forge') >= 5) twinkle(FORGE_X - 8 - cam, GROUND_Y - 50, 3);
+      // SS: Rangfahnen schimmern in allen Farben
+      const hue = `hsl(${Math.round(time * 80) % 360} 85% 65%)`;
+      for (const [name, x, y] of [
+        ['camp', CAMP_X - 30 - 28, GROUND_Y - 21],
+        ['dungeon', DUNGEON_X + 20, GROUND_Y - 29],
+        ['arena', ARENA_X + 27, GROUND_Y - 42],
+        ['mine', MINE_X + 7, GROUND_Y - 45],
+        ['forge', FORGE_X + 12, GROUND_Y - 32],
+      ]) {
+        if (tierOf(name) >= 5) rect(ctx, x - cam, y, 7, 4, hue);
+      }
+
       // reife Beete funkeln
       garden.beds().forEach((b, i) => {
         if (!garden.ready(i)) return;
@@ -643,15 +916,19 @@ export function createWorld() {
       if (buildings.owned('forge')) {
         const fx = FORGE_X - cam;
         const base = GROUND_Y + 3;
+        const ft = buildings.tier('forge');
+        // ab Rang SS brennt eine blaue Zauberflamme, ab Rang C ist die Esse höher
+        const [f1, f2, fGlow] = ft >= 5 ? [PAL.magic, '#b888f0', PAL.magic] : [PAL.roofLight, PAL.glow, PAL.roofLight];
         for (let i = 0; i < 5; i++) {
           const h = 2 + Math.round((Math.sin(time * 10 + i * 1.9) + 1) * 2);
-          rect(ctx, fx - 5 + i * 2, base - 1 - h, 2, h, i % 2 ? PAL.roofLight : PAL.glow);
+          rect(ctx, fx - 5 + i * 2, base - 1 - h, 2, h, i % 2 ? f1 : f2);
         }
         rect(ctx, fx - 6, base - 2, 12, 2, PAL.glowLight);
-        glow(ctx, fx, base - 5, 12 + flicker + Math.round(night * 6), 0.25 + 0.2 * night, PAL.roofLight);
+        glow(ctx, fx, base - 5, 12 + flicker + Math.round(night * 6), 0.25 + 0.2 * night, fGlow);
+        const chimneyTop = ft >= 1 ? 46 : 38;
         for (let i = 0; i < 3; i++) {
           const t = (time * 0.6 + i / 3) % 1;
-          px(ctx, fx - 7 + Math.round(Math.sin(time * 2 + i * 2) * 2), base - 38 - Math.round(t * 18), t < 0.5 ? PAL.glowLight : PAL.roofLight);
+          px(ctx, fx - 7 + Math.round(Math.sin(time * 2 + i * 2) * 2), base - chimneyTop - Math.round(t * 18), t < 0.5 ? PAL.glowLight : ft >= 5 ? PAL.magic : PAL.roofLight);
         }
       }
       if (trader.present()) {

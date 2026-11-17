@@ -218,6 +218,14 @@ werden (250, 400, 600, 800 und 1000 Gold) und starten auf Rang D. Jeder Ausbau s
 | Mine | 1500 | 4000 | 10000 | 25000 | 60000 |
 | Schmiede | 2000 | 5000 | 12000 | 30000 | 70000 |
 
+Jeder Ausbau ist auch zu sehen: Alle Anlagen tragen eine Fahne in der
+Rangfarbe (D grau, C grün, B blau, A lila, S gold, SS schimmernd in allen
+Farben) und bekommen pro Rang etwas dazu – das Lager Kisten, Lagerfeuer,
+ein zweites Zelt und Goldsaum; das Dungeon-Tor Fallgitter, Banner, Goldkante,
+Runen-Obelisken und ein Portal; die Arena Banner, Türme und Goldwappen; die
+Mine Laterne, zweite Lore, Golderz, Kristalle und Sternenerz; die Schmiede eine
+höhere Esse, Waffen an der Wand, zweiten Amboss und eine blaue Zauberflamme.
+
 Der Lager-Rang begrenzt, bis zu welcher Stufe Lebewesen und Leitung entwickelt
 werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen; der Arena-Rang die
 gezielt wählbaren Boss-Ränge und die höchste Ausrüstungsstufe. Die
