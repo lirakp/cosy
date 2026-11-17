@@ -73,7 +73,7 @@ const fresh = () => ({
   owned: {},
   pulls: 0,
   exp: newExpedition(),
-  dungeon: { run: null, team: Array.from({ length: 5 }, member) },
+  dungeon: { run: null, team: Array.from({ length: 5 }, member), descent: null, depthBest: {} },
   // Bossrush: 10 Plätze für Helden und Monster, laufender Rush, bester Lauf
   bossrush: { team: Array.from({ length: 10 }, member), run: null, best: 0 },
   buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1, well: 0, portal: -1 },

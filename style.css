@@ -952,3 +952,11 @@ body[data-display="fill"] { background: #0b0a1f; }
 .rush-log .good { color: #8fe08a; }
 .rush-log .bad { color: #e86a6a; }
 .monster-note { font-size: 11px; padding: 6px; }
+
+/* ---------------------------------------------------------------- Abstieg */
+
+.dtypes .tab small { display: block; font-size: 10px; opacity: 0.7; }
+.backpack { grid-template-columns: repeat(auto-fill, 44px); }
+.rush-log .ev { color: #c8a8ff; }
+.merchant { box-shadow: 0 0 0 2px #ffd04a; margin: 6px 0; }
+.merchant p { margin: 4px 0; font-style: italic; }

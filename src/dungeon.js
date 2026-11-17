@@ -75,7 +75,7 @@ export const MEMORIES = [
 export const memory = (id) => MEMORIES.find((m) => m.id === id);
 export const memoriesSeen = () => d().memories || [];
 // Erinnerung für einen Durchlauf: zuerst eine noch nicht gesehene
-function pickMemory(r = Math.random) {
+export function pickMemory(r = Math.random) {
   const fresh = MEMORIES.filter((m) => !memoriesSeen().includes(m.id));
   const pool = fresh.length ? fresh : MEMORIES;
   return pool[Math.floor(r() * pool.length)];
@@ -100,7 +100,7 @@ export function info(level, typeId) {
 }
 
 // Kategorie der Beute nach den Schwerpunkten der Dungeon-Art
-function pickCat(t, r) {
+export function pickCat(t, r) {
   let u = r();
   for (const [cat, w] of Object.entries(t.weights)) {
     u -= w;
@@ -122,7 +122,8 @@ export const party = createParty({
   members: () => state.dungeon.team,
   tier: () => buildings.tier('dungeon'),
   other: () => [...state.arena.team, ...(state.bossrush?.team || [])],
-  locked: () => !!state.dungeon.run,
+  // gesperrt während einer Erkundung oder eines Abstiegs
+  locked: () => !!state.dungeon.run || !!state.dungeon.descent,
   bonus: 'dungeonPower',
 });
 export { emptyMember };
@@ -154,7 +155,7 @@ export const remaining = (now = Date.now()) => (run() ? Math.max(0, Math.ceil((r
 export function start(level, typeId = 'blut', now = Date.now()) {
   if (typeof typeId === 'number') [now, typeId] = [typeId, 'blut'];
   const heroes = party.heroIds();
-  if (run() || !LEVELS[level] || !unlocked(level) || !heroes.length) return false;
+  if (run() || d().descent || !LEVELS[level] || !unlocked(level) || !heroes.length) return false;
   // Die Stärke beim Aufbruch zählt – das Team ist bis zur Rückkehr gesperrt.
   d().run = { level, type: type(typeId).id, heroes, power: power(), shield: magic.useShield(), start: now, end: now + LEVELS[level].seconds * 1000 };
   state.changed();

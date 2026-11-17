@@ -9,6 +9,7 @@ import { createTitle } from './title.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
 import * as bossrush from './bossrush.js';
+import * as descent from './descent.js';
 import * as realm from './realm.js';
 import * as dimension from './dimension.js';
 import * as care from './companioncare.js';
@@ -533,6 +534,8 @@ function expeditionTick() {
   ui.updateDungeon();
   bossrush.tick();
   ui.updateRush();
+  descent.tick();
+  ui.updateDescent();
 
   // Mine: Erz wird laufend gehackt
   const gained = mine.tick();

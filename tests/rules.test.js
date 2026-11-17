@@ -735,7 +735,8 @@ test('Begleiter: Streuner tauchen auf, lassen sich anfreunden und geben ihren Bo
   if (base) close(expedition.goldPerMinute() / base, 1.1, 0.001, 'Fuchs +10 %');
   assert.equal(companions.bonus('expedition'), 0.1);
   assert.equal(companions.bonus('mine'), 0);
-  assert.equal(companions.setActive('drache'), false, 'nur gefundene');
+  const missing = companions.COMPANIONS.find((x) => !companions.owned(x.id));
+  assert.equal(companions.setActive(missing.id), false, 'nur gefundene');
 });
 
 test('Begleiter: Seltenheit folgt den Rängen, gefundene kommen nicht wieder', () => {
@@ -1282,4 +1283,73 @@ test('Bossrush: kämpft bis zur Niederlage, sammelt Beute, Wiederbeleben wird te
   const res = bossrush.collect();
   assert.equal(state.arena.mats.stoff.reduce((a, b) => a + b) - stoff, res.stoff.reduce((a, b) => a + b));
   assert.equal(bossrush.run(), null);
+});
+
+// ---------------------------------------------------------------- Abstieg
+
+import * as descent from '../src/descent.js';
+
+test('Abstieg: Etagen werden schwerer, Wächter alle 5, Etagenboss alle 10', () => {
+  assert.ok(descent.need(4, 'blut') > descent.need(3, 'blut'));
+  close(descent.need(5, 'blut') / (descent.need(4, 'blut') * descent.GROWTH), descent.GUARD_MULT, 0.02, 'Wächter');
+  close(descent.need(10, 'blut') / (descent.need(9, 'blut') * descent.GROWTH), descent.BOSS_MULT, 0.02, 'Boss');
+  assert.ok(descent.need(1, 'blut') > descent.need(1, 'dornen'), 'Blut ist härter');
+});
+
+test('Abstieg: läuft bis zur Niederlage, Heimkehren sichert alles, Aufgeben kostet die Hälfte', () => {
+  state.buildings.dungeon = 5;
+  state.addItems(getGroup('helden', 'S').slice(0, 5));
+  dungeon.party.autoEquip();
+  const t0 = Date.now();
+  assert.ok(descent.start('schleife', t0));
+  assert.equal(dungeon.start(0), false, 'Team ist im Abstieg');
+  assert.equal(dungeon.party.autoEquip(), false, 'Team gesperrt');
+  let x = descent.current();
+  const random = seeded(8);
+  for (let k = 0; k < 50 && x.status !== 'down'; k++) {
+    descent.tick(t0 + (k + 1) * 3600 * 1000, random);
+    if (x.status === 'merchant') descent.merchant(false, t0 + (k + 1) * 3600 * 1000);
+  }
+  assert.equal(x.status, 'down');
+  assert.ok(x.floor > 5);
+  assert.equal(descent.best('schleife'), x.floor - 1);
+  assert.ok(x.log.length);
+  // Aufgeben: etwa die Hälfte geht verloren
+  x.loot.gold = 1000;
+  x.loot.items = Array.from({ length: 40 }, (_, i) => getGroup('monster', 'C')[i % 50].id);
+  const gold = state.gold;
+  const res = descent.retreat(seeded(3));
+  assert.ok(res.lost);
+  assert.equal(state.gold - gold, 500);
+  assert.ok(res.items.length > 10 && res.items.length < 30);
+  assert.equal(descent.current(), null);
+  // Heimkehren ohne Niederlage: alles bleibt
+  assert.ok(descent.start('blut', t0));
+  descent.current().loot = { gold: 800, items: [getGroup('waffen', 'B')[0].id] };
+  const g2 = state.gold;
+  const ok = descent.retreat();
+  assert.equal(ok.lost, false);
+  assert.equal(state.gold - g2, 800);
+  assert.equal(ok.items.length, 1);
+});
+
+test('Abstieg: Wiederbeleben wird mit der Tiefe teurer und stoppt bei 15.000, Quelle rettet einmal', () => {
+  assert.equal(descent.reviveCost({ floor: 1 }), descent.REVIVE_BASE + descent.REVIVE_STEP);
+  assert.equal(descent.reviveCost({ floor: 500 }), 15000);
+  state.buildings.dungeon = 0;
+  state.addItems([getGroup('helden', 'D')[0]]);
+  dungeon.party.autoEquip();
+  const t0 = Date.now();
+  descent.start('blut', t0);
+  const x = descent.current();
+  x.heal = 1;
+  x.floor = 200; // hoffnungslos
+  descent.tick(t0 + 10000, () => 0.99);
+  assert.equal(x.status, 'running', 'die Quelle fängt die erste Niederlage ab');
+  assert.equal(x.heal, 0);
+  descent.tick(t0 + 20000, () => 0.99);
+  assert.equal(x.status, 'down');
+  state.addGold(20000);
+  assert.ok(descent.revive());
+  assert.equal(x.status, 'running');
 });

@@ -22,6 +22,7 @@ import * as well from './well.js';
 import * as tailor from './tailor.js';
 import * as minigameNs from './minigame.js';
 import * as bossrush from './bossrush.js';
+import * as descent from './descent.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -64,6 +65,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   let selected = null;
   let lastPull = [];
   const pick = { level: 0, type: 'blut' }; // gewählte Art und Gefahrenstufe im Dungeon-Menü
+  let dungeonTab = 'erkundung'; // 'erkundung' (feste Zeit) oder 'abstieg' (endlos)
+  let descentShown = '';
   let arenaTab = 'fight';
   const partySel = { arena: null, dungeon: null, rush: null }; // angetippter Platz je Team: { i, key }
   const rerenderParty = (pk) => (pk === 'dungeon' ? renderDungeon() : renderArena());
@@ -212,6 +215,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (next.companion) return showCompanion(next.companion);
     if (next.realm) return showRealm(next.realm);
     if (next.minigame) return showMinigame(next.minigame);
+    if (next.descent) return showDescentResult(next.descent);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -1547,6 +1551,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   function renderDungeon() {
     if (!buildings.owned('dungeon')) return renderPurchase('dungeon', 'Dungeon');
     dungeon.party.clean();
+    if (descent.current()) dungeonTab = 'abstieg';
+    if (dungeonTab === 'abstieg') return renderDescent();
     const status = dungeon.status();
     const run = dungeon.run();
 
@@ -1602,6 +1608,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${head('Dungeon')}
         <p class="lead">Rüste bis zu ${dungeon.MAX_HEROES} Helden aus und schicke sie los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
         ${upgradeBar('dungeon')}
+        ${dungeonTabs()}
         <nav class="tabs dtypes">${types}</nav>
         <div class="dtype-info dtype-${T.id}"><b>${T.icon} ${T.name}</b><p>${T.text}</p><span class="muted">Beute: ${Math.round((T.weights[Object.keys(T.weights)[0]] + T.weights[Object.keys(T.weights)[1]]) * 100)} % ${catNames} · ${T.needMult > 1 ? `Stärke × ${String(T.needMult).replace('.', ',')}` : ''} · Gold × ${String(T.goldMult).replace('.', ',')}</span></div>
         ${chronicle}
@@ -1623,7 +1630,6 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
   }
 
-  // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
   // läuft jede Sekunde mit, solange der Bossrush offen ist
   function updateRush() {
     if (view !== 'arena' || arenaTab !== 'rush' || !bossrush.run()) return;
@@ -1634,6 +1640,103 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (t) t.textContent = clock(bossrush.remaining());
   }
 
+  const dungeonTabs = () => `<nav class="tabs"><button class="tab${dungeonTab === 'erkundung' ? ' on' : ''}" data-act="dtab" data-v="erkundung">Erkundung</button><button class="tab${dungeonTab === 'abstieg' ? ' on' : ''}" data-act="dtab" data-v="abstieg">⬇ Abstieg</button></nav>`;
+
+  // ------------------------------------------------------------ Abstieg (endloser Dungeon)
+
+  function renderDescent() {
+    descent.tick();
+    const x = descent.current();
+    const typesHtml = dungeon.TYPES.map((t) => `<button class="tab dtab-${t.id}${t.id === pick.type ? ' on' : ''}" data-act="dtype" data-v="${t.id}" ${x ? 'disabled' : ''}>${t.icon} ${t.name}<small>Rekord: Etage ${descent.best(t.id)}</small></button>`).join('');
+    let body;
+    if (!x) {
+      descentShown = '';
+      const T = dungeon.type(pick.type);
+      body = `
+        <p class="lead">Das Dungeon-Team steigt Etage für Etage hinab – alle ${descent.FLOOR_SECONDS} Sekunden eine, auch wenn du nicht spielst –, bis es fällt. Alle ${descent.GUARD_EVERY} Etagen wartet ein Wächter, alle ${descent.BOSS_EVERY} ein Etagenboss mit sicherem Sammelstück. Dazwischen: Schatzräume, heilende Quellen, Händler und Fallen${T.memories ? ' – und Erinnerungen' : ''}.</p>
+        <nav class="tabs dtypes">${typesHtml}</nav>
+        <div class="dtype-info dtype-${T.id}"><b>${T.icon} ${T.name}</b><p>${T.text}</p></div>
+        <h4>Team · Stärke ${fmt(dungeon.power())}</h4>
+        ${membersHtml('dungeon')}
+        <div class="chest">
+          <p class="muted">Heimkehren sichert den ganzen Rucksack. Fällt das Team, kannst du es wiederbeleben (${fmt(descent.REVIVE_BASE)} Gold + ${descent.REVIVE_STEP} je Etage, höchstens ${fmt(descent.REVIVE_MAX)}) – oder aufgeben und die Hälfte der Beute verlieren.</p>
+          <div class="line"><button class="big" data-act="descent-start" ${dungeon.party.heroIds().length && !dungeon.run() ? '' : 'disabled'}>⬇ Abstieg beginnen · ${T.name}</button></div>
+          ${dungeon.run() ? '<p class="note">Gerade läuft noch eine Erkundung.</p>' : ''}
+        </div>`;
+    } else {
+      descentShown = `${x.floor}${x.status}`;
+      const T = dungeon.type(x.type);
+      const kind = x.floor % descent.BOSS_EVERY === 0 ? 'boss' : x.floor % descent.GUARD_EVERY === 0 ? 'waechter' : 'etage';
+      const odds = descent.chance(x.floor, x);
+      const logHtml = x.log.map((l) => l.event
+        ? `<li class="ev">◆ Etage ${l.floor}: ${l.event === 'geheilt' ? 'Die Quelle rettet das Team!' : descent.EVENTS[l.event].name}</li>`
+        : `<li class="${l.win ? 'good' : 'bad'}">${l.win ? '✓' : '✗'} Etage ${l.floor} · ${descent.KIND_NAMES[l.kind]} · ${percent(l.odds)}</li>`).join('');
+      const mods = [x.boost ? `${x.boost > 0 ? '+' : ''}${Math.round(x.boost * 100)} % Stärkung` : '', x.malus ? `−${Math.round(x.malus * 100)} % durch Fallen` : '', x.heal ? `${x.heal}× Quellwasser` : ''].filter(Boolean).join(' · ');
+      const event = x.status === 'merchant'
+        ? `<div class="chest merchant"><b>◆ ${descent.EVENTS.haendler.name}</b><p>„Ein Trank gefällig? +${Math.round(descent.MERCHANT_BOOST * 100)} % Stärke für den Rest des Abstiegs.“</p>
+            <div class="line"><button class="big" data-act="descent-buy" ${state.gold >= descent.MERCHANT_PRICE(x.floor) ? '' : 'disabled'}>Kaufen · ${fmt(descent.MERCHANT_PRICE(x.floor))} Gold</button><button data-act="descent-skip">Weitergehen</button></div></div>`
+        : '';
+      body = `
+        <div class="chest rush dtype-${T.id}">
+          <div class="line"><span>${T.icon} <b>${T.name}</b> · Etage <b class="gold-text">${x.floor}</b> · Rekord ${descent.best(x.type)}</span><span>Stärke ${fmt(descent.effectivePower(x))}</span></div>
+          ${mods ? `<p class="muted">${mods}</p>` : ''}
+          <p>${x.status === 'down' ? `<b class="bad">Das Team ist auf Etage ${x.floor} gefallen.</b>` : x.status === 'merchant' ? 'Ein Händler versperrt den Weg …' : `Nächste: <b>${descent.KIND_NAMES[kind]} ${x.floor}</b> · Stärke ${fmt(descent.need(x.floor, x.type))} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b> · in <b id="descent-time">${clock(descent.remaining())}</b>`}</p>
+          ${event}
+          <div class="line"><span>Rucksack: <b class="gold-text">${fmt(x.loot.gold)} Gold</b> · ${x.loot.items.length} Sammelstücke</span></div>
+          <div class="grid backpack" id="backpack"></div>
+          ${logHtml ? `<ul class="rush-log">${logHtml}</ul>` : ''}
+          <div class="line">
+            ${x.status === 'down' ? `<button class="big" data-act="descent-revive" ${state.gold >= descent.reviveCost() ? '' : 'disabled'}>Wiederbeleben · ${fmt(descent.reviveCost())} Gold</button>
+              <button data-act="descent-retreat">Aufgeben (−${Math.round(descent.RETREAT_LOSS * 100)} % Beute)</button>`
+              : `<button data-act="descent-retreat">Heimkehren und alles behalten</button>`}
+          </div>
+        </div>
+        <h4>Team</h4>
+        ${membersHtml('dungeon')}`;
+    }
+    overlay.innerHTML = `
+      <section class="panel dungeon">
+        ${head('Dungeon')}
+        ${upgradeBar('dungeon')}
+        ${dungeonTabs()}
+        ${body}
+      </section>`;
+    if (x) $('#backpack')?.replaceChildren(...x.loot.items.slice(-24).map((id) => getItem(id)).filter(Boolean).map((item) => tile(item)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+  }
+
+  function updateDescent() {
+    if (view !== 'dungeon' || dungeonTab !== 'abstieg' || !descent.current()) return;
+    descent.tick();
+    const x = descent.current();
+    if (!x || `${x.floor}${x.status}` !== descentShown) return renderDungeon();
+    const t = $('#descent-time');
+    if (t) t.textContent = clock(descent.remaining());
+  }
+
+  function showDescentResult(res) {
+    const T = dungeon.type(res.type);
+    audio.play(res.lost ? 'lose' : 'win');
+    const el = document.createElement('div');
+    el.className = `reveal result dtype-${res.type}${res.lost ? ' fail' : ''}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">${T.name.toUpperCase()} · ABSTIEG</div>
+        <div class="rank-big">ETAGE ${res.floors}</div>
+        <div class="gold-won">+${fmt(res.gold)} Gold</div>
+        <div class="grid" id="loot"></div>
+        <p>${res.items.length} Sammelstück${res.items.length === 1 ? '' : 'e'}${res.lost ? ` · ${res.lostItems} gingen beim Rückzug verloren` : ''}</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('#loot', el).replaceChildren(...res.items.map(({ item, isNew }) => tile(item, { badge: isNew ? '<span class="new">NEU</span>' : '' })));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    onToggle(true);
+  }
+
+  // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
   function updateDungeon() {
     const text = $('#run-text');
     const run = dungeon.run();
@@ -2146,6 +2249,20 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'dtype') { pick.type = btn.dataset.v; renderDungeon(); }
+    if (act === 'dtab') { dungeonTab = btn.dataset.v; renderDungeon(); }
+    if (act === 'descent-start') { audio.play(descent.start(pick.type) ? 'start' : 'error'); partySel.dungeon = null; renderDungeon(); }
+    if (act === 'descent-buy') { audio.play(descent.merchant(true) ? 'levelUp' : 'error'); renderDungeon(); }
+    if (act === 'descent-skip') { descent.merchant(false); renderDungeon(); }
+    if (act === 'descent-revive') { audio.play(descent.revive() ? 'levelUp' : 'error'); renderDungeon(); }
+    if (act === 'descent-retreat') {
+      const res = descent.retreat();
+      if (res) {
+        reveals.push({ descent: res });
+        reveals.push(...res.items.filter((i) => i.item.tier >= HIGHLIGHT_TIER).map((i) => ({ ...i, source: 'AUS DEM ABSTIEG' })));
+        renderDungeon();
+        nextReveal();
+      }
+    }
     if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level, pick.type) ? 'start' : 'error'); renderDungeon(); }
     if (act === 'dungeon-abort') { dungeon.abort(); renderDungeon(); }
     if (act === 'dungeon-collect') collectDungeon();
@@ -2191,6 +2308,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     updateChest,
     updateDungeon,
     updateRush,
+    updateDescent,
     openDungeon: () => show('dungeon'),
     openArena: () => show('arena'),
     openWardrobe: () => show('wardrobe'),

@@ -644,6 +644,35 @@ Erinnerung an grausame alte Zeiten, etwa „Das Erntefest von Rabenfurt“, „D
 Belagerung von Dornwall“ oder „Das letzte Lied der Elfen“. Die 12 Erinnerungen
 werden in der **Chronik** im Dungeon-Menü gesammelt; ungesehene kommen zuerst.
 Werte in `src/dungeon.js` (`TYPES`, `MEMORIES`).
+
+### Abstieg (endloser Dungeon)
+
+Im Dungeon-Menü gibt es neben „Erkundung“ den Reiter **⬇ Abstieg**. Das
+Dungeon-Team (5 Helden) steigt in der gewählten Art Etage für Etage hinab: alle
+**10 Sekunden** eine, auch offline, bis es fällt. Solange der Abstieg läuft,
+ist das Team gesperrt. Eine normale Erkundung geht dann nicht.
+
+- Jede Etage verlangt 10 % mehr Stärke (× Art). Alle **5** Etagen wartet ein
+  **Wächter** (× 1,5, sicheres Sammelstück), alle **10** ein **Etagenboss**
+  (× 2,5, Sammelstück einen Rang höher). Der Mindest-Rang der Beute steigt alle
+  10 Etagen.
+- Gold je Etage wächst mit der Tiefe (Wächter × 2, Boss × 5). Normale Etagen
+  bringen mit 15 % ein Sammelstück im Schwerpunkt der Art.
+- **Ereignis-Räume** (25 % der normalen Etagen; Gewichte je Art):
+  - Schatzraum: ein Extra-Stück
+  - Heilende Quelle: übersteht die nächste Niederlage kostenlos
+  - Händler im Dunkeln: +15 % Stärke für den Rest des Laufs gegen Gold; der
+    Abstieg wartet, bis man kauft oder weitergeht
+  - Fallenkorridor: −10 % Stärke, im Dornendungeon häufig
+  - Erinnerung: nur im Schleifendungeon; landet in der Chronik und stärkt
+    (+10 %) oder erschüttert (−5 %)
+- Alles landet im **Rucksack**. **Heimkehren** behält alles. Nach einer
+  Niederlage: **Wiederbeleben** (300 Gold + 150 je Etage, höchstens 15.000)
+  oder **Aufgeben**. Dann gehen die Hälfte des Golds und etwa die Hälfte der
+  Stücke verloren.
+- Der Rekord (tiefste Etage) wird je Art gespeichert.
+
+Werte in `src/descent.js`.
 ## Bossarena
 
 Drei Helden treten gemeinsam an; jeder trägt Waffe, Rüstung, Relikt und
