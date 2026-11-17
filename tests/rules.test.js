@@ -406,12 +406,45 @@ test('Angeln: Fangquoten folgen den Brunnen-Chancen, Flaschenpost selten', () =>
   const count = Array(RARITIES.length).fill(0);
   let treasure = 0;
   for (let i = 0; i < n; i++) {
-    const r = village.catchFish(random);
+    const r = village.rollCatch(random, 'Tag');
     if (r.treasure) treasure++;
     else count[r.tier]++;
   }
   close(treasure / n, village.TREASURE_CHANCE, 0.005, 'Flaschenpost');
   RARITIES.forEach((r, t) => close(count[t] / (n - treasure), r.chance, 0.008, `Fisch Rang ${r.id}`));
+});
+
+test('Angeln: 24 Arten, jede beißt nur zu ihrer Tageszeit, jeder Rang hat immer etwas', () => {
+  assert.equal(village.FISH.length, 24);
+  assert.equal(new Set(village.FISH.map((f) => f.id)).size, 24);
+  const random = seeded(31);
+  for (const phase of ['Morgen', 'Tag', 'Abend', 'Nacht']) {
+    for (let i = 0; i < 3000; i++) {
+      const r = village.rollCatch(random, phase);
+      if (r.treasure) continue;
+      const ofTier = village.FISH.filter((f) => f.tier === r.tier);
+      if (ofTier.some((f) => village.isActive(f, phase))) assert.ok(village.isActive(r.fish, phase), `${r.fish.name} ${phase}`);
+    }
+  }
+  const nightOnly = village.FISH.filter((f) => f.time === 'night');
+  assert.ok(nightOnly.length >= 5, 'mehrere nachtaktive Arten');
+  for (let i = 0; i < 3000; i++) {
+    const r = village.rollCatch(random, 'Tag');
+    if (!r.treasure) assert.notEqual(r.fish.time, 'night', 'tagsüber keine Nachtfische (wo es Alternativen gibt)');
+  }
+});
+
+test('Angeln: alte Spielstände mit Fischen nach Rang werden übernommen', () => {
+  const loaded = state.parseSave(JSON.stringify({ gold: 1, owned: {}, village: { fish: { 0: 3, 3: 1 }, caughtBy: { 5: 1, bottle: 2 } } }));
+  assert.deepEqual(loaded.village.fish, { weissfisch: 3, hecht: 1 });
+  assert.deepEqual(loaded.village.caughtBy, { mondfisch: 1, bottle: 2 });
+});
+
+test('Dorf: Fisch-Aufgaben nehmen beliebige Arten des verlangten Rangs', () => {
+  state.village.fish = { karpfen: 1, wels: 2 };
+  state.village.quests.ole = { villager: 'ole', difficulty: 'mittel', need: { type: 'fish', tier: 2, n: 3 }, reward: { gold: 100, item: null } };
+  assert.ok(village.complete('ole'));
+  assert.equal(village.tierCount(2), 0);
 });
 
 test('Arena: Helden werden mit Helden-Duplikaten gelevelt, bis zum Arena-Rang', () => {
@@ -437,10 +470,10 @@ test('Angeln: der beim Auswerfen gewürfelte Fang wird erst beim Einholen gezäh
   const random = seeded(21);
   let res;
   do res = village.rollCatch(random); while (res.treasure);
-  assert.equal(village.fishCount(res.tier), 0, 'Würfeln allein ändert nichts');
+  assert.equal(village.fishCount(res.species), 0, 'Würfeln allein ändert nichts');
   village.applyCatch(res);
-  assert.equal(village.fishCount(res.tier), 1);
-  assert.equal(village.caughtTotal(res.tier), 1, 'fürs Angelbuch mitgezählt');
-  village.sellFish(res.tier);
-  assert.equal(village.caughtTotal(res.tier), 1, 'Verkaufen ändert das Angelbuch nicht');
+  assert.equal(village.fishCount(res.species), 1);
+  assert.equal(village.caughtTotal(res.species), 1, 'fürs Angelbuch mitgezählt');
+  village.sellFish(res.species);
+  assert.equal(village.caughtTotal(res.species), 1, 'Verkaufen ändert das Angelbuch nicht');
 });

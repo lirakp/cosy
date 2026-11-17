@@ -287,8 +287,15 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
   const ground = makeVillage();
   const lake = makeLake();
   // Fische, die in der Seesicht umherschwimmen (meist häufige Arten)
+  // häufige, gerade aktive Arten schwimmen herum; beim Auswerfen neu gemischt
+  const pickSwimmer = (i) => {
+    const tier = [0, 0, 0, 1, 1, 2, 0][i];
+    const pool = village.activeFish().filter((f) => f.tier === tier);
+    const list = pool.length ? pool : village.FISH.filter((f) => f.tier === tier);
+    return list[Math.floor(Math.random() * list.length)].id;
+  };
   const swimmers = Array.from({ length: 7 }, (_, i) => ({
-    tier: [0, 0, 0, 1, 1, 2, 0][i],
+    species: pickSwimmer(i),
     x: Math.random() * VIEW_W,
     y: SURFACE + 22 + Math.random() * 70,
     dir: Math.random() < 0.5 ? -1 : 1,
@@ -311,6 +318,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
     fishPress() {
       if (fish.phase === 'idle') {
         const [a, b] = village.BITE_SECONDS;
+        swimmers.forEach((s, i) => (s.species = pickSwimmer(i)));
         Object.assign(fish, { phase: 'cast', t: 0, biteAt: a + Math.random() * (b - a), target: village.rollCatch(), from: Math.random() < 0.5 ? -1 : 1 });
         return 'cast';
       }
@@ -441,7 +449,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
       // umherschwimmende Fische
       for (const s of swimmers) {
         const y = Math.round(s.y + Math.sin(time * 2 + s.phase) * 2);
-        drawSprite(ctx, village.fishImage(s.tier), Math.round(s.x) - 8, y - 8, s.dir < 0);
+        drawSprite(ctx, village.fishImage(s.species), Math.round(s.x) - 8, y - 8, s.dir < 0);
       }
 
       // Angelrute vom Steg aus, Schnur zum Schwimmer
@@ -470,7 +478,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         px(ctx, bx + 1, hookY + 1, PAL.stoneLight);
       }
       const target = fish.target;
-      const img = target ? (target.treasure ? village.bottleImage() : village.fishImage(target.tier)) : null;
+      const img = target ? (target.treasure ? village.bottleImage() : village.fishImage(target.species)) : null;
       if (img) {
         const left = fish.from < 0;
         if (fish.phase === 'wait' && fish.t > fish.biteAt - 2.4) {

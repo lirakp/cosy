@@ -70,9 +70,21 @@ Dorf; rechts im Dorf führt der Weg zurück.
 - **Angeln am Steg:** `E` wirft aus, und die Kamera wechselt in eine Sicht
   auf den See: Fische schwimmen umher, und der Fisch, der gleich anbeißt, schwimmt
   sichtbar zum Haken – ein seltener Fang ist also schon vorher zu erkennen. Nach 3–8 Sekunden beißt etwas („!“), dann
-  hat man 0,9 Sekunden zum Einholen. Fische nach den Brunnen-Chancen: Weißfisch
-  (D), Forelle (C), Karpfen (B), Hecht (A), Goldkarpfen (S), Mondfisch (SS); mit
-  3 % eine Flaschenpost mit einem Sammelstück.
+  hat man 0,9 Sekunden zum Einholen. Erst wird der Rang nach den Brunnen-Chancen
+  gewürfelt, dann beißt eine gerade aktive Art dieses Rangs (☀ tagsüber, ☾ nachts,
+  ◐ in der Dämmerung, ◯ immer – jeder Rang hat eine Art, die immer beißt); mit
+  3 % hängt eine Flaschenpost mit einem Sammelstück am Haken.
+
+| Rang | Arten |
+| --- | --- |
+| D | Weißfisch ◯, Rotauge ☀, Flussbarsch ☀, Schleie ◐, Gründling ◯, Leuchtgrundel ☾ |
+| C | Forelle ◯, Aal ☾, Brasse ☀, Rotfeder ☀, Mondbarsch ☾ |
+| B | Karpfen ◯, Zander ◐, Wels ☾, Regenbogenforelle ☀, Laternenfisch ☾ |
+| A | Hecht ◯, Stör ◐, Geisterkarpfen ☾, Koi ☀ |
+| S | Goldkarpfen ◯, Nordlichtfisch ☾ |
+| SS | Mondfisch ☾, Drachenfisch ☀ |
+
+  Aufgaben verlangen „Fisch vom Rang X“ – jede Art dieses Rangs zählt.
 
 Werte in `src/village.js`.
 

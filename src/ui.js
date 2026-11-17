@@ -454,33 +454,41 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
 
   // ------------------------------------------------------------ Angelbuch
 
+  const TIME_ICON = { any: '◯', day: '☀', night: '☾', twilight: '◐' };
+
   function renderFishBook() {
-    const chances = tierChances();
-    const known = village.FISH.filter((_, t) => village.caughtTotal(t) > 0).length;
-    const total = village.FISH.reduce((n, _, t) => n + village.caughtTotal(t), 0);
-    const cards = village.FISH.map((f, t) => {
-      const caught = village.caughtTotal(t);
-      const rank = RARITIES[t].id;
-      return `<div class="fishcard r-${rank}${caught ? '' : ' unknown'}" data-fish="${t}">
+    const known = village.FISH.filter((f) => village.caughtTotal(f.id) > 0).length;
+    const total = village.FISH.reduce((n, f) => n + village.caughtTotal(f.id), 0);
+    const card = (f) => {
+      const caught = village.caughtTotal(f.id);
+      const rank = RARITIES[f.tier].id;
+      const active = village.isActive(f);
+      return `<div class="fishcard r-${rank}${caught ? '' : ' unknown'}" data-fish="${f.id}">
         <div class="line"><b>${caught ? f.name : '???'}</b><span class="evo">Rang ${rank}</span></div>
-        <p class="muted">${caught ? village.FISH_INFO[t] : 'Noch nie gefangen.'}</p>
+        <p class="muted">${caught ? f.info : 'Noch nie gefangen.'}</p>
         <div class="fishstats">
           <span>Gefangen <b>${fmt(caught)}</b></span>
-          <span>Im Vorrat <b>${fmt(village.fishCount(t))}</b></span>
-          <span>Seltenheit <b>${percent(chances[t] * (1 - village.TREASURE_CHANCE))}</b></span>
+          <span>Im Vorrat <b>${fmt(village.fishCount(f.id))}</b></span>
+          <span class="${active ? 'gold-text' : ''}">${TIME_ICON[f.time]} ${village.TIME_NAMES[f.time]}${active ? ' · jetzt aktiv' : ''}</span>
           <span>Marktwert <b class="gold-text">${fmt(f.price)}</b></span>
         </div>
       </div>`;
+    };
+    const groups = RARITIES.map((r, t) => {
+      const list = village.FISH.filter((f) => f.tier === t);
+      const found = list.filter((f) => village.caughtTotal(f.id)).length;
+      return `<h4>Rang ${r.id} · ${percent(r.chance)} · ${found}/${list.length} entdeckt</h4><div class="fishcards">${list.map(card).join('')}</div>`;
     }).join('');
     overlay.innerHTML = `
       <section class="panel fishbookpanel">
         ${head('Angelbuch')}
         <p class="lead">${known} von ${village.FISH.length} Arten entdeckt · ${fmt(total)} Fische gefangen · ${fmt(village.bottlesFound())} Flaschenposts gefunden</p>
         <div class="bar"><i style="width:${(known / village.FISH.length) * 100}%"></i></div>
-        <div class="fishcards">${cards}</div>
-        <p class="muted">Mit ${percent(village.TREASURE_CHANCE)} hängt statt eines Fisches eine Flaschenpost mit einem Sammelstück am Haken.</p>
+        <p class="muted">Erst entscheidet der Rang (Chancen wie am Brunnen), dann beißt eine Art dieses Rangs, die gerade aktiv ist:
+          ☀ tagsüber, ☾ nachts, ◐ in der Dämmerung, ◯ immer. Mit ${percent(village.TREASURE_CHANCE)} hängt eine Flaschenpost am Haken.</p>
+        ${groups}
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-fish]')) el.prepend(picture(village.fishImage(Number(el.dataset.fish))));
+    for (const el of overlay.querySelectorAll('[data-fish]')) el.prepend(picture(village.fishImage(el.dataset.fish)));
   }
 
   // ------------------------------------------------------------ Dorf
@@ -490,7 +498,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   function needIcon(need) {
     if (need.type === 'ore') return mine.oreImage(need.tier);
     if (need.type === 'crop') return garden.cropImage(need.id);
-    if (need.type === 'fish') return village.fishImage(need.tier);
+    if (need.type === 'fish') return village.tierFishImage(need.tier);
     return itemImage(getGroup(need.cat, RARITIES[need.tier].id)[0]);
   }
 
@@ -564,7 +572,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <p>Wert am Markt: ${fmt(res.fish.price)} Gold</p>
         <button data-act="reveal-next">Weiter</button>
       </div>`;
-    $('.frame', el).append(picture(village.fishImage(res.tier)));
+    $('.frame', el).append(picture(village.fishImage(res.species)));
     document.body.append(el);
     $('button[data-act]', el).focus();
     audio.play('reveal', res.tier);
@@ -589,10 +597,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <div class="seed" data-crop-img="${c.id}"><b>${c.name}</b><span>Vorrat: ${garden.have(c.id)}</span>
           <span class="gold-text">${village.CROP_PRICE[c.id]} Gold je Stück</span>
           <button data-act="sell-crop" data-v="${c.id}" ${garden.have(c.id) ? '' : 'disabled'}>Alle verkaufen</button></div>`).join('');
-      const fish = village.FISH.map((f, t) => `
-        <div class="seed" data-fish-img="${t}"><b>${f.name} <span class="evo r-${RARITIES[t].id}">${RARITIES[t].id}</span></b><span>Vorrat: ${village.fishCount(t)}</span>
+      const fish = village.FISH.filter((f) => village.fishCount(f.id)).map((f) => `
+        <div class="seed" data-fish-img="${f.id}"><b>${f.name} <span class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</span></b><span>Vorrat: ${village.fishCount(f.id)}</span>
           <span class="gold-text">${fmt(f.price)} Gold je Stück</span>
-          <button data-act="sell-fish" data-v="${t}" ${village.fishCount(t) ? '' : 'disabled'}>Alle verkaufen</button></div>`).join('');
+          <button data-act="sell-fish" data-v="${f.id}">Alle verkaufen</button></div>`).join('') || '<p class="muted">Noch keine Fische im Vorrat – ab zum Steg!</p>';
       body = `<h4>Ernte</h4><div class="seeds">${crops}</div><h4>Fische</h4><div class="seeds">${fish}</div>
         <p class="muted">Tipp: Aufgaben der Dorfbewohner zahlen für Ernte und Fische meist deutlich mehr.</p>`;
     }
@@ -624,7 +632,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         ${body}
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
-    for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(Number(el.dataset.fishImg))));
+    for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
     for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
     updateMarket();
   }
@@ -1445,7 +1453,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (act === 'market-tab') { marketTab = btn.dataset.v; renderMarket(); }
     if (act === 'buy-seed') { audio.play(village.buySeeds(btn.dataset.v, Number(btn.dataset.n)) ? 'coin' : 'error'); renderMarket(); }
     if (act === 'sell-crop') { if (village.sellCrops(btn.dataset.v)) audio.play('sell'); renderMarket(); }
-    if (act === 'sell-fish') { if (village.sellFish(Number(btn.dataset.v))) audio.play('sell'); renderMarket(); }
+    if (act === 'sell-fish') { if (village.sellFish(btn.dataset.v)) audio.play('sell'); renderMarket(); }
     if (act === 'market-buy') {
       const got = village.buyStock(Number(btn.dataset.v));
       if (!got) audio.play('error');
@@ -1601,7 +1609,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         toast('Eine Flaschenpost! Darin steckt etwas …');
         reveals.push({ item: res.item, isNew: res.isNew, source: 'FLASCHENPOST' });
       } else if (res.tier < HIGHLIGHT_TIER) {
-        toast(`Gefangen: ${res.fish.name} (Rang ${RARITIES[res.tier].id})`);
+        toast(`Gefangen: ${res.fish.name} (Rang ${RARITIES[res.tier].id})${res.isNew ? ' – neu im Angelbuch!' : ''}`);
         audio.play('coin');
         return;
       } else reveals.push({ catch: res });

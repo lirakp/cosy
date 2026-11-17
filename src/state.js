@@ -76,11 +76,22 @@ const fresh = () => ({
   village: newVillage(),
 });
 
+// Ältere Spielstände zählten Fische nur nach Rang (0 … 5) – das waren genau diese Arten.
+const OLD_FISH = ['weissfisch', 'forelle', 'karpfen', 'hecht', 'goldkarpfen', 'mondfisch'];
+function migrateFish(map = {}) {
+  const out = {};
+  for (const [k, n] of Object.entries(map)) {
+    const key = /^\d$/.test(k) ? OLD_FISH[Number(k)] : k;
+    out[key] = (out[key] || 0) + n;
+  }
+  return out;
+}
+
 // Ergänzt fehlende Teile (ältere Spielstände) und prüft die Grundform.
 function normalize(saved) {
   if (!saved || typeof saved !== 'object' || typeof saved.gold !== 'number' || !saved.owned || typeof saved.owned !== 'object') return null;
   const base = fresh();
-  return {
+  const merged = {
     ...base,
     ...saved,
     exp: { ...base.exp, ...saved.exp },
@@ -93,6 +104,9 @@ function normalize(saved) {
     garden: { ...base.garden, ...saved.garden },
     village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market } },
   };
+  merged.village.fish = migrateFish(merged.village.fish);
+  merged.village.caughtBy = migrateFish(merged.village.caughtBy);
+  return merged;
 }
 
 const listeners = new Set();

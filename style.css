@@ -678,7 +678,7 @@ table.stats td { border-top: 1px solid #3a3170; }
 
 /* ---------------------------------------------------------------- Angelbuch */
 
-.fishcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.fishcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
 .fishcard {
   background: #1b1730;
   padding: 10px;

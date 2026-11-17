@@ -660,6 +660,7 @@ function frame(now) {
 
   const ph = phase(dayTime);
   audio.setNight(ph.night);
+  village.setDayPhase(dayLabel(dayTime).name);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);

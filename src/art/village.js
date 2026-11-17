@@ -30,26 +30,57 @@ export const VILLAGER_ART = {
     extra: (g) => { g.rect(4, 1, 8, 2, M.accent); g.rect(5, 0, 6, 1, M.accent); } }),
 };
 
-// Fische: Körperfarbe je Art
-export const FISH_COLORS = [
-  [200, 10, 70], // Weißfisch
-  [10, 50, 60], // Forelle
-  [35, 50, 45], // Karpfen
-  [120, 35, 40], // Hecht
-  [40, 90, 55], // Goldkarpfen
-  [260, 60, 60], // Mondfisch
-];
-
-export const fishDraw = (tier) => (g) => {
-  for (let i = 0; i < 3; i++) g.rect(2 - i, 7 - i, 1, 3 + i * 2, M.second);
-  g.ellipse(8.5, 8, 5, 3, M.main);
-  g.set(12, 7, M.ink);
-  for (let x = 6; x <= 11; x++) g.set(x, 10, M.second);
-  if (tier >= 1) for (const x of [6, 8, 10]) g.set(x, 7 - (x % 4 === 0 ? 1 : 0), M.accent);
-  if (tier === 3) for (let x = 5; x <= 11; x++) g.set(x, 6, M.second);
-  if (tier >= 4) g.pts(M.glow, [[7, 3], [8, 4], [9, 3]]);
-  if (tier === 5) g.pts(M.white, [[6, 8], [9, 9], [11, 8]]);
-  return { [M.main]: ramp(...FISH_COLORS[tier]), [M.second]: ramp(FISH_COLORS[tier][0] + 10, FISH_COLORS[tier][1], FISH_COLORS[tier][2] - 15) };
+// Fische: Form, Muster und Farben kommen aus der Art (siehe village.js).
+// shape: normal · small · long · eel · round · tall
+// pattern: none · stripes · spots · rainbow · koi · glow · aurora
+export const fishDraw = (spec) => (g, r) => {
+  const { shape = 'normal', pattern = 'none' } = spec;
+  // Schwanzflosse links
+  const tail = (cy, size) => {
+    for (let i = 0; i < size; i++) g.rect(3 - i, cy - 1 - i, 1, 3 + i * 2, M.second);
+  };
+  if (shape === 'eel') {
+    for (let x = 1; x <= 14; x++) {
+      const y = 8 + Math.round(Math.sin(x / 2.2) * 1.5);
+      g.rect(x, y - 1, 1, 2 + (x > 10 ? 1 : 0), M.main);
+    }
+    g.set(14, 7 + Math.round(Math.sin(14 / 2.2) * 1.5), M.ink);
+    for (let x = 3; x <= 12; x += 3) g.set(x, 8 + Math.round(Math.sin(x / 2.2) * 1.5) - 2, M.second);
+  } else {
+    const body = {
+      normal: [8.5, 8, 5, 3, 3],
+      small: [9, 8, 3.5, 2.2, 2],
+      long: [8.5, 8, 6.5, 2.2, 3],
+      round: [8.5, 8, 4.5, 4.5, 2],
+      tall: [8.5, 8, 4.5, 5.5, 2],
+    }[shape];
+    const [cx, cy, rx, ry, tailSize] = body;
+    tail(cy, tailSize);
+    g.ellipse(cx, cy, rx, ry, M.main);
+    // Rücken- und Bauchflosse
+    g.pts(M.second, [[Math.round(cx) - 1, Math.round(cy - ry) - 1], [Math.round(cx), Math.round(cy - ry) - 1], [Math.round(cx), Math.round(cy + ry) + 1]]);
+    for (let x = Math.round(cx - rx + 2); x <= Math.round(cx + rx - 2); x++) if (g.get(x, Math.round(cy + ry - 0.5))) g.set(x, Math.round(cy + ry - 0.5), M.second);
+    const eyeX = Math.round(cx + rx - 2);
+    const eyeY = Math.round(cy - 1);
+    // Muster
+    if (pattern === 'stripes') for (const x of [cx - 2, cx, cx + 2]) for (let y = 0; y < 16; y++) if (g.get(Math.round(x), y) === M.main) g.set(Math.round(x), y, M.accent);
+    if (pattern === 'spots') for (let i = 0; i < 6; i++) { const x = r.i(Math.round(cx - rx + 2), Math.round(cx + rx - 2)); const y = r.i(Math.round(cy - ry + 1), Math.round(cy + ry - 1)); if (g.get(x, y) === M.main) g.set(x, y, M.accent); }
+    if (pattern === 'rainbow') for (let x = 0; x < 16; x++) if (g.get(x, Math.round(cy)) === M.main) g.set(x, Math.round(cy), M.accent);
+    if (pattern === 'koi') for (let i = 0; i < 3; i++) g.ellipse(cx - 2 + i * 2.5, cy - 1 + (i % 2) * 2, 1.4, 1.2, M.accent);
+    if (pattern === 'glow' || pattern === 'aurora') for (let x = Math.round(cx - rx + 2); x < Math.round(cx + rx - 1); x += 2) if (g.get(x, Math.round(cy + 1))) g.set(x, Math.round(cy + 1), M.glow);
+    if (pattern === 'aurora') for (let x = 0; x < 16; x++) if (g.get(x, Math.round(cy - 1)) === M.main) g.set(x, Math.round(cy - 1), M.accent);
+    g.set(eyeX, eyeY, M.ink);
+    // Besonderheiten
+    if (spec.lure) g.pts(M.second, [[eyeX, eyeY - 2], [eyeX + 1, eyeY - 3], [eyeX + 2, eyeY - 4]]), g.set(eyeX + 3, eyeY - 4, M.glow);
+    if (spec.whiskers) g.pts(M.ink, [[eyeX + 2, eyeY + 2], [eyeX + 3, eyeY + 3], [eyeX + 2, eyeY + 3]]);
+    if (spec.armor) for (let x = Math.round(cx - rx + 1); x < Math.round(cx + rx); x += 2) if (g.get(x, Math.round(cy - ry + 0.5))) g.set(x, Math.round(cy - ry + 0.5), M.white);
+  }
+  if (spec.tier >= 4) g.pts(M.glow, [[7, 2], [8, 3], [9, 2]]);
+  if (spec.tier === 5) g.pts(M.white, [[2, 3], [13, 13]]);
+  const [h, sat, l] = spec.color;
+  const [fh, fs, fl] = spec.fin || [h + 10, sat, l - 15];
+  const [ah, as, al] = spec.accent || [h + 180, 60, 60];
+  return { [M.main]: ramp(h, sat, l), [M.second]: ramp(fh, fs, fl), [M.accent]: ramp(ah, as, al) };
 };
 
 // Flaschenpost als Angelschatz
