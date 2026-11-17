@@ -39,27 +39,38 @@ export const party = createParty({
   monsters: true,
 });
 
+// Ultimativer Bossrush: nur Bosse von Rang A bis SS – dafür sind sie schwächer
+// angesetzt und werden langsamer zäher (bessere Siegchancen), die Beute ist größer.
+export const MODES = {
+  normal: { name: 'Bossrush', minTier: 0, powerMult: 1, growth: GROWTH, goldMult: 1, silkBonus: 0 },
+  ultimate: { name: 'Ultimativer Bossrush', minTier: 3, powerMult: 0.5, growth: 0.035, goldMult: 1.5, silkBonus: 0.15 },
+};
+export const mode = (id) => MODES[id] || MODES.normal;
+
 export const run = () => r().run;
+export const best = (m = 'normal') => (m === 'ultimate' ? r().bestUltimate || 0 : r().best || 0);
 export const reviveCost = (bosses = run()?.bosses || 0) => Math.min(REVIVE_MAX, REVIVE_BASE + REVIVE_STEP * bosses);
 
 // Stärke des nächsten Bosses: Grundwert seines Rangs, wächst mit jedem Sieg
-export const bossPower = (tier, bosses) => Math.round(BOSS_POWER[tier] * (1 + GROWTH * bosses));
+export const bossPower = (tier, bosses, m = 'normal') => Math.round(BOSS_POWER[tier] * mode(m).powerMult * (1 + mode(m).growth * bosses));
 export const winChance = (power, boss) => buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power / boss + party.gemSum('smaragd'))));
 
-function newBoss(rand) {
-  return { tier: rollTier(0, rand), kind: Math.floor(rand() * BOSS_NAMES.length) };
+function newBoss(rand, m = 'normal') {
+  return { tier: rollTier(mode(m).minTier, rand), kind: Math.floor(rand() * BOSS_NAMES.length) };
 }
-export const bossOf = (b) => (b ? { ...bossInfo(b), power: bossPower(b.tier, run()?.bosses || 0) } : null);
+export const bossOf = (b) => (b ? { ...bossInfo(b), power: bossPower(b.tier, run()?.bosses || 0, run()?.mode) } : null);
 
-export function start(now = Date.now(), rand = Math.random) {
+export function start(now = Date.now(), rand = Math.random, m = 'normal') {
+  if (typeof now === 'string') [m, now] = [now, Date.now()];
   if (run() || !party.heroIds().length || !buildings.owned('arena')) return false;
   r().run = {
+    mode: MODES[m] ? m : 'normal',
     power: party.teamPower(), // die Stärke beim Aufbruch zählt
     bosses: 0,
     revives: 0,
     status: 'fighting',
     next: now + FIGHT_SECONDS * 1000,
-    boss: newBoss(rand),
+    boss: newBoss(rand, m),
     loot: { gold: 0, stoff: [0, 0, 0, 0, 0, 0], seide: [0, 0, 0, 0, 0, 0] },
     log: [],
   };
@@ -74,17 +85,18 @@ export function tick(now = Date.now(), rand = Math.random) {
   let fights = 0;
   while (x.status === 'fighting' && now >= x.next && fights < MAX_FIGHTS_PER_TICK) {
     const boss = x.boss;
-    const power = bossPower(boss.tier, x.bosses);
+    const M = mode(x.mode);
+    const power = bossPower(boss.tier, x.bosses, x.mode);
     const odds = winChance(x.power, power);
     const win = rand() < odds;
     x.log.unshift({ tier: boss.tier, kind: boss.kind, win, odds });
     x.log.length = Math.min(x.log.length, 8);
     if (win) {
       x.bosses++;
-      x.loot.gold += Math.round(BOSS_GOLD[boss.tier] * realm.goldFactor() * (1 + party.gemSum('saphir')));
+      x.loot.gold += Math.round(BOSS_GOLD[boss.tier] * M.goldMult * realm.goldFactor() * (1 + party.gemSum('saphir')));
       x.loot.stoff[boss.tier] += WIN_CLOTH;
-      if (rand() < SILK_CHANCE + party.gemSum('topas')) x.loot.seide[boss.tier] += 1;
-      x.boss = newBoss(rand);
+      if (rand() < SILK_CHANCE + M.silkBonus + party.gemSum('topas')) x.loot.seide[boss.tier] += 1;
+      x.boss = newBoss(rand, x.mode);
       x.next += FIGHT_SECONDS * 1000;
     } else {
       x.status = 'down';
@@ -92,7 +104,8 @@ export function tick(now = Date.now(), rand = Math.random) {
     fights++;
   }
   if (fights >= MAX_FIGHTS_PER_TICK) x.next = now + FIGHT_SECONDS * 1000;
-  r().best = Math.max(r().best || 0, x.bosses);
+  if (x.mode === 'ultimate') r().bestUltimate = Math.max(r().bestUltimate || 0, x.bosses);
+  else r().best = Math.max(r().best || 0, x.bosses);
   if (fights) state.changed();
   return fights;
 }

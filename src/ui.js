@@ -400,8 +400,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <h4>Rush-Team · Stärke ${fmt(P.teamPower())}</h4>
         ${membersHtml('rush')}
         <div class="chest">
-          <p class="muted">Bester Lauf: <b class="gold-text">${state.bossrush.best || 0}</b> Bosse. Wiederbeleben kostet ${fmt(bossrush.REVIVE_BASE)} Gold + ${bossrush.REVIVE_STEP} je besiegtem Boss (höchstens ${fmt(bossrush.REVIVE_MAX)}).</p>
-          <div class="line"><button class="big" data-act="rush-start" ${P.heroIds().length ? '' : 'disabled'}>Bossrush starten</button></div>
+          <p class="muted">Bester Lauf: <b class="gold-text">${bossrush.best('normal')}</b> Bosse · ultimativ: <b class="gold-text">${bossrush.best('ultimate')}</b>. Wiederbeleben kostet ${fmt(bossrush.REVIVE_BASE)} Gold + ${bossrush.REVIVE_STEP} je besiegtem Boss (höchstens ${fmt(bossrush.REVIVE_MAX)}).</p>
+          <div class="rush-modes">
+            <button class="big" data-act="rush-start" data-v="normal" ${P.heroIds().length ? '' : 'disabled'}>Bossrush starten<small>Bosse D–SS</small></button>
+            <button class="big ultimate" data-act="rush-start" data-v="ultimate" ${P.heroIds().length ? '' : 'disabled'}>⚔ Ultimativer Bossrush<small>nur A–SS · halb so stark, wachsen langsamer · Gold × 1,5 · mehr Seide</small></button>
+          </div>
         </div>`;
     }
     rushShown = `${x.bosses}${x.status}`;
@@ -410,7 +413,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const log = x.log.map((f) => `<li class="${f.win ? 'good' : 'bad'}">${f.win ? '✓' : '✗'} ${arena.BOSS_NAMES[f.kind]} <b class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</b> · ${percent(f.odds)}</li>`).join('');
     return `
       <div class="chest rush r-${boss.rank}">
-        <div class="line"><span>Besiegte Bosse <b class="gold-text">${x.bosses}</b>${x.revives ? ` · ${x.revives}× wiederbelebt` : ''}</span><span>Team-Stärke ${fmt(x.power)}</span></div>
+        <div class="line"><span>${x.mode === 'ultimate' ? '⚔ <b>Ultimativ</b> · ' : ''}Besiegte Bosse <b class="gold-text">${x.bosses}</b>${x.revives ? ` · ${x.revives}× wiederbelebt` : ''}</span><span>Team-Stärke ${fmt(x.power)}</span></div>
         <div class="rush-boss"><div class="frame" id="rush-boss"></div>
           <div><b>${x.status === 'down' ? 'Besiegt von' : 'Nächster Gegner'}: ${boss.name}</b> <span class="evo">Rang ${boss.rank}</span><br>
           Stärke ${fmt(boss.power)} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b><br>
@@ -2365,7 +2368,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         nextReveal();
       }
     }
-    if (act === 'rush-start') { audio.play(bossrush.start() ? 'start' : 'error'); partySel.rush = null; renderArena(); }
+    if (act === 'rush-start') { audio.play(bossrush.start(btn.dataset.v || 'normal') ? 'start' : 'error'); partySel.rush = null; renderArena(); }
     if (act === 'rush-revive') { audio.play(bossrush.revive() ? 'levelUp' : 'error'); renderArena(); }
     if (act === 'rush-collect') {
       const res = bossrush.collect();

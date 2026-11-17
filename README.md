@@ -764,6 +764,12 @@ Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 - **Heimkehren** (jederzeit): Gold und Material kommen in den Vorrat. Der
   beste Lauf wird gespeichert.
 
+**⚔ Ultimativer Bossrush** (zweiter Start-Knopf): nur Bosse von Rang **A bis SS**.
+Damit die Siegchancen passen, sind sie nur halb so stark angesetzt und werden je
+Sieg nur um 3,5 % statt 6 % zäher. Die Beute ist größer: Gold × 1,5 und +15 %
+Seide-Chance. Wiederbeleben und Heimkehren funktionieren wie im normalen Rush. Der
+beste Lauf wird getrennt gespeichert.
+
 Werte in `src/bossrush.js`.
 ## Statistik
 

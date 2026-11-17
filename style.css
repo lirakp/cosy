@@ -985,3 +985,6 @@ body[data-display="fill"] { background: #0b0a1f; }
 .plinth b { color: #fdf6e3; }
 .popup-toggle { display: flex; gap: 6px; align-items: center; font-size: 12px; cursor: pointer; }
 .popup-toggle input { accent-color: #ffd04a; }
+.rush-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rush-modes .ultimate { background: linear-gradient(90deg, #8a2a4a, #b888f0); }
+.rush-modes small { display: block; font-size: 10px; }

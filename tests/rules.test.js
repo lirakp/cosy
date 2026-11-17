@@ -1429,3 +1429,18 @@ test('Statuen: ab Rang A aus Erz gegossen, Bonus nach Kategorie und Rang', () =>
   close(companions.bonus('power'), 0.03 * 1.5, 1e-9, 'Helden-Statue S: +4,5 % Stärke');
   assert.equal(state.count(hero.id), 1, 'das Stück bleibt in der Sammlung');
 });
+
+test('Bossrush ultimativ: nur Bosse A–SS, schwächer angesetzt, mehr Gold', () => {
+  state.buildings.arena = 5;
+  state.addItems(getGroup('helden', 'S').slice(0, 5));
+  bossrush.party.autoEquip();
+  const t0 = Date.now();
+  assert.ok(bossrush.start(t0, seeded(9), 'ultimate'));
+  const x = bossrush.run();
+  assert.equal(x.mode, 'ultimate');
+  bossrush.tick(t0 + 3600 * 1000, seeded(11));
+  assert.ok(x.log.every((f) => f.tier >= 3), 'nur A, S, SS');
+  assert.ok(bossrush.bossPower(4, 10, 'ultimate') < bossrush.bossPower(4, 10) * 0.6);
+  assert.ok(x.bosses > 0);
+  assert.equal(bossrush.best('ultimate'), x.bosses);
+});
