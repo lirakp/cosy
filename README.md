@@ -123,6 +123,22 @@ Sterne und Glühwürmchen, Fenster, Laterne und Fackeln leuchten. Die Tageszeit
 steht oben links, wird mit dem Spielstand gespeichert und bleibt in der Pause
 stehen. Farben und Übergänge stehen in `src/daycycle.js`.
 
+## Landschaften
+
+Im Pause-Fenster lässt sich die Landschaft wählen; sie gilt für Hof und Dorf und
+wird mit dem Spielstand gespeichert:
+
+| Landschaft | Besonderheiten |
+| --- | --- |
+| Bergland | wie bisher |
+| Kirschblütental | rosa Bäume, frisches Grün, fallende Blütenblätter |
+| Herbstwald | orange-rote Bäume, goldene Wiese, fallendes Laub |
+| Winterland | Schnee auf Wiese, Bäumen, Tannen, Gipfeln und Dach, Schneefall |
+| Küste | Meer mit Inseln statt Bergen, Dünen, Sandweg |
+| Jahreszeiten | wechselt alle 2 Spieltage: Frühling, Sommer, Herbst, Winter |
+
+Farben und Wetter stehen in `src/themes.js`.
+
 ## Musik und Ton
 
 Musik und Effekte entstehen live mit der Web-Audio-Schnittstelle, ohne
@@ -321,6 +337,7 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/config.js` | Auflösung (320×180), Weltbreite, Bodenlinien |
 | `src/palette.js` | Alle Farben an einem Ort |
 | `src/background.js` | Himmel, Sterne, Sonne, Mond, Wolken, Berge, Hügel (Parallax) |
+| `src/themes.js` | Landschaften und Jahreszeiten |
 | `src/daycycle.js` | Tag-Nacht-Zyklus: Himmelsfarben, Tönung, Sonnen- und Mondbahn |
 | `src/world.js` | Wiese, Weg, Häuschen, Brunnen, Lager, Dungeon-Tor, Münzen, Rauch, Glühwürmchen |
 | `src/items.js` | Katalog der Sammelstücke, Ränge, Chancen, Ziehen |

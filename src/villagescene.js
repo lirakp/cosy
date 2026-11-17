@@ -132,6 +132,7 @@ function makeGround() {
 const WINDOWS = [];
 
 function makeVillage() {
+  WINDOWS.length = 0; // beim Neuzeichnen (Landschaftswechsel) nicht doppelt sammeln
   const { canvas, ctx } = makeGround();
   drawPond(ctx);
   // Bäckerei mit Brezel-Schild

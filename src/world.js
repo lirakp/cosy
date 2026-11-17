@@ -107,6 +107,15 @@ function drawCottage(ctx, x) {
     px(ctx, x - 5 + inset, y, PAL.roofLight);
   }
   rect(ctx, x - 5 + 18, wallTop - roofH, w + 10 - 36, 1, PAL.roofLight);
+  // Schnee auf dem Dach (Winterland)
+  if (PAL.snow) {
+    for (let i = 0; i < 5; i++) {
+      const inset = Math.floor((roofH - 1 - i) * 1.1);
+      rect(ctx, x - 5 + inset, wallTop - roofH + 1 + i, w + 10 - inset * 2, 1, i < 4 ? '#f4f8ff' : '#d8e4f4');
+    }
+    for (let k = 0; k < w + 6; k += 5) rect(ctx, x - 3 + k, wallTop - roofH + 6, 2, 1 + (k % 3), '#f4f8ff');
+    rect(ctx, x + 34, wallTop - 23, 9, 2, '#f4f8ff');
+  }
   rect(ctx, x - 5, wallTop + 1, w + 10, 1, PAL.roofDark);
 
   // Tür
@@ -656,7 +665,31 @@ function prop(draw) {
   return c;
 }
 
-export function createWorld() {
+// Wetter je Landschaft: fallende Teilchen vor der Szene
+const WEATHER = {
+  snow: { n: 60, fall: 14, drift: 6, sway: 3, colors: ['#ffffff', '#f4f8ff', '#dce6f2'], size: [1, 1, 2] },
+  leaves: { n: 18, fall: 9, drift: 10, sway: 6, colors: ['#d0702a', '#f0a040', '#9a4028', '#e8c050'], size: [2, 2, 2] },
+  petals: { n: 26, fall: 7, drift: 8, sway: 5, colors: ['#f8c0d8', '#f2a0b0', '#fff0f6'], size: [1, 2, 1] },
+};
+
+function drawWeather(ctx, kind, time) {
+  const w = WEATHER[kind];
+  if (!w) return;
+  for (let i = 0; i < w.n; i++) {
+    const seed = Math.sin(i * 12.9898) * 43758.5453;
+    const u = seed - Math.floor(seed);
+    const speed = 0.6 + u * 0.8;
+    const x = ((i * 61.7 + time * w.drift * speed) % (VIEW_W + 20)) - 10 + Math.sin(time * 1.3 + i) * w.sway;
+    const y = ((u * VIEW_H + time * w.fall * speed) % (VIEW_H + 10)) - 5;
+    const size = w.size[i % w.size.length];
+    ctx.fillStyle = w.colors[i % w.colors.length];
+    // Laub dreht sich: abwechselnd breit und schmal
+    const flip = kind === 'leaves' && Math.floor(time * 4 + i) % 2;
+    ctx.fillRect(Math.round(x), Math.round(y), flip ? 1 : size, size === 2 && kind === 'leaves' ? 1 + (flip ? 1 : 0) : size);
+  }
+}
+
+export function createWorld(theme = {}) {
   const ground = makeGround();
   const site = prop(drawSite);
   // gebaute Anlage im aktuellen Rang, sonst Bauplatz
@@ -1011,6 +1044,7 @@ export function createWorld() {
     drawFront(ctx, camX, time) {
       const cam = Math.round(camX);
       ctx.drawImage(foreground, -Math.round(camX * FRONT_FACTOR), 0);
+      drawWeather(ctx, theme.weather, time);
     },
   };
 }

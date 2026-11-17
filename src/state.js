@@ -264,6 +264,20 @@ export const state = {
     return gain;
   },
 
+  // gewählte Landschaft (oder „jahreszeiten“) und gezählte Spieltage
+  get theme() {
+    return data.theme || 'bergland';
+  },
+  set theme(id) {
+    data.theme = id;
+    changed();
+  },
+  get dayCount() {
+    return data.dayCount || 0;
+  },
+  set dayCount(n) {
+    data.dayCount = n;
+  },
   get village() {
     return data.village;
   },

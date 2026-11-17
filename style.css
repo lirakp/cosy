@@ -671,3 +671,7 @@ table.stats td { border-top: 1px solid #3a3170; }
 .tile.elsewhere { opacity: 0.45; cursor: not-allowed; }
 .tile .away-tag { background: #6a549e; color: #fdf6e3; }
 .members.dungeon { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+.theme-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.theme-buttons button { font-size: 12px; padding: 6px 4px; }
+.theme-buttons button.on { background: #6a549e; box-shadow: 0 0 0 2px #fdf6e3; }

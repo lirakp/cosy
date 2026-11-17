@@ -208,8 +208,8 @@ function drawPlant(ctx) {
   const x = 52;
   rect(ctx, x - 5, FLOOR - 10, 10, 10, '#b0604a');
   rect(ctx, x - 6, FLOOR - 11, 12, 2, '#c87a5a');
-  for (const [dx, dy, r] of [[0, -16, 4], [-4, -13, 3], [4, -13, 3], [-2, -20, 3], [3, -19, 2]]) circle(ctx, x + dx, FLOOR + dy, r, PAL.leaf);
-  for (const [dx, dy] of [[-1, -18], [3, -15], [-4, -14]]) px(ctx, x + dx, FLOOR + dy, PAL.leafLight);
+  for (const [dx, dy, r] of [[0, -16, 4], [-4, -13, 3], [4, -13, 3], [-2, -20, 3], [3, -19, 2]]) circle(ctx, x + dx, FLOOR + dy, r, '#3f7a4a');
+  for (const [dx, dy] of [[-1, -18], [3, -15], [-4, -14]]) px(ctx, x + dx, FLOOR + dy, '#6aa85a');
 }
 
 function makeRoom() {

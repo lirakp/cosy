@@ -77,7 +77,7 @@ function makeClouds() {
 
 // Kantige Bergkette als Silhouette, unten im Dunst verlaufend.
 // Dieselbe Bergkette einmal in Abendfarben und einmal in Tagesfarben.
-function makeMountains(factor, baseY, amp, seed, colors) {
+function makeMountains(factor, baseY, amp, seed, colors, snowcaps = false) {
   const w = layerWidth(factor);
   const r = rng(seed);
   const p1 = r(), p2 = r(), p3 = r();
@@ -88,10 +88,38 @@ function makeMountains(factor, baseY, amp, seed, colors) {
       const h = tri(x / 97 + p1) * 0.55 + tri(x / 41 + p2) * 0.3 + tri(x / 17 + p3) * 0.15;
       const top = Math.round(baseY - h * amp);
       rect(ctx, x, top, 1, VIEW_H - top, color);
+      // Schneekappen auf den höchsten Gipfeln
+      const snowLine = baseY - amp * 0.62;
+      if (snowcaps && top < snowLine) rect(ctx, x, top, 1, Math.round((snowLine - top) * 0.8) + 1, key === 'day' ? '#f4f8ff' : '#f0dce6');
       for (let y = top; y < VIEW_H; y++) {
         const amount = (y - (baseY - amp * 0.35)) / (amp * 0.9);
         if (amount > 0 && dither(x, y, amount * 0.7)) px(ctx, x, y, haze);
       }
+    }
+    imgs[key] = c;
+  }
+  return { imgs, factor };
+}
+
+// Meer mit Inseln statt Bergen (Küste)
+function makeSea(factor, horizon, seed) {
+  const w = layerWidth(factor);
+  const r = rng(seed);
+  const islands = Array.from({ length: Math.ceil(w / 90) }, () => [Math.floor(r() * w), 8 + Math.floor(r() * 18), 3 + Math.floor(r() * 7)]);
+  const colors = { dusk: ['#6a5a98', '#d0889a', '#4a3e70'], day: ['#3c78b8', '#a8d4f0', '#5a7a5a'] };
+  const imgs = {};
+  for (const [key, [sea, shine, island]] of Object.entries(colors)) {
+    const [c, ctx] = makeCanvas(w, VIEW_H);
+    for (const [ix, iw, ih] of islands) {
+      for (let dx = -iw; dx <= iw; dx++) {
+        const h = Math.round(ih * Math.sqrt(1 - (dx / (iw + 1)) ** 2));
+        rect(ctx, ix + dx, horizon - h, 1, h, island);
+      }
+    }
+    rect(ctx, 0, horizon, w, VIEW_H - horizon, sea);
+    rect(ctx, 0, horizon, w, 1, shine);
+    for (let y = horizon + 3; y < VIEW_H; y += 4) {
+      for (let x = (y * 7) % 11; x < w; x += 9 + (y % 5)) rect(ctx, x, y, 3, 1, shine);
     }
     imgs[key] = c;
   }
@@ -111,7 +139,7 @@ function pine(ctx, x, baseY, h, color) {
 }
 
 // Sanfte Hügel mit Tannen.
-function makeHills(factor, baseY, amp, seed, color, pineColor, pineCount) {
+function makeHills(factor, baseY, amp, seed, color, pineColor, pineCount, snowy = false) {
   const w = layerWidth(factor);
   const [c, ctx] = makeCanvas(w, VIEW_H);
   const r = rng(seed);
@@ -121,7 +149,9 @@ function makeHills(factor, baseY, amp, seed, color, pineColor, pineCount) {
 
   for (let i = 0; i < pineCount; i++) {
     const x = Math.floor(r() * w);
-    pine(ctx, x, height(x) + 2, 8 + Math.floor(r() * 9), pineColor);
+    const h = 8 + Math.floor(r() * 9);
+    pine(ctx, x, height(x) + 2, h, pineColor);
+    if (snowy) for (let i = 0; i < h; i += 4) rect(ctx, x - Math.floor(i / 4) - (i % 4), height(x) - h + i, Math.floor(i / 4) * 2 + 1, 1, '#f4f8ff');
   }
   for (let x = 0; x < w; x++) {
     const top = height(x);
@@ -144,19 +174,23 @@ function makeSun() {
   return c;
 }
 
-export function createBackground() {
+export function createBackground(theme = {}) {
   const skies = Object.fromEntries(Object.entries(SKIES).map(([k, stops]) => [k, makeSky(stops)]));
   const moon = makeMoon();
   const sun = makeSun();
   const stars = makeStars();
   const clouds = makeClouds();
   const layers = [
-    makeMountains(0.08, 118, 46, 3, { dusk: [PAL.mountainFar, PAL.haze], day: ['#8ea4cc', '#c4d9ee'] }),
-    makeMountains(0.16, 128, 40, 11, { dusk: [PAL.mountainNear, PAL.haze], day: ['#6b82b0', '#b3cbe6'] }),
+    ...(theme.terrain === 'sea'
+      ? [makeSea(0.12, 124, 3)]
+      : [
+          makeMountains(0.08, 118, 46, 3, { dusk: [PAL.mountainFar, PAL.haze], day: [PAL.mountainFarDay, PAL.hazeDay] }, theme.snowcaps),
+          makeMountains(0.16, 128, 40, 11, { dusk: [PAL.mountainNear, PAL.haze], day: [PAL.mountainNearDay, PAL.hazeDay] }, theme.snowcaps),
+        ]),
   ];
   const hills = [
-    makeHills(0.3, 128, 7, 5, PAL.hillBack, PAL.pineBack, 26),
-    makeHills(0.55, 140, 6, 9, PAL.hillFront, PAL.pineFront, 22),
+    makeHills(0.3, 128, 7, 5, PAL.hillBack, PAL.pineBack, theme.terrain === 'sea' ? 8 : 26, theme.snowcaps),
+    makeHills(0.55, 140, 6, 9, PAL.hillFront, PAL.pineFront, theme.terrain === 'sea' ? 6 : 22, theme.snowcaps),
   ];
 
   // Zeichnet ein Bild der Tageszeit A und blendet Tageszeit B darüber.

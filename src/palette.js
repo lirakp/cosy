@@ -13,6 +13,10 @@ export const PAL = {
   mountainFar: '#a8709a',
   mountainNear: '#6f5490',
   haze: '#e8a08c',
+  // dieselben Berge tagsüber
+  mountainFarDay: '#8ea4cc',
+  mountainNearDay: '#6b82b0',
+  hazeDay: '#c4d9ee',
   hillBack: '#4a5f7a',
   pineBack: '#3d4f6b',
   hillFront: '#3a6b5c',

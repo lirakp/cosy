@@ -19,6 +19,7 @@ import { initInput, setBlocked, setTapHandler } from './input.js';
 import { createUI } from './ui.js';
 import { audio } from './audio.js';
 import { createBackground } from './background.js';
+import * as themes from './themes.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
 
@@ -64,7 +65,10 @@ function setPaused(value) {
   paused = value;
   pauseScreen.hidden = !paused;
   setBlocked(paused || ui.isOpen());
-  if (paused) document.getElementById('btn-resume').focus();
+  if (paused) {
+    showThemes();
+    document.getElementById('btn-resume').focus();
+  }
 }
 // Ton startet mit der ersten Eingabe (Vorgabe der Browser).
 addEventListener('pointerdown', () => audio.unlock(), true);
@@ -268,6 +272,7 @@ function sleep() {
   fadeEl.innerHTML = '<span class="zzz">Z z z …</span>';
   audio.play('sleep');
   setTimeout(() => {
+    if (dayTime > 0.5) state.dayCount += 1; // über Mitternacht geschlafen
     dayTime = 0.27; // Morgen
     const buff = buffs.rollSleep();
     state.save();
@@ -423,15 +428,42 @@ expeditionTick();
 setInterval(expeditionTick, 1000);
 addEventListener('pagehide', () => state.save());
 
-const background = createBackground();
-const world = createWorld();
+// Landschaft: Hintergrund, Hof und Dorf werden in ihren Farben gezeichnet und
+// beim Wechsel neu aufgebaut.
+let themeId = themes.resolve(state.theme, state.dayCount);
+let background;
+let world;
+let villageScene;
+function buildScenes() {
+  const t = themes.apply(themeId);
+  background = createBackground(t);
+  world = createWorld(t);
+  villageScene = createVillageScene({
+    onBite: () => audio.play('bite'),
+    onCatch: (res) => ui.caught(res),
+    onMiss: (why) => ui.toast(why === 'early' ? 'Zu früh eingeholt – der Fisch ist weg.' : 'Weg ist er … beim nächsten Biss schneller einholen!'),
+  });
+}
+buildScenes();
+
+const themeButtons = document.getElementById('themes');
+const themeNote = document.getElementById('theme-note');
+function showThemes() {
+  const choices = [...themes.THEMES.map((t) => [t.id, t.name]), [themes.AUTO, 'Jahreszeiten']];
+  themeButtons.innerHTML = choices.map(([id, name]) => `<button data-theme="${id}" class="${state.theme === id ? 'on' : ''}">${name}</button>`).join('');
+  themeNote.textContent = state.theme === themes.AUTO
+    ? `Wechselt alle ${themes.DAYS_PER_SEASON} Spieltage: Frühling, Sommer, Herbst, Winter. Gerade: ${themes.theme(themeId).name}.`
+    : 'Gilt für Hof und Dorf und wird mit dem Spielstand gespeichert.';
+}
+themeButtons.addEventListener('click', (e) => {
+  const id = e.target.closest('[data-theme]')?.dataset.theme;
+  if (!id) return;
+  state.theme = id;
+  audio.play('levelUp');
+});
+
 const player = createPlayer();
 const interior = createInterior();
-const villageScene = createVillageScene({
-  onBite: () => audio.play('bite'),
-  onCatch: (res) => ui.caught(res),
-  onMiss: (why) => ui.toast(why === 'early' ? 'Zu früh eingeholt – der Fisch ist weg.' : 'Weg ist er … beim nächsten Biss schneller einholen!'),
-});
 let lastPick = 0;
 const mineScene = createMineScene({
   onStrike() {
@@ -540,7 +572,20 @@ function frame(now) {
   const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
   last = now;
   time += dt;
-  dayTime = (dayTime + dt / DAY_LENGTH) % 1;
+  dayTime += dt / DAY_LENGTH;
+  if (dayTime >= 1) {
+    dayTime -= 1;
+    state.dayCount += 1; // neuer Spieltag (für die Jahreszeiten)
+  }
+  // Landschaft wechseln, wenn gewählt oder die Jahreszeit umspringt
+  const wanted = themes.resolve(state.theme, state.dayCount);
+  if (wanted !== themeId) {
+    const auto = state.theme === themes.AUTO;
+    themeId = wanted;
+    buildScenes();
+    showThemes();
+    if (auto) ui.toast(`Die Jahreszeit wechselt: ${themes.theme(themeId).name}`);
+  }
   state.day = dayTime;
 
   if (!paused) {
