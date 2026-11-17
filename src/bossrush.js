@@ -14,7 +14,7 @@ import * as realm from './realm.js';
 
 export const TEAM_SIZE = 10;
 export const FIGHT_SECONDS = 5;
-export const MAX_FIGHTS_PER_TICK = 500; // nach langer Abwesenheit nicht endlos rechnen
+export const MAX_FIGHTS_PER_TICK = 15000; // höchstens so viele Kämpfe auf einmal (z. B. nach langer Abwesenheit)
 // Bosse werden mit jedem Sieg ein wenig zäher
 export const GROWTH = 0.06;
 // Gold je besiegtem Boss nach Rang (D … SS)

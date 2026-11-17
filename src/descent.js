@@ -13,7 +13,7 @@ import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE, MAX_CHANCE 
 // Heimkehren sichert alles, wer nach einer Niederlage aufgibt, verliert die Hälfte.
 
 export const FLOOR_SECONDS = 10;
-export const MAX_FLOORS_PER_TICK = 500;
+export const MAX_FLOORS_PER_TICK = 15000; // höchstens so viele Etagen auf einmal (z. B. nach langer Abwesenheit)
 export const BASE_NEED = 30; // Stärke für Etage 1 (× Art)
 export const GROWTH = 1.1; // je Etage
 export const GUARD_EVERY = 5;
