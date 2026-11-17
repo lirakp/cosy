@@ -2,12 +2,18 @@ import { WORLD_W, WALK_Y } from './config.js';
 import { clamp } from './utils.js';
 import { axis } from './input.js';
 import { makePlayerSprites } from './sprites.js';
+import { state } from './state.js';
 
 const SPEED = 52; // Pixel pro Sekunde – gemütliches Schlendern
 
 export function createPlayer() {
-  const sprites = makePlayerSprites();
-  const p = { x: 150, facing: 1, moving: false, walkTime: 0, time: 0 };
+  let sprites = makePlayerSprites(state.outfit);
+  // bounds: begehbarer Bereich (draußen die Welt, im Haus das Zimmer)
+  const p = { x: 150, facing: 1, moving: false, walkTime: 0, time: 0, bounds: [10, WORLD_W - 10] };
+
+  p.setOutfit = (id) => {
+    sprites = makePlayerSprites(id);
+  };
 
   p.update = (dt) => {
     const dir = axis();
@@ -15,7 +21,7 @@ export function createPlayer() {
     p.moving = dir !== 0;
     if (p.moving) {
       p.facing = dir;
-      p.x = clamp(p.x + dir * SPEED * dt, 10, WORLD_W - 10);
+      p.x = clamp(p.x + dir * SPEED * dt, p.bounds[0], p.bounds[1]);
       p.walkTime += dt;
     } else {
       p.walkTime = 0;

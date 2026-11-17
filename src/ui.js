@@ -5,6 +5,9 @@ import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import * as arena from './arena.js';
 import { audio } from './audio.js';
+import * as buffs from './buffs.js';
+import { tierChances } from './items.js';
+import { OUTFITS, makePlayerSprites } from './sprites.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
 
@@ -34,7 +37,7 @@ function tile(item, { hidden = false, badge = '' } = {}) {
   return el;
 }
 
-export function createUI({ onToggle }) {
+export function createUI({ onToggle, onOutfit }) {
   const overlay = $('#overlay');
   const goldEl = $('#gold span');
   const toastEl = $('#toast');
@@ -67,6 +70,7 @@ export function createUI({ onToggle }) {
     if (view === 'expedition') renderExpedition();
     if (view === 'dungeon') renderDungeon();
     if (view === 'arena') renderArena();
+    if (view === 'wardrobe') renderWardrobe();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -88,13 +92,15 @@ export function createUI({ onToggle }) {
   // ------------------------------------------------------------ Wunschbrunnen
 
   function renderWell() {
+    const chances = tierChances(buffs.lucky());
     const rates = RARITIES.map(
-      (r) => `<tr class="r-${r.id}"><td><b>${r.id}</b></td><td>${percent(r.chance)}</td><td>${fmt(r.sell)} Gold</td></tr>`
+      (r, t) => `<tr class="r-${r.id}"><td><b>${r.id}</b></td><td>${percent(chances[t])}</td><td>${fmt(r.sell)} Gold</td></tr>`
     ).join('');
     overlay.innerHTML = `
       <section class="panel well">
         ${head('Wunschbrunnen')}
         <p class="lead">Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.</p>
+        ${buffs.lucky() ? '<p class="buff-note">✦ Glücksrausch aktiv: seltene Ränge um 10 % wahrscheinlicher.</p>' : ''}
         <div class="actions">
           <button class="big" data-act="pull" data-n="1">1× wünschen<small>${PULL_COST} Gold</small></button>
           <button class="big" data-act="pull" data-n="10">10× wünschen<small>${PULL_10_COST} Gold</small></button>
@@ -126,7 +132,7 @@ export function createUI({ onToggle }) {
       audio.play('error');
       return;
     }
-    const items = Array.from({ length: n }, () => rollItem());
+    const items = Array.from({ length: n }, () => rollItem({ lucky: buffs.lucky() }));
     const seen = new Set();
     lastPull = items.map((item) => {
       const isNew = !state.count(item.id) && !seen.has(item.id);
@@ -150,6 +156,7 @@ export function createUI({ onToggle }) {
     if (!next) return onToggle(busy());
     if (next.result) return showResult(next.result);
     if (next.fight) return showFight(next.fight);
+    if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
     const el = document.createElement('div');
@@ -304,7 +311,8 @@ export function createUI({ onToggle }) {
       <div class="levels">${RARITIES.map((r, t) => {
         const n = arena.have(kind, t);
         const up = RARITIES[arena.upTier(t)].id;
-        const odds = up === r.id ? `100 % Rang ${r.id}` : `${percent(1 - m.up)} Rang ${r.id} · ${percent(m.up)} Rang ${up}`;
+        const upP = arena.upChance(kind);
+        const odds = up === r.id ? `100 % Rang ${r.id}` : `${percent(1 - upP)} Rang ${r.id} · ${percent(upP)} Rang ${up}`;
         return `<button class="level mat r-${r.id}" data-act="trade" data-k="${kind}" data-v="${t}" data-mat="${kind}:${t}" ${n >= m.cost ? '' : 'disabled'}>
           <b><i>${r.id}</i>${m.name} ×${n}</b><span>${odds}</span></button>`;
       }).join('')}</div>`).join('');
@@ -351,6 +359,57 @@ export function createUI({ onToggle }) {
     }
     document.body.append(el);
     $('button[data-act]', el).focus();
+    onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Kleiderschrank
+
+  function renderWardrobe() {
+    overlay.innerHTML = `
+      <section class="panel wardrobe">
+        ${head('Kleiderschrank')}
+        <p class="lead">Such dir etwas Gemütliches aus. Die Kleidung trägst du draußen und im Haus.</p>
+        <div class="outfits" id="outfits"></div>
+      </section>`;
+    $('#outfits').replaceChildren(
+      ...OUTFITS.map((o) => {
+        const el = document.createElement('button');
+        el.className = `outfit${o.id === state.outfit ? ' on' : ''}`;
+        el.dataset.act = 'outfit';
+        el.dataset.id = o.id;
+        const c = document.createElement('canvas');
+        c.width = 12;
+        c.height = 16;
+        c.className = 'sprite outfit-sprite';
+        c.getContext('2d').drawImage(makePlayerSprites(o.id)[1].idle, 0, 0);
+        el.append(c);
+        el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}`);
+        return el;
+      })
+    );
+  }
+
+  // ------------------------------------------------------------ Aufwachen
+
+  function showWakeUp(buffId) {
+    const b = buffId && buffs.BUFFS[buffId];
+    const el = document.createElement('div');
+    el.className = `reveal ${b ? `r-${b.rank}` : 'result r-D'}`;
+    el.innerHTML = `
+      ${b ? '<div class="rays"></div>' : ''}
+      <div class="card">
+        <div class="source">GUTEN MORGEN</div>
+        <div class="rank-big">${b ? b.name.toUpperCase() : 'AUSGESCHLAFEN'}</div>
+        ${b ? '<div class="frame"></div>' : ''}
+        <p>${b
+          ? `${b.text}<br>Hält ${buffs.BUFF_MINUTES} Minuten.`
+          : `Du hast tief und fest geschlafen. Diesmal ohne besonderen Traum –<br>mit ${percent(buffs.SLEEP_BUFF_CHANCE)} Glück wachst du mit einem Rausch auf.`}</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    if (b) $('.frame', el).append(picture(buffs.icon(buffId)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    if (b) audio.play('reveal', 4);
     onToggle(true);
   }
 
@@ -727,6 +786,12 @@ export function createUI({ onToggle }) {
       }
       show(view);
     }
+    if (act === 'outfit') {
+      state.outfit = btn.dataset.id;
+      onOutfit(btn.dataset.id);
+      audio.play('levelUp');
+      renderWardrobe();
+    }
     if (act === 'arena-tab') { arenaTab = btn.dataset.v; renderArena(); }
     if (act === 'slot') {
       const sel = { i: Number(btn.dataset.i), key: btn.dataset.k };
@@ -788,6 +853,11 @@ export function createUI({ onToggle }) {
     updateDungeon,
     openDungeon: () => show('dungeon'),
     openArena: () => show('arena'),
+    openWardrobe: () => show('wardrobe'),
+    wakeUp(buffId) {
+      reveals.push({ wake: buffId });
+      nextReveal();
+    },
     openExpedition: () => show('expedition'),
     openWell: () => show('well'),
     openGallery: () => show('gallery'),

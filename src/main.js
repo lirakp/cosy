@@ -1,4 +1,6 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE } from './config.js';
+import { createInterior, zoneAt, ROOM_BOUNDS, DOOR_SPAWN } from './interior.js';
+import * as buffs from './buffs.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import { phase, label as dayLabel } from './daycycle.js';
@@ -30,10 +32,12 @@ resize();
 
 initInput(canvas);
 
-const ui = createUI({ onToggle: setBlocked });
+const ui = createUI({ onToggle: (open) => setBlocked(open || sleeping), onOutfit: (id) => player.setOutfit(id) });
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
-let near = null; // 'well' | 'camp' | 'dungeon' | 'arena'
+let near = null; // draußen: 'well' | 'camp' | 'dungeon' | 'arena' | 'house' · drinnen: 'door' | 'wardrobe' | 'bed'
+let inside = false; // im Haus?
+let sleeping = false;
 
 // Pause: Figur, Münzen und Animationen halten an. Expedition und Dungeon
 // rechnen nach echter Zeit und laufen deshalb weiter – wie bei geschlossenem Spiel.
@@ -84,7 +88,76 @@ addEventListener('keydown', (e) => {
 
 const chestHasContent = () => expedition.live.gold > 0 || expedition.live.loot > 0;
 
+// ---------------------------------------------------------------- Haus
+
+const fadeEl = document.getElementById('fade');
+
+// kurzes Abblenden beim Durchgehen der Tür
+function fadeThrough(fn) {
+  fadeEl.classList.add('on');
+  setBlocked(true);
+  setTimeout(() => {
+    fn();
+    fadeEl.classList.remove('on');
+    setBlocked(ui.isOpen() || sleeping);
+  }, 260);
+}
+
+function enterHouse() {
+  audio.play('door');
+  fadeThrough(() => {
+    inside = true;
+    player.x = DOOR_SPAWN;
+    player.facing = 1;
+    player.bounds = ROOM_BOUNDS;
+  });
+}
+
+function leaveHouse() {
+  audio.play('door');
+  fadeThrough(() => {
+    inside = false;
+    player.x = HOUSE_X;
+    player.bounds = [10, WORLD_W - 10];
+    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  });
+}
+
+// Schlafen geht ab dem Abend; man wacht am Morgen auf, mit 10 % Chance mit einem Rausch.
+const canSleep = () => ['Abend', 'Nacht'].includes(dayLabel(dayTime).name);
+
+function sleep() {
+  if (!canSleep()) {
+    ui.toast('Du bist noch nicht müde – schlafen geht ab dem Abend.');
+    audio.play('error');
+    return;
+  }
+  sleeping = true;
+  setBlocked(true);
+  fadeEl.classList.add('slow', 'on');
+  fadeEl.innerHTML = '<span class="zzz">Z z z …</span>';
+  audio.play('sleep');
+  setTimeout(() => {
+    dayTime = 0.27; // Morgen
+    const buff = buffs.rollSleep();
+    state.save();
+    fadeEl.classList.remove('on');
+    setTimeout(() => {
+      fadeEl.classList.remove('slow');
+      fadeEl.textContent = '';
+      sleeping = false;
+      setBlocked(ui.isOpen());
+      ui.wakeUp(buff);
+    }, 1000);
+  }, 2600);
+}
+
 function act() {
+  if (sleeping) return;
+  if (near === 'house') enterHouse();
+  if (near === 'door') leaveHouse();
+  if (near === 'wardrobe') ui.openWardrobe();
+  if (near === 'bed') sleep();
   if (near === 'well') ui.openWell();
   if (near === 'dungeon') ui.openDungeon();
   if (near === 'arena') ui.openArena();
@@ -97,7 +170,7 @@ document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDu
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
 actionButton.addEventListener('click', act);
 addEventListener('keydown', (e) => {
-  if (paused || ui.isOpen() || e.repeat) return;
+  if (paused || sleeping || ui.isOpen() || e.repeat) return;
   if (e.code === 'KeyG') ui.openGallery();
   if (e.code === 'KeyX') ui.openExpedition();
   if (e.code === 'KeyF') ui.openDungeon();
@@ -111,10 +184,37 @@ addEventListener('keydown', (e) => {
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
   const chestX = CHEST_X - Math.round(camX);
-  if (paused || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
+  if (paused || inside || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
   ui.collectChest();
   return true;
 });
+
+// aktiver Rausch oben links, mit Restzeit
+const buffEl = document.getElementById('buff');
+let buffShown = '';
+function showBuff() {
+  const b = buffs.current();
+  if (!b) {
+    if (buffShown) {
+      buffEl.hidden = true;
+      buffShown = '';
+    }
+    return;
+  }
+  const def = buffs.BUFFS[b.id];
+  const sec = buffs.remaining();
+  if (buffShown !== b.id) {
+    buffShown = b.id;
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    c.getContext('2d').drawImage(buffs.icon(b.id), 0, 0);
+    buffEl.className = `r-${def.rank}`;
+    buffEl.replaceChildren(c, document.createElement('span'));
+    buffEl.title = def.text;
+    buffEl.hidden = false;
+  }
+  buffEl.lastChild.textContent = `${def.name} ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
 
 // Die Expedition wird einmal pro Sekunde abgerechnet und regelmäßig gespeichert.
 let saveCountdown = 10;
@@ -128,6 +228,7 @@ function expeditionTick() {
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
   ui.updateChest();
+  showBuff();
   if (--saveCountdown <= 0 || found) {
     saveCountdown = 10;
     state.save();
@@ -140,6 +241,7 @@ addEventListener('pagehide', () => state.save());
 const background = createBackground();
 const world = createWorld();
 const player = createPlayer();
+const interior = createInterior();
 
 let camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
 let time = 0;
@@ -152,6 +254,51 @@ const dayEl = document.getElementById('daytime');
 let dayText = '';
 let last = performance.now();
 
+// Landschaft getönt, Himmel und Lichter darüber
+function tint(tintColor, alpha) {
+  if (alpha <= 0.01) return;
+  sctx.globalCompositeOperation = 'source-atop';
+  sctx.globalAlpha = alpha;
+  sctx.fillStyle = tintColor;
+  sctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  sctx.globalAlpha = 1;
+  sctx.globalCompositeOperation = 'source-over';
+}
+
+function drawOutside(ph) {
+  background.drawSky(ctx, camX, time, ph);
+  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  background.drawLand(sctx, camX, ph);
+  world.draw(sctx, camX, time);
+  player.draw(sctx, Math.round(camX));
+  world.drawFront(sctx, camX, time);
+  tint(ph.tint, ph.tintAlpha);
+  ctx.drawImage(scene, 0, 0);
+  world.drawLights(ctx, camX, time, ph.night);
+}
+
+// Im Haus: der Himmel scheint nur durchs Fenster, nachts wird das Zimmer
+// dunkler und Kaminfeuer und Kerze leuchten.
+function drawInside(ph) {
+  ctx.fillStyle = '#0b0a1f';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const w = interior.window;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(w.x, w.y, w.w, w.h);
+  ctx.clip();
+  ctx.translate(-50, 0);
+  background.drawSky(ctx, 0, time, ph);
+  ctx.restore();
+
+  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  interior.draw(sctx, time);
+  player.draw(sctx, 0);
+  tint('rgb(20 14 46)', ph.night * 0.42);
+  ctx.drawImage(scene, 0, 0);
+  interior.drawLights(ctx, time, ph.night);
+}
+
 function frame(now) {
   const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
   last = now;
@@ -162,18 +309,24 @@ function frame(now) {
   if (!paused) {
     player.update(dt);
     background.update(dt);
-    world.update(dt, player);
+    if (!inside) world.update(dt, player);
   }
 
   near =
-    Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
+    inside ? zoneAt(player.x)
+    : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
+    : Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
     : Math.abs(player.x - ARENA_X) < ARENA_RANGE ? 'arena'
     : null;
-  actionButton.hidden = !near || paused || ui.isOpen();
+  actionButton.hidden = !near || paused || sleeping || ui.isOpen();
   const label =
-    near === 'well' ? '✦ Wunschbrunnen'
+    near === 'house' ? 'Haus betreten'
+    : near === 'door' ? 'Hinausgehen'
+    : near === 'wardrobe' ? 'Kleiderschrank'
+    : near === 'bed' ? (canSleep() ? 'Schlafen gehen' : 'Bett · schlafen ab dem Abend')
+    : near === 'well' ? '✦ Wunschbrunnen'
     : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
@@ -181,29 +334,16 @@ function frame(now) {
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
   if (actionLabel.textContent !== label) actionLabel.textContent = label;
 
-  // Kamera folgt der Figur sanft
-  const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
-  camX += (target - camX) * Math.min(1, dt * 6);
+  // Kamera folgt der Figur sanft (im Haus steht sie still)
+  if (!inside) {
+    const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    camX += (target - camX) * Math.min(1, dt * 6);
+  }
 
   const ph = phase(dayTime);
   audio.setNight(ph.night);
-  background.drawSky(ctx, camX, time, ph);
-
-  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  background.drawLand(sctx, camX, ph);
-  world.draw(sctx, camX, time);
-  player.draw(sctx, Math.round(camX));
-  world.drawFront(sctx, camX, time);
-  if (ph.tintAlpha > 0.01) {
-    sctx.globalCompositeOperation = 'source-atop';
-    sctx.globalAlpha = ph.tintAlpha;
-    sctx.fillStyle = ph.tint;
-    sctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    sctx.globalAlpha = 1;
-    sctx.globalCompositeOperation = 'source-over';
-  }
-  ctx.drawImage(scene, 0, 0);
-  world.drawLights(ctx, camX, time, ph.night);
+  if (inside) drawInside(ph);
+  else drawOutside(ph);
 
   const dl = dayLabel(dayTime);
   const text = `${dl.icon} ${dl.name}`;

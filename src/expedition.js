@@ -4,6 +4,7 @@ import { render } from './art/core.js';
 import { LEADER_ART } from './art/leaders.js';
 import * as buildings from './buildings.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
+import * as buffs from './buffs.js';
 
 // Expedition: Die vier stärksten Lebewesen sammeln laufend Gold in eine Truhe
 // und finden ab und zu ein Sammelstück. Ein Expeditionsleiter verstärkt beides.
@@ -104,7 +105,7 @@ export function evolveLeader(id = leader().id) {
 
 // ---------------------------------------------------------------- Truhe
 
-export const goldPerMinute = () => team().reduce((sum, item) => sum + rateOf(item), 0) * (1 + goldBonus());
+export const goldPerMinute = () => team().reduce((sum, item) => sum + rateOf(item), 0) * (1 + goldBonus()) * buffs.expeditionFactor();
 export const lootChance = () => LOOT_CHANCE * (1 + lootBonus());
 
 // Momentaufnahme für Anzeige und Welt, damit nicht jedes Bild neu gerechnet wird.

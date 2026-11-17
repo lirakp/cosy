@@ -4,7 +4,8 @@ import * as buildings from './buildings.js';
 import { audio } from './audio.js';
 import { itemImage } from './items.js';
 import * as expedition from './expedition.js';
-import { state, COIN_VALUE } from './state.js';
+import { state } from './state.js';
+import * as buffs from './buffs.js';
 import { PAL } from './palette.js';
 import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
 
@@ -422,7 +423,7 @@ export function createWorld() {
         if (Math.abs(coins[i].x - player.x) < 8) {
           pops.push({ x: coins[i].x, age: 0 });
           coins.splice(i, 1);
-          state.addGold(COIN_VALUE);
+          state.addGold(buffs.coinValue());
           audio.play('coin');
         }
       }

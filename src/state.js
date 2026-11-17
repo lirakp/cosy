@@ -7,7 +7,6 @@ const START_GOLD = 500;
 
 export const PULL_COST = 65;
 export const PULL_10_COST = 585; // zehn Züge zum Preis von neun
-export const COIN_VALUE = 10;
 
 const newExpedition = () => ({
   evo: {}, // Entwicklungsstufe je Lebewesen (0 = D … 5 = SS)
@@ -81,6 +80,21 @@ export const state = {
   },
   set day(value) {
     data.day = value;
+  },
+  get outfit() {
+    return data.outfit || 'wanderer';
+  },
+  set outfit(id) {
+    data.outfit = id;
+    changed();
+  },
+  // aktiver Rausch nach dem Schlafen: { id, until } oder null
+  get buff() {
+    return data.buff || null;
+  },
+  set buff(value) {
+    data.buff = value;
+    changed();
   },
   get buildings() {
     return data.buildings;

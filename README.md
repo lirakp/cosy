@@ -53,6 +53,27 @@ in der Pause gedämpft. Browser erlauben Ton erst nach der ersten Eingabe.
 Ton an/aus mit dem ♪-Knopf oder `M`, Lautstärke von Musik und Effekten im
 Pause-Fenster. Die Einstellungen werden im Browser gespeichert.
 
+## Das Haus
+
+An der Haustür (`E`) betritt man das Häuschen. Durch das Fenster sieht man den
+Himmel draußen, auf dem Kaminsims stehen die drei seltensten eigenen
+Sammelstücke.
+
+- **Kleiderschrank:** 14 Outfits (Wanderer, Winterjacke, Zauberlehrling,
+  Königlich, Waldläufer, Kätzchen, Ritterrüstung, Schlafanzug …). Die Kleidung
+  wird gespeichert und draußen wie drinnen getragen.
+- **Bett:** Schlafen geht ab dem Abend und spult bis zum nächsten Morgen vor.
+  Mit 10 % Chance wacht man mit einem von drei Rausch-Effekten auf, der
+  15 Minuten (echte Zeit) hält und oben links angezeigt wird:
+
+| Rausch | Wirkung |
+| --- | --- |
+| Goldrausch | Münzen auf dem Weg 40 statt 10 Gold, Expedition +5 % Gold |
+| Glücksrausch | Brunnen: Chancen auf C bis SS ×1,1 (D seltener); Arena-Händler: Chance auf den höheren Rang ×1,1 |
+| Gladiatorrausch | Dungeon und Bossarena: Erfolgschance +10 Prozentpunkte (bis 99 %) |
+
+Werte in `src/buffs.js`, Outfits in `src/sprites.js`.
+
 ## Sammeln
 
 Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
@@ -169,9 +190,11 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/dungeon.js` | Gefahrenstufen, Erfolgschance, Beute |
 | `src/state.js` | Gold, Sammlung, Verkaufen, Speichern |
 | `src/ui.js` | Menüs für Brunnen, Galerie, Expedition und Dungeon, Pop-ups |
-| `src/sprites.js` | Spielfigur als Text-Pixelraster |
+| `src/sprites.js` | Spielfigur und Outfits als Text-Pixelraster |
 | `src/player.js` | Bewegung und Animation |
 | `src/input.js` | Tastatur und Touch |
 | `desktop/main.js` | Programmfenster für die Desktop-Version (Electron) |
 | `src/audio.js` | Musik und Soundeffekte (Web Audio) |
+| `src/interior.js` | Innenraum des Hauses |
+| `src/buffs.js` | Rausch-Effekte nach dem Schlafen |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

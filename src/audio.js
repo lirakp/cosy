@@ -330,6 +330,18 @@ const SFX = {
   notify() {
     notes([84, 91], 0.1, { type: 'sine', gain: 0.07, release: 0.5 });
   },
+  door() {
+    const t = ctx.currentTime;
+    tone(180, t, 0.08, { type: 'square', gain: 0.05, slide: 0.6, cutoff: 700 });
+    hiss(t, 0.08, { gain: 0.05, freq: 900, type: 'bandpass' });
+    tone(150, t + 0.12, 0.08, { type: 'square', gain: 0.04, slide: 0.6, cutoff: 600 });
+    notes([79, 84], 0.09, { type: 'triangle', gain: 0.04, release: 0.25 });
+  },
+  sleep() {
+    // kleines Schlaflied
+    const t = ctx.currentTime + 0.05;
+    [[76, 0], [74, 0.4], [72, 0.8], [67, 1.2], [72, 1.8]].forEach(([n, d]) => tone(midi(n), t + d, 0.38, { type: 'sine', gain: 0.07, release: 0.6, attack: 0.04 }));
+  },
   pause() {
     notes([76, 69], 0.08, { type: 'triangle', gain: 0.06, release: 0.2 });
   },

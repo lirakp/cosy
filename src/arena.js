@@ -2,6 +2,7 @@ import { ITEMS, RARITIES, getItem, rollTier, rollItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
+import * as buffs from './buffs.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
@@ -149,7 +150,7 @@ export const challengeRandom = () => !a().boss && state.spend(RANDOM_PRICE) && s
 export const canChallenge = (tier) => tier <= arenaTier();
 export const challenge = (tier) => !a().boss && canChallenge(tier) && state.spend(BOSS_PRICE[tier]) && summon(tier);
 
-export const winChance = (boss = a().boss) => (boss && teamPower() ? clamp(teamPower() / BOSS_POWER[boss.tier]) : 0);
+export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladiator(clamp(teamPower() / BOSS_POWER[boss.tier])) : 0);
 
 export function fight() {
   const boss = bossInfo();
@@ -172,6 +173,8 @@ export function fight() {
 
 export const have = (kind, tier) => a().mats[kind][tier];
 export const upTier = (tier) => Math.min(tier + 1, MAX_TIER);
+// Chance auf den höheren Rang beim Händler (Glücksrausch: +10 %)
+export const upChance = (kind) => Math.min(1, MATERIALS[kind].up * (buffs.lucky() ? buffs.LUCK_FACTOR : 1));
 
 const matCache = new Map();
 export function materialImage(kind, tier) {
@@ -185,7 +188,7 @@ export function trade(kind, tier) {
   const m = MATERIALS[kind];
   if (have(kind, tier) < m.cost) return null;
   a().mats[kind][tier] -= m.cost;
-  const item = rollItem({ tier: Math.random() < m.up ? upTier(tier) : tier });
+  const item = rollItem({ tier: Math.random() < upChance(kind) ? upTier(tier) : tier });
   const isNew = !state.count(item.id);
   state.addItems([item]);
   return { item, isNew };

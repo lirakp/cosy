@@ -92,18 +92,29 @@ export function itemImage(item) {
 // Ein Zug: erst den Rang auswürfeln, dann ein zufälliges Stück dieses Rangs.
 // `tier` legt den Rang fest, `minTier` schließt alle niedrigeren Ränge aus
 // (die übrigen behalten ihr Verhältnis zueinander).
-export function rollTier(minTier = 0, random = Math.random) {
-  const pool = RARITIES.slice(minTier);
-  let u = random() * pool.reduce((sum, r) => sum + r.chance, 0);
+// Chancen je Rang. Mit `lucky` (Glücksrausch) steigen alle Ränge ab C um 10 %,
+// Rang D wird entsprechend seltener.
+export const LUCK_FACTOR = 1.1;
+export function tierChances(lucky = false) {
+  const c = RARITIES.map((r) => r.chance);
+  if (!lucky) return c;
+  for (let t = 1; t < c.length; t++) c[t] *= LUCK_FACTOR;
+  c[0] = 1 - c.slice(1).reduce((a, b) => a + b, 0);
+  return c;
+}
+
+export function rollTier(minTier = 0, random = Math.random, lucky = false) {
+  const pool = tierChances(lucky).slice(minTier);
+  let u = random() * pool.reduce((sum, c) => sum + c, 0);
   for (let t = 0; t < pool.length; t++) {
-    u -= pool[t].chance;
+    u -= pool[t];
     if (u < 0) return minTier + t;
   }
   return RARITIES.length - 1;
 }
 
-export function rollItem({ tier = null, minTier = 0, random = Math.random } = {}) {
-  if (tier === null) tier = rollTier(minTier, random);
+export function rollItem({ tier = null, minTier = 0, random = Math.random, lucky = false } = {}) {
+  if (tier === null) tier = rollTier(minTier, random, lucky);
   const cat = CATEGORIES[Math.floor(random() * CATEGORIES.length)];
   return getGroup(cat.id, RARITIES[tier].id)[Math.floor(random() * PER_GROUP)];
 }

@@ -29,3 +29,7 @@ export const ARENA_RANGE = 26;
 
 // Ein ganzer Tag-Nacht-Zyklus dauert so viele Sekunden Spielzeit.
 export const DAY_LENGTH = 720;
+
+// Haustür des Häuschens
+export const HOUSE_X = 209;
+export const HOUSE_RANGE = 9;

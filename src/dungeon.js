@@ -1,6 +1,7 @@
 import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
+import * as buffs from './buffs.js';
 
 // Dungeon: Bis zu fünf Helden ziehen für eine feste Zeit los. Die Dauer ist
 // zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber schwerer.
@@ -36,7 +37,7 @@ export const power = (ids) => ids.reduce((sum, id) => sum + (HERO_POWER[getItem(
 // Erfolgschance: Team-Stärke im Verhältnis zur Anforderung, nie ganz sicher, nie ganz aussichtslos.
 export function chance(level, ids) {
   if (!ids.length) return 0;
-  return Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power(ids) / LEVELS[level].need));
+  return buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power(ids) / LEVELS[level].need)));
 }
 
 // Der Rang des Tors bestimmt, welche Gefahrenstufen offen sind.
