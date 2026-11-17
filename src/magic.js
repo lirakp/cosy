@@ -7,6 +7,7 @@ import * as expedition from './expedition.js';
 import * as mine from './mine.js';
 import * as fishtrap from './fishtrap.js';
 import * as stars from './stars.js';
+import * as companions from './companions.js';
 
 // Magie: Der Magierturm sammelt Mana (nachts doppelt so schnell). Jede
 // Schriftrolle im Spiel lehrt genau einen Zauber. Es gibt fünf Schulen; je
@@ -133,7 +134,7 @@ const m = () => state.magic;
 const tier = () => buildings.tier('tower');
 export const owned = () => tier() >= 0;
 export const maxMana = () => (owned() ? MAX_MANA[tier()] : 0);
-export const regen = (night = false) => (owned() ? REGEN[tier()] * (night ? NIGHT_FACTOR : 1) : 0);
+export const regen = (night = false) => (owned() ? REGEN[tier()] * (night ? NIGHT_FACTOR : 1) * (1 + companions.bonus('mana')) : 0);
 export const mana = () => Math.floor(m().mana);
 
 // Mana nachladen; offline zählt der Tageswert
@@ -145,7 +146,7 @@ export function tick(now = Date.now(), night = false) {
   }
   const minutes = x.last ? Math.max(0, (now - x.last) / 60000) : 0;
   x.last = now;
-  const rate = minutes > 0.1 ? REGEN[tier()] : regen(night);
+  const rate = minutes > 0.1 ? regen(false) : regen(night);
   x.mana = Math.min(maxMana(), x.mana + rate * minutes);
 }
 
@@ -217,7 +218,7 @@ export function cast(id, { onRain } = {}, now = Date.now()) {
     for (const b of garden.beds()) {
       if (!b) continue;
       const c = garden.crop(b.crop);
-      b.planted = Math.min(b.planted, now - c.minutes * 60000);
+      b.planted = Math.min(b.planted, now - garden.growMinutes(c.id) * 60000);
       if (fx.crops) state.garden.crops[c.id] = garden.have(c.id) + fx.crops;
       n++;
     }

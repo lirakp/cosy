@@ -811,3 +811,26 @@ table.stats td { border-top: 1px solid #3a3170; }
   .char-info { flex-direction: column; text-align: center; }
   .tones { justify-content: center; }
 }
+
+/* ---------------------------------------------------------------- Begleiter */
+
+.companions { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 8px; }
+.companion {
+  background: #1b1730;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.companion p { margin: 0; }
+.companion .line { display: flex; gap: 8px; align-items: center; }
+.companion .line > div { display: flex; flex-direction: column; }
+.companion b { color: #fdf6e3; font-size: 13px; }
+.companion .evo { color: var(--rc); }
+.companion.on { box-shadow: 0 0 0 3px #ffd04a; }
+.companion.missing { opacity: 0.6; }
+.comp-img canvas { width: 40px; height: 40px; image-rendering: pixelated; }
+.silhouette { filter: brightness(0) opacity(0.5); }
+.compspanel > .line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

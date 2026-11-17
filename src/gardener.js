@@ -93,7 +93,7 @@ export function tick(now = Date.now()) {
       let at = now;
       if (b) {
         const c = garden.crop(b.crop);
-        const readyAt = b.planted + c.minutes * 60000;
+        const readyAt = b.planted + garden.growMinutes(c.id) * 60000;
         if (readyAt > now) break;
         state.garden.crops[c.id] = garden.have(c.id) + c.yield;
         harvested[c.id] = (harvested[c.id] || 0) + c.yield;

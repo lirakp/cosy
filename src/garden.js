@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import * as village from './village.js';
 import * as buffs from './buffs.js';
+import * as companions from './companions.js';
 import { render } from './art/core.js';
 import { carrot, wheat, potato, berries, pumpkin, starflower, teacup } from './art/crops.js';
 
@@ -45,16 +46,19 @@ export function buyBed() {
 }
 
 // Fortschritt eines Beets von 0 bis 1 (null = leer)
+// Wachstumszeit in Minuten (Begleiter können sie verkürzen)
+export const growMinutes = (cropId) => crop(cropId).minutes / (1 + companions.bonus('garden'));
+
 export function growth(i, now = Date.now()) {
   const b = beds()[i];
   if (!b) return null;
-  return Math.min(1, (now - b.planted) / (crop(b.crop).minutes * 60000));
+  return Math.min(1, (now - b.planted) / (growMinutes(b.crop) * 60000));
 }
 export const ready = (i, now) => growth(i, now) === 1;
 export const readyCount = (now) => beds().filter((_, i) => ready(i, now)).length;
 export const remaining = (i, now = Date.now()) => {
   const b = beds()[i];
-  return b ? Math.max(0, Math.ceil((b.planted + crop(b.crop).minutes * 60000 - now) / 1000)) : 0;
+  return b ? Math.max(0, Math.ceil((b.planted + growMinutes(b.crop) * 60000 - now) / 1000)) : 0;
 };
 
 export function plant(i, cropId, now = Date.now()) {

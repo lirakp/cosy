@@ -255,6 +255,37 @@ Galerie steht bei jeder Schriftrolle, welchen Zauber sie lehrt.
 
 Werte in `src/magic.js`.
 
+## Begleiter
+
+Auf dem Hof und im Dorf taucht ab und zu ein streunendes Tier mit einem Herz
+über dem Kopf auf: das erste nach etwa 45 Sekunden, danach alle 2½–5½
+Minuten Spielzeit. Es bleibt 75 Sekunden. Geh hin und freunde dich mit `E`
+an. Es kommen nur Tiere, die man noch nicht hat. Der Rang wird wie am Brunnen
+ausgewürfelt (D 48 % … SS 0,1 %), manche zeigen sich nur nachts.
+
+Einer kann dich begleiten: Er läuft oder fliegt hinter dir her, auch ins Haus,
+in die Mine und ins Dorf, und gibt seinen Bonus. Auswahl im Begleiter-Menü
+(`C`). Der erste gefundene Begleiter kommt automatisch mit.
+
+| Begleiter | Rang | Bonus |
+| --- | --- | --- |
+| Katze | D | sammelt Münzen bis 14 Schritte entfernt ein |
+| Hund | D | Expedition +5 % Gold |
+| Hase | D | Beete wachsen 10 % schneller |
+| Igel | D | Mine +5 % Erz |
+| Fuchs | C | Expedition +10 % Gold |
+| Eule (nachts, fliegt) | C | Mana lädt 15 % schneller |
+| Frosch | C | Fische beißen 25 % schneller |
+| Waschbär | B | sammelt Münzen bis 26 Schritte entfernt ein |
+| Glühwürmchen (nachts, fliegt, leuchtet) | B | Sternschnuppen 40 % öfter |
+| Mini-Drache (fliegt, leuchtet) | A | Mine +20 % Erz |
+| Einhornfohlen | A | Beete wachsen 30 % schneller |
+| Phönixküken (fliegt, leuchtet) | S | Mana lädt 40 % schneller |
+| Neunschwanzfuchs | S | Expedition +25 % Gold |
+| Sternenkitz (nachts, leuchtet) | SS | von allem etwas: +15 % überall, Münzen bis 20 Schritte |
+
+Werte in `src/companions.js`.
+
 ## Sternschnuppen
 
 Nachts (draußen auf dem Hof oder im Dorf, nicht in der Seesicht beim Angeln)

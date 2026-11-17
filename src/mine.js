@@ -5,6 +5,7 @@ import { dupValue, payWithDuplicates } from './dupes.js';
 import { render } from './art/core.js';
 import { oreDraw } from './art/ores.js';
 import * as sets from './sets.js';
+import * as companions from './companions.js';
 
 // Mine: sechs Ebenen, jede liefert Erz ihres Rangs. Bis zu drei Monster pro
 // Ebene hacken laufend Erz – auch, während das Spiel geschlossen ist.
@@ -82,7 +83,7 @@ export function autoAssign() {
 // ---------------------------------------------------------------- Erz
 
 export const workerRate = (item, level) => digsPerMinute(item) * yieldOf(item) * DEPTH[level];
-export const levelRate = (level) => (unlocked(level) ? workers(level).reduce((sum, w) => sum + (w ? workerRate(w, level) : 0), 0) * (1 + sets.bonus('mineOre')) : 0);
+export const levelRate = (level) => (unlocked(level) ? workers(level).reduce((sum, w) => sum + (w ? workerRate(w, level) : 0), 0) * (1 + sets.bonus('mineOre')) * (1 + companions.bonus('mine')) : 0);
 export const ore = (tier) => m().ore[tier];
 
 // Rechnet die vergangene Zeit ab. Liefert das neu gewonnene Erz je Ebene.

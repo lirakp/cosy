@@ -710,3 +710,50 @@ test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selte
   assert.ok(gold > 0);
   assert.equal(state.stats.items.sternschnuppe.n - before, items);
 });
+
+// ---------------------------------------------------------------- Begleiter
+
+import * as companions from '../src/companions.js';
+
+test('Begleiter: Streuner tauchen auf, lassen sich anfreunden und geben ihren Bonus', () => {
+  state.companions.owned = [];
+  state.companions.active = null;
+  for (let i = 0; i < 600 && !companions.currentStray(); i++) companions.update(1, { where: 'outside', night: false, playerX: 400, bounds: [10, 950] });
+  const s = companions.currentStray();
+  assert.ok(s, 'es taucht einer auf');
+  assert.ok(!companions.companion(s.id).night, 'tagsüber keine Nachttiere');
+  assert.ok(companions.nearStray(s.x) && !companions.nearStray(s.x + 40));
+  const c = companions.befriendStray();
+  assert.ok(companions.owned(c.id));
+  assert.equal(companions.active().id, c.id, 'der erste Begleiter kommt gleich mit');
+  // Bonus wirkt: Fuchs bringt der Expedition mehr Gold
+  companions.befriend('fuchs');
+  companions.setActive(null);
+  const base = expedition.goldPerMinute();
+  companions.setActive('fuchs');
+  if (base) close(expedition.goldPerMinute() / base, 1.1, 0.001, 'Fuchs +10 %');
+  assert.equal(companions.bonus('expedition'), 0.1);
+  assert.equal(companions.bonus('mine'), 0);
+  assert.equal(companions.setActive('drache'), false, 'nur gefundene');
+});
+
+test('Begleiter: Seltenheit folgt den Rängen, gefundene kommen nicht wieder', () => {
+  state.companions.owned = [];
+  const random = seeded(5);
+  const n = 20000;
+  const tiers = [0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < n; i++) tiers[companions.rollStray(true, random).tier]++;
+  assert.ok(tiers[0] > tiers[1] && tiers[1] > tiers[2] && tiers[2] > tiers[3] && tiers[3] > tiers[4] && tiers[4] >= tiers[5]);
+  assert.ok(tiers[5] > 0 && tiers[5] / n < 0.01, 'SS ist sehr selten');
+  for (const c of companions.COMPANIONS) if (c.id !== 'hase') companions.befriend(c.id);
+  for (let i = 0; i < 50; i++) assert.equal(companions.rollStray(true, random).id, 'hase');
+  companions.befriend('hase');
+  assert.equal(companions.rollStray(true, random), null);
+  for (const c of companions.COMPANIONS) {
+    for (const [k, v] of Object.entries(c.bonus)) assert.ok(companions.BONUS_TEXT[k] && v > 0, `${c.name}: ${k}`);
+    assert.ok(c.rows.every((r) => r.length === c.rows[0].length), `${c.name}: Zeilen gleich lang`);
+    assert.ok([...c.rows.join('')].every((ch) => ch === '.' || c.colors[ch]), `${c.name}: Farben`);
+  }
+  state.companions.owned = [];
+  state.companions.active = null;
+});

@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE, TOWER_X, TOWER_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, WALK_Y, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE, TOWER_X, TOWER_RANGE } from './config.js';
 import * as village from './village.js';
 import { createVillageScene, zoneAt as villageZoneAt, VILLAGE_W, VILLAGE_BOUNDS, VILLAGE_SPAWN } from './villagescene.js';
 import * as garden from './garden.js';
@@ -6,6 +6,7 @@ import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import { createTitle } from './title.js';
+import * as companions from './companions.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
@@ -178,6 +179,7 @@ function fadeThrough(fn) {
   setBlocked(true);
   setTimeout(() => {
     fn();
+    companions.resetFollow();
     fadeEl.classList.remove('on');
     setBlocked(ui.isOpen() || sleeping);
   }, 260);
@@ -302,6 +304,14 @@ function sleep() {
 
 function act() {
   if (sleeping) return;
+  if (near === 'stray') {
+    const c = companions.befriendStray();
+    if (c) {
+      audio.play('levelUp');
+      spellFx = 1.2;
+      ui.foundCompanion(c);
+    }
+  }
   if (near === 'village') enterVillage();
   if (near === 'farm') leaveVillage();
   if (near === 'fishing') fishAction();
@@ -327,6 +337,7 @@ function act() {
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
+document.getElementById('btn-companions').addEventListener('click', () => ui.openCompanions());
 document.getElementById('btn-forge').addEventListener('click', () => ui.openForge());
 document.getElementById('btn-mine').addEventListener('click', () => ui.openMine());
 document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
@@ -343,6 +354,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyH') ui.openForge();
   if (e.code === 'KeyI') ui.openStats();
   if (e.code === 'KeyZ') ui.openTower();
+  if (e.code === 'KeyC') ui.openCompanions();
   // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
   if (place === 'mine' && (e.code === 'ArrowUp' || e.code === 'KeyW')) travel(mineLevel - 1);
   if (place === 'mine' && (e.code === 'ArrowDown' || e.code === 'KeyS') && mine.unlocked(mineLevel + 1)) travel(mineLevel + 1);
@@ -558,11 +570,14 @@ function drawOutside(ph) {
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
   background.drawLand(sctx, camX, ph);
   world.draw(sctx, camX, time);
+  companions.drawStray(sctx, Math.round(camX), WALK_Y, time, 'outside');
+  companions.drawFollower(sctx, Math.round(camX), WALK_Y, time);
   player.draw(sctx, Math.round(camX));
   world.drawFront(sctx, camX, time);
   tint(ph.tint, ph.tintAlpha);
   ctx.drawImage(scene, 0, 0);
   world.drawLights(ctx, camX, time, ph.night);
+  companions.drawGlow(ctx, Math.round(camX), WALK_Y, time, ph.night);
 }
 
 // Im Haus: der Himmel scheint nur durchs Fenster, nachts wird das Zimmer
@@ -581,6 +596,7 @@ function drawInside(ph) {
 
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
   interior.draw(sctx, time);
+  companions.drawFollower(sctx, 0, WALK_Y, time);
   player.draw(sctx, 0);
   tint('rgb(20 14 46)', ph.night * 0.42);
   ctx.drawImage(scene, 0, 0);
@@ -616,11 +632,14 @@ function drawVillage(ph) {
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
   background.drawLand(sctx, camX, ph);
   villageScene.draw(sctx, camX, time);
+  companions.drawStray(sctx, Math.round(camX), WALK_Y, time, 'village');
+  companions.drawFollower(sctx, Math.round(camX), WALK_Y, time);
   player.draw(sctx, Math.round(camX));
   world.drawFront(sctx, camX, time);
   tint(ph.tint, ph.tintAlpha);
   ctx.drawImage(scene, 0, 0);
   villageScene.drawLights(ctx, camX, time, ph.night);
+  companions.drawGlow(ctx, Math.round(camX), WALK_Y, time, ph.night);
   villageScene.drawFishing(ctx, camX, player.x, time);
 }
 
@@ -628,10 +647,12 @@ function drawVillage(ph) {
 function drawMine() {
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
   mineScene.draw(sctx, mineLevel, time);
+  companions.drawFollower(sctx, 0, WALK_Y, time);
   player.draw(sctx, 0);
   tint('rgb(10 8 26)', 0.32);
   ctx.drawImage(scene, 0, 0);
   mineScene.drawLights(ctx, mineLevel, time);
+  companions.drawGlow(ctx, 0, WALK_Y, time, 1);
 }
 
 function frame(now) {
@@ -657,6 +678,8 @@ function frame(now) {
   if (!paused) {
     player.update(dt);
     background.update(dt);
+    companions.update(dt, { where: place, night: lastNight > 0.5, playerX: player.x, bounds: player.bounds });
+    companions.followUpdate(dt, player);
     if (place === 'outside') world.update(dt, player);
     if (place === 'mine') mineScene.update(dt, mineLevel, time);
     if (place === 'village') {
@@ -666,7 +689,8 @@ function frame(now) {
   }
 
   near =
-    place === 'house' ? zoneAt(player.x)
+    (place === 'outside' || place === 'village') && !villageScene.fishing() && companions.nearStray(player.x) ? 'stray'
+    : place === 'house' ? zoneAt(player.x)
     : place === 'mine' ? mineZoneAt(player.x)
     : place === 'village' ? villageZoneAt(player.x)
     : Math.abs(player.x - VILLAGE_SIGN_X) < VILLAGE_SIGN_RANGE ? 'village'
@@ -683,7 +707,8 @@ function frame(now) {
     : null;
   actionButton.hidden = !near || paused || sleeping || ui.isOpen();
   const label =
-    near === 'village' ? '← Ins Dorf'
+    near === 'stray' ? `♥ ${companions.companion(companions.currentStray().id).name} anfreunden`
+    : near === 'village' ? '← Ins Dorf'
     : near === 'farm' ? 'Zurück zum Hof →'
     : near === 'fishing' ? fishLabel()
     : near === 'market' ? 'Marktstand'

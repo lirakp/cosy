@@ -12,6 +12,7 @@ import * as expedition from './expedition.js';
 import { state } from './state.js';
 import * as buffs from './buffs.js';
 import { PAL } from './palette.js';
+import * as companions from './companions.js';
 import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
 
 // Die Spielebene: Wiese, Weg, Häuschen, Bäume – plus alles, was sich bewegt
@@ -870,7 +871,7 @@ export function createWorld(theme = {}) {
       }
       for (let i = coins.length - 1; i >= 0; i--) {
         coins[i].age += dt;
-        if (Math.abs(coins[i].x - player.x) < 8) {
+        if (Math.abs(coins[i].x - player.x) < 8 + companions.bonus('coinReach')) {
           pops.push({ x: coins[i].x, age: 0 });
           coins.splice(i, 1);
           state.addGold(buffs.coinValue(), 'muenzen');

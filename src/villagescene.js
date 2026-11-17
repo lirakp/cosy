@@ -4,6 +4,7 @@ import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
 import * as village from './village.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
+import * as companions from './companions.js';
 import { state } from './state.js';
 
 // Das Dorf von außen: Häuser, Rathaus, Marktstand, Teich mit Steg.
@@ -325,7 +326,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         swimmers.forEach((s, i) => (s.species = pickSwimmer(i)));
         // Lockruf: sofortiger Biss und (je nach Zauber) Ränge höher
         const lure = magic.useLure();
-        Object.assign(fish, { phase: 'cast', t: 0, biteAt: lure ? 0.9 : a + Math.random() * (b - a), target: village.rollCatch(Math.random, undefined, lure), from: Math.random() < 0.5 ? -1 : 1 });
+        Object.assign(fish, { phase: 'cast', t: 0, biteAt: lure ? 0.9 : (a + Math.random() * (b - a)) / (1 + companions.bonus('fishing')), target: village.rollCatch(Math.random, undefined, lure), from: Math.random() < 0.5 ? -1 : 1 });
         return 'cast';
       }
       if (fish.phase === 'bite') {

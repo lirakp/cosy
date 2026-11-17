@@ -15,6 +15,7 @@ import * as village from './village.js';
 import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
+import * as companions from './companions.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -95,6 +96,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (view === 'fishbook') renderFishBook();
     if (view === 'trap') renderTrap();
     if (view === 'tower') renderTower();
+    if (view === 'companions') renderCompanions();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -187,6 +189,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (next.meal) return showMeal(next.meal);
     if (next.questDone) return showQuestDone(next.questDone);
     if (next.catch) return showCatch(next.catch);
+    if (next.companion) return showCompanion(next.companion);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -665,6 +668,60 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   // Fang: kleine Fische als Hinweis, große als Pop-up, Flaschenpost als Sammelstück
+  function showCompanion(c) {
+    const rank = companions.rankOf(c);
+    const el = document.createElement('div');
+    el.className = `reveal r-${rank}`;
+    const isActive = companions.active()?.id === c.id;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">NEUER BEGLEITER</div>
+        <div class="rank-big">RANG ${rank}</div>
+        <div class="frame"></div>
+        <h3>${c.name}</h3>
+        <p>${c.text}</p>
+        <p class="gold-text">${companions.describeBonus(c)}</p>
+        <p class="muted">${isActive ? 'Begleitet dich ab jetzt.' : 'Im Begleiter-Menü (C) kannst du es mitnehmen.'}</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(companions.icon(c.id)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', c.tier);
+    onToggle(true);
+  }
+
+  function renderCompanions() {
+    const act = companions.active();
+    const cards = companions.COMPANIONS.map((c) => {
+      const rank = companions.rankOf(c);
+      const have = companions.owned(c.id);
+      const on = act?.id === c.id;
+      return `<div class="companion r-${rank}${have ? '' : ' missing'}${on ? ' on' : ''}">
+        <div class="line"><span class="comp-img" data-comp="${c.id}"></span>
+          <div><b>${have ? c.name : '???'}</b><span class="evo">Rang ${rank}</span></div></div>
+        <p>${have ? c.text : c.night ? 'Zeigt sich nur nachts …' : 'Streift irgendwo durchs Tal …'}</p>
+        <p class="gold-text">${companions.describeBonus(c)}</p>
+        ${have ? (on ? '<span class="tag">dabei</span>' : `<button data-act="comp-pick" data-v="${c.id}">Mitnehmen</button>`) : ''}
+      </div>`;
+    }).join('');
+    overlay.innerHTML = `
+      <section class="panel compspanel">
+        ${head('Begleiter')}
+        <p class="muted">Auf dem Hof und im Dorf taucht ab und zu ein Tier mit einem Herz über dem Kopf auf. Geh hin und freunde dich an (<kbd>E</kbd>) – aber beeil dich, lange bleibt es nicht. Seltene Begleiter sind selten unterwegs, manche nur nachts. Einer kann dich begleiten und gibt dir seinen Bonus.</p>
+        <div class="line"><span>Gefunden: <b>${companions.ownedCount()} / ${companions.COMPANIONS.length}</b>${act ? ` · Dabei: <b>${act.name}</b>` : ''}</span>
+          ${act ? '<button data-act="comp-pick" data-v="">Allein gehen</button>' : ''}</div>
+        <div class="companions">${cards}</div>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-comp]')) {
+      const c = companions.companion(el.dataset.comp);
+      const pic = picture(companions.icon(c.id));
+      if (!companions.owned(c.id)) pic.classList.add('silhouette');
+      el.append(pic);
+    }
+  }
+
   function showCatch(res) {
     const rank = RARITIES[res.tier].id;
     const el = document.createElement('div');
@@ -1630,6 +1687,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (act === 'helper-res') { gardener.setReserve(gardener.info().reserve + Number(btn.dataset.v)); renderGarden(); }
     if (act === 'helper-deposit') { audio.play(gardener.deposit() ? 'coin' : 'error'); renderGarden(); }
     if (act === 'helper-withdraw') { if (gardener.withdraw()) audio.play('gold'); renderGarden(); }
+    if (act === 'comp-pick') { companions.setActive(btn.dataset.v || null); audio.play('click'); renderCompanions(); }
     if (act === 'spell-school') { spellSchool = btn.dataset.v; renderTower(); }
     if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
     if (act === 'cast') {
@@ -1799,6 +1857,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     openFishBook: () => show('fishbook'),
     openTrap: () => show('trap'),
     openTower: () => show('tower'),
+    openCompanions: () => show('companions'),
+    // neuer Begleiter: Pop-up
+    foundCompanion(c) {
+      reveals.push({ companion: c });
+      if (!$('.reveal')) nextReveal();
+    },
     // Wunsch an eine Sternschnuppe
     wished(res) {
       if (res.item) {

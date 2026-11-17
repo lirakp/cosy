@@ -2,6 +2,7 @@ import { VIEW_W } from './config.js';
 import { rollItem } from './items.js';
 import { state } from './state.js';
 import * as magic from './magic.js';
+import * as companions from './companions.js';
 
 // Sternschnuppen: nachts zieht ab und zu eine über den Himmel. Wer sie
 // rechtzeitig anklickt, darf sich etwas wünschen.
@@ -39,7 +40,7 @@ export function update(dt, night, sky = night) {
   if (showerLeft > 0) {
     showerLeft--;
     wait = showerLeft ? SHOWER_GAP : SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0]);
-  } else wait = SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0]);
+  } else wait = (SPAWN_SECONDS[0] + Math.random() * (SPAWN_SECONDS[1] - SPAWN_SECONDS[0])) / (1 + companions.bonus('stars'));
   const fromLeft = Math.random() < 0.5;
   star = {
     x: fromLeft ? 30 + Math.random() * 120 : VIEW_W - 30 - Math.random() * 120,
