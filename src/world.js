@@ -444,16 +444,23 @@ export function createWorld() {
       const cam = Math.round(camX);
       ctx.drawImage(ground, -cam, 0);
 
-      const flicker = Math.sin(time * 9) > 0.4 ? 1 : 0;
-      glow(ctx, COTTAGE_X + 33 - cam, GROUND_Y - 9, 15 + flicker, 0.3);
-      glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker, 0.35);
+      drawTeam(ctx, cam, time);
 
-      glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
-      for (let i = 0; i < 4; i++) {
-        const t = (time * 0.35 + i / 4) % 1;
-        if (t > 0.85) continue;
-        px(ctx, WELL_X - cam + Math.round(Math.sin(time * 1.3 + i * 2.1) * 6), GROUND_Y - 8 - Math.round(t * 22), i % 2 ? PAL.magic : PAL.glowLight);
+      // Dungeon-Eingang: Fackeln, Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
+      ctx.drawImage(buildings.owned('dungeon') ? gate : site, DUNGEON_X - 24 - cam, 0);
+      ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
+
+      for (const s of smoke) {
+        s.age += dt;
+        s.y -= 6 * dt;
+        s.x += s.drift * dt;
       }
+      while (smoke.length && smoke[0].age > 5) smoke.shift();
+    },
+
+    draw(ctx, camX, time) {
+      const cam = Math.round(camX);
+      ctx.drawImage(ground, -cam, 0);
 
       drawTeam(ctx, cam, time);
 
@@ -462,12 +469,6 @@ export function createWorld() {
       const gy = GROUND_Y + 4;
       const hasGate = buildings.owned('dungeon');
       ctx.drawImage(hasGate ? gate : site, gx - 24, 0);
-      for (const tx of hasGate ? [gx - 13, gx + 12] : []) {
-        const tall = Math.floor(time * 8 + tx) % 3;
-        rect(ctx, tx - 1, gy - 17, 3, 3, PAL.roofLight);
-        rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
-        px(ctx, tx, gy - 16, PAL.glowLight);
-      }
       ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
 
       const dungeonState = hasGate ? dungeon.status() : 'idle';
@@ -510,15 +511,53 @@ export function createWorld() {
       ctx.globalAlpha = 1;
     },
 
-    // Wird nach der Spielfigur gezeichnet, liegt also vor ihr.
-    drawFront(ctx, camX, time) {
+
+    // Lichter werden nach der Tageszeit-Tönung gezeichnet und leuchten deshalb nachts.
+    drawLights(ctx, camX, time, night) {
       const cam = Math.round(camX);
-      for (const f of fireflies) {
+      const flicker = Math.sin(time * 9) > 0.4 ? 1 : 0;
+      const lamp = 0.3 + 0.7 * night;
+
+      // erleuchtete Fensterscheiben und Laternenglas
+      if (night > 0.05) {
+        ctx.globalAlpha = Math.min(1, night * 1.1);
+        const wx = COTTAGE_X + 27 - cam;
+        const wy = GROUND_Y - 21 + 7;
+        rect(ctx, wx, wy, 12, 10, PAL.glow);
+        rect(ctx, wx, wy, 5, 4, PAL.glowLight);
+        rect(ctx, wx + 5, wy, 1, 10, PAL.woodDark);
+        rect(ctx, wx, wy + 4, 12, 1, PAL.woodDark);
+        rect(ctx, LANTERN_X - 5 - cam, GROUND_Y - 15, 3, 4, PAL.glow);
+        px(ctx, LANTERN_X - 4 - cam, GROUND_Y - 14, PAL.glowLight);
+        ctx.globalAlpha = 1;
+      }
+      glow(ctx, COTTAGE_X + 33 - cam, GROUND_Y - 9, 15 + flicker + Math.round(night * 6), 0.3 * lamp);
+      glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker + Math.round(night * 6), 0.35 * lamp);
+
+      glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
+      for (let i = 0; i < 4; i++) {
+        const t = (time * 0.35 + i / 4) % 1;
+        if (t > 0.85) continue;
+        px(ctx, WELL_X - cam + Math.round(Math.sin(time * 1.3 + i * 2.1) * 6), GROUND_Y - 8 - Math.round(t * 22), i % 2 ? PAL.magic : PAL.glowLight);
+      }
+
+      const gx = DUNGEON_X - cam;
+      const gy = GROUND_Y + 4;
+      const hasGate = buildings.owned('dungeon');
+      for (const tx of hasGate ? [gx - 13, gx + 12] : []) {
+        const tall = Math.floor(time * 8 + tx) % 3;
+        if (night > 0.2) glow(ctx, tx, gy - 17, 6 + Math.round(night * 4), 0.35 * night);
+        rect(ctx, tx - 1, gy - 17, 3, 3, PAL.roofLight);
+        rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
+        px(ctx, tx, gy - 16, PAL.glowLight);
+      }
+      fireflies.forEach((f, i) => {
+        if (i >= Math.round(fireflies.length * Math.min(1, night * 1.4))) return;
         const t = time * f.speed + f.phase;
         const x = Math.round(f.x + Math.sin(t) * 10 + Math.sin(t * 2.3) * 4) - cam;
         const y = Math.round(f.y + Math.cos(t * 1.4) * 5);
         const bright = Math.sin(t * 2.2);
-        if (bright < -0.2) continue;
+        if (bright < -0.2) return;
         if (bright > 0.5) {
           ctx.globalAlpha = 0.35;
           rect(ctx, x - 1, y, 3, 1, PAL.glow);
@@ -526,7 +565,12 @@ export function createWorld() {
           ctx.globalAlpha = 1;
         }
         px(ctx, x, y, PAL.firefly);
-      }
+      });
+    },
+
+    // Wird nach der Spielfigur gezeichnet, liegt also vor ihr.
+    drawFront(ctx, camX, time) {
+      const cam = Math.round(camX);
       ctx.drawImage(foreground, -Math.round(camX * FRONT_FACTOR), 0);
     },
   };

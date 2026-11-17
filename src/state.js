@@ -75,6 +75,13 @@ export const state = {
   get arena() {
     return data.arena;
   },
+  // Tageszeit 0…1; ohne Spielstand beginnt das Spiel am frühen Abend.
+  get day() {
+    return typeof data.day === 'number' ? data.day : 0.72;
+  },
+  set day(value) {
+    data.day = value;
+  },
   get buildings() {
     return data.buildings;
   },

@@ -1,9 +1,10 @@
-import { VIEW_W, VIEW_H, WORLD_W, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE } from './config.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
+import { phase, label as dayLabel } from './daycycle.js';
 import * as expedition from './expedition.js';
 import { state } from './state.js';
-import { clamp } from './utils.js';
+import { clamp, makeCanvas } from './utils.js';
 import { initInput, setBlocked, setTapHandler } from './input.js';
 import { createUI } from './ui.js';
 import { createBackground } from './background.js';
@@ -113,12 +114,21 @@ const player = createPlayer();
 
 let camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
 let time = 0;
+let dayTime = state.day;
+
+// Landschaft, Figur und Gebäude werden erst hier hinein gezeichnet und dann
+// passend zur Tageszeit eingefärbt; Himmel und Lichter bleiben unberührt.
+const [scene, sctx] = makeCanvas(VIEW_W, VIEW_H);
+const dayEl = document.getElementById('daytime');
+let dayText = '';
 let last = performance.now();
 
 function frame(now) {
   const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
   last = now;
   time += dt;
+  dayTime = (dayTime + dt / DAY_LENGTH) % 1;
+  state.day = dayTime;
 
   if (!paused) {
     player.update(dt);
@@ -146,10 +156,28 @@ function frame(now) {
   const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
   camX += (target - camX) * Math.min(1, dt * 6);
 
-  background.draw(ctx, camX, time);
-  world.draw(ctx, camX, time);
-  player.draw(ctx, Math.round(camX));
-  world.drawFront(ctx, camX, time);
+  const ph = phase(dayTime);
+  background.drawSky(ctx, camX, time, ph);
+
+  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  background.drawLand(sctx, camX, ph);
+  world.draw(sctx, camX, time);
+  player.draw(sctx, Math.round(camX));
+  world.drawFront(sctx, camX, time);
+  if (ph.tintAlpha > 0.01) {
+    sctx.globalCompositeOperation = 'source-atop';
+    sctx.globalAlpha = ph.tintAlpha;
+    sctx.fillStyle = ph.tint;
+    sctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    sctx.globalAlpha = 1;
+    sctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.drawImage(scene, 0, 0);
+  world.drawLights(ctx, camX, time, ph.night);
+
+  const dl = dayLabel(dayTime);
+  const text = `${dl.icon} ${dl.name}`;
+  if (text !== dayText) dayEl.textContent = dayText = text;
 
   requestAnimationFrame(frame);
 }

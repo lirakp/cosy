@@ -36,6 +36,14 @@ Dann <http://localhost:8000> öffnen.
 **Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `P` Pause ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
+## Tag und Nacht
+
+Ein ganzer Tag dauert 12 Minuten (`DAY_LENGTH` in `src/config.js`): Morgen,
+Tag, Abend, Nacht. Sonne und Mond ziehen über den Himmel, nachts erscheinen
+Sterne und Glühwürmchen, Fenster, Laterne und Fackeln leuchten. Die Tageszeit
+steht oben links, wird mit dem Spielstand gespeichert und bleibt in der Pause
+stehen. Farben und Übergänge stehen in `src/daycycle.js`.
+
 ## Sammeln
 
 Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
@@ -140,7 +148,8 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | --- | --- |
 | `src/config.js` | Auflösung (320×180), Weltbreite, Bodenlinien |
 | `src/palette.js` | Alle Farben an einem Ort |
-| `src/background.js` | Himmel, Sterne, Mond, Wolken, Berge, Hügel (Parallax) |
+| `src/background.js` | Himmel, Sterne, Sonne, Mond, Wolken, Berge, Hügel (Parallax) |
+| `src/daycycle.js` | Tag-Nacht-Zyklus: Himmelsfarben, Tönung, Sonnen- und Mondbahn |
 | `src/world.js` | Wiese, Weg, Häuschen, Brunnen, Lager, Dungeon-Tor, Münzen, Rauch, Glühwürmchen |
 | `src/items.js` | Katalog der Sammelstücke, Ränge, Chancen, Ziehen |
 | `src/art/` | Zeichner für die Sammelstücke (Kern + je Kategorie) |

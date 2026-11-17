@@ -26,3 +26,6 @@ export const DUNGEON_RANGE = 22;
 // Die Bossarena.
 export const ARENA_X = 716;
 export const ARENA_RANGE = 26;
+
+// Ein ganzer Tag-Nacht-Zyklus dauert so viele Sekunden Spielzeit.
+export const DAY_LENGTH = 720;
