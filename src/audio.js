@@ -342,6 +342,20 @@ const SFX = {
     const t = ctx.currentTime + 0.05;
     [[76, 0], [74, 0.4], [72, 0.8], [67, 1.2], [72, 1.8]].forEach(([n, d]) => tone(midi(n), t + d, 0.38, { type: 'sine', gain: 0.07, release: 0.6, attack: 0.04 }));
   },
+  pick() {
+    const t = ctx.currentTime;
+    tone(1900 + Math.random() * 400, t, 0.03, { type: 'square', gain: 0.02, release: 0.06, cutoff: 5000 });
+    hiss(t, 0.05, { gain: 0.025, freq: 2500, type: 'bandpass' });
+  },
+  lift() {
+    const t = ctx.currentTime;
+    hiss(t, 0.5, { gain: 0.05, freq: 300, type: 'lowpass' });
+    tone(70, t, 0.45, { type: 'square', gain: 0.03, cutoff: 300 });
+    tone(midi(84), t + 0.45, 0.2, { type: 'sine', gain: 0.05, release: 0.4 });
+  },
+  trader() {
+    notes([72, 76, 79, 76, 84], 0.09, { type: 'triangle', gain: 0.06, release: 0.3 });
+  },
   pause() {
     notes([76, 69], 0.08, { type: 'triangle', gain: 0.06, release: 0.2 });
   },

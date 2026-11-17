@@ -6,6 +6,8 @@ import * as buildings from './buildings.js';
 import * as arena from './arena.js';
 import { audio } from './audio.js';
 import * as buffs from './buffs.js';
+import * as mine from './mine.js';
+import * as trader from './trader.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -37,7 +39,7 @@ function tile(item, { hidden = false, badge = '' } = {}) {
   return el;
 }
 
-export function createUI({ onToggle, onOutfit }) {
+export function createUI({ onToggle, onOutfit, onTravel, where }) {
   const overlay = $('#overlay');
   const goldEl = $('#gold span');
   const toastEl = $('#toast');
@@ -49,6 +51,7 @@ export function createUI({ onToggle, onOutfit }) {
   const pick = { level: 0, heroes: [] }; // Auswahl im Dungeon-Menü
   let arenaTab = 'fight';
   let arenaSel = null; // angetippter Platz im Arena-Team: { i, key }
+  let mineSel = null; // angetippter Arbeitsplatz in der Mine: { l, s }
   const reveals = [];
 
   const refreshGold = () => {
@@ -71,6 +74,8 @@ export function createUI({ onToggle, onOutfit }) {
     if (view === 'dungeon') renderDungeon();
     if (view === 'arena') renderArena();
     if (view === 'wardrobe') renderWardrobe();
+    if (view === 'mine') renderMine();
+    if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -411,6 +416,140 @@ export function createUI({ onToggle, onOutfit }) {
     $('button[data-act]', el).focus();
     if (b) audio.play('reveal', 4);
     onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Mine
+
+  const oreChip = (t, n) => `<span class="ore-chip r-${RARITIES[t].id}" data-ore="${t}"><b>${fmt(n)}</b> ${mine.LEVELS[t].ore}</span>`;
+  const fillOres = (root = overlay) => {
+    for (const el of root.querySelectorAll('[data-ore]')) el.prepend(picture(mine.oreImage(Number(el.dataset.ore))));
+  };
+
+  function renderMine() {
+    if (!buildings.owned('mine')) return renderPurchase('mine', 'Mine');
+    mine.tick();
+    const { place, mineLevel } = where();
+    const inMine = place === 'mine';
+    const levels = mine.LEVELS.map((lv, l) => {
+      const rank = RARITIES[l].id;
+      if (!mine.unlocked(l)) {
+        return `<div class="mine-level r-${rank} locked"><b><i>${rank}</i> Ebene ${l + 1} · ${lv.name}</b><span class="lock">Mine auf Rang ${rank} ausbauen</span></div>`;
+      }
+      const slots = mine.workers(l).map((w, s) => {
+        const on = mineSel && mineSel.l === l && mineSel.s === s ? ' sel' : '';
+        return w
+          ? `<button class="tile r-${w.rank}${on}" data-act="mine-slot" data-l="${l}" data-s="${s}" data-sprite="${w.id}" title="${w.name}"><span class="rank">${w.rank}</span><span class="count">${RARITIES[mine.levelOf(w.id)].id}</span></button>`
+          : `<button class="tile empty-slot${on}" data-act="mine-slot" data-l="${l}" data-s="${s}">frei</button>`;
+      }).join('');
+      return `<div class="mine-level r-${rank}${inMine && l === mineLevel ? ' here' : ''}">
+        <b><i>${rank}</i> Ebene ${l + 1} · ${lv.name}</b>
+        <div class="mine-slots">${slots}</div>
+        <span class="mine-rate" data-ore="${l}"><span class="gold-text">${fmt1(mine.levelRate(l))}</span> ${lv.ore} / min</span>
+        ${inMine ? (l === mineLevel ? '<span class="tag">hier</span>' : `<button data-act="travel" data-v="${l}">Hinfahren</button>`) : ''}
+      </div>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <section class="panel minepanel">
+        ${head('Mine')}
+        ${upgradeBar('mine')}
+        <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        <div class="leader-actions">
+          <button data-act="mine-auto">Automatisch besetzen</button>
+          ${inMine ? '<button data-act="travel" data-v="-1">Zur Oberfläche</button>' : ''}
+          <span class="muted">Bis zu drei Monster je Ebene. Erz sammelt sich von selbst, auch offline (bis zu 8 Stunden).</span>
+        </div>
+        ${minePicker()}
+        <div class="mine-levels">${levels}</div>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    fillOres();
+  }
+
+  function minePicker() {
+    if (!mineSel) return '';
+    const { l, s } = mineSel;
+    const current = state.mine.slots[l][s];
+    const list = mine.candidates().slice(0, 44);
+    let detail = '';
+    const item = current && state.count(current) && getItem(current);
+    if (item) {
+      const level = mine.levelOf(item.id);
+      const cost = mine.levelCost(item);
+      detail = `<div class="crow r-${RARITIES[level].id}">
+        <div class="info"><b>${item.name}</b>
+          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> ·
+          ${fmt1(mine.digsPerMinute(item))} Hiebe/min × ${mine.yieldOf(item)} Erz
+          ${cost === null ? '' : `→ ${fmt1(mine.digsPerMinute(item, level + 1))} × ${mine.yieldOf(item, level + 1)}`}</span></div>
+        ${cost === null
+          ? `<button disabled>${mine.capped(level) ? 'Minen-Rang nötig' : 'Maximal'}</button>`
+          : `<button data-act="mine-up" data-id="${item.id}" ${mine.material() >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
+      </div>
+      <p class="muted">Verbessert wird mit Monster-Duplikaten (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(mine.material())}</b>.</p>`;
+    }
+    const tiles = list.map((m) => {
+      const at = mine.assignedAt(m.id);
+      return `<button class="tile r-${m.rank}${m.id === current ? ' picked' : ''}" data-act="mine-pick" data-id="${m.id}" data-sprite="${m.id}" title="${m.name}">
+        <span class="rank">${m.rank}</span><span class="count">${RARITIES[mine.levelOf(m.id)].id}</span>${at >= 0 && m.id !== current ? `<span class="new">${RARITIES[at].id}</span>` : ''}</button>`;
+    }).join('');
+    return `<div class="chest picker">
+      <div class="line"><span>Monster für Ebene ${l + 1}, Platz ${s + 1}</span>
+        <span><button data-act="mine-pick" data-id="" ${current ? '' : 'disabled'}>Abziehen</button> <button data-act="mine-close">Fertig</button></span></div>
+      ${detail}
+      ${list.length ? `<div class="grid heroes">${tiles}</div>` : '<p class="muted">Du besitzt noch keine Monster – ziehe welche am Wunschbrunnen.</p>'}
+    </div>`;
+  }
+
+  // ------------------------------------------------------------ Erzhändler
+
+  function renderTrader() {
+    if (!trader.present()) {
+      overlay.innerHTML = `
+        <section class="panel">
+          ${head('Erzhändler')}
+          <p class="lead">Der Erzhändler ist gerade nicht da.</p>
+          <p class="muted">Er kommt nur selten vorbei – alle ${trader.CHECK_MINUTES} Minuten Spielzeit mit ${percent(trader.ARRIVE_CHANCE)} Chance – und setzt sich dann
+          für ${trader.STAY_MINUTES} Minuten neben den Wunschbrunnen. Sammle bis dahin Erz in der Mine.</p>
+          <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        </section>`;
+      fillOres();
+      return;
+    }
+    const offers = trader.offers().map((o, i) => {
+      const item = getItem(o.id);
+      const can = !o.sold && mine.ore(o.tier) >= o.price;
+      return `<div class="offer r-${item.rank}${o.sold ? ' sold' : ''}">
+        <div class="tile r-${item.rank}" data-sprite="${item.id}"><span class="rank">${item.rank}</span>${state.count(item.id) ? '' : '<span class="new">NEU</span>'}</div>
+        <b>${item.name}</b>
+        <span class="price" data-ore="${o.tier}">${o.price}</span>
+        <button data-act="trader-buy" data-v="${i}" ${can ? '' : 'disabled'}>${o.sold ? 'Verkauft' : 'Tauschen'}</button>
+      </div>`;
+    }).join('');
+    const left = trader.surpriseLeft();
+    const surprise = RARITIES.map((r, t) => `
+      <button class="level r-${r.id}" data-act="trader-surprise" data-v="${t}" ${left > 0 && mine.ore(t) >= trader.SURPRISE_PRICE[t] ? '' : 'disabled'}>
+        <b><i>${r.id}</i>Überraschung</b><span class="price" data-ore="${t}">${trader.SURPRISE_PRICE[t]}</span>
+      </button>`).join('');
+    overlay.innerHTML = `
+      <section class="panel traderpanel">
+        ${head('Erzhändler')}
+        <p class="lead">„Feines Erz hast du da! Ich tausche gegen Schätze aus aller Welt.“ · zieht weiter in <b id="trader-time"></b></p>
+        <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        <h4>Angebote</h4>
+        <div class="offers">${offers}</div>
+        <h4>Überraschungstausch · noch ${left}× bei diesem Besuch</h4>
+        <p class="muted">Ein zufälliges Sammelstück im Rang des Erzes.</p>
+        <div class="levels">${surprise}</div>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    fillOres();
+    updateTrader();
+  }
+
+  function updateTrader() {
+    const el = $('#trader-time');
+    if (el) el.textContent = clock(trader.remaining());
+    if (view === 'trader' && !trader.present() && el) renderTrader();
   }
 
   // ------------------------------------------------------------ Anlagen bauen und ausbauen
@@ -792,6 +931,25 @@ export function createUI({ onToggle, onOutfit }) {
       audio.play('levelUp');
       renderWardrobe();
     }
+    if (act === 'mine-slot') {
+      const sel = { l: Number(btn.dataset.l), s: Number(btn.dataset.s) };
+      mineSel = mineSel && mineSel.l === sel.l && mineSel.s === sel.s ? null : sel;
+      renderMine();
+    }
+    if (act === 'mine-close') { mineSel = null; renderMine(); }
+    if (act === 'mine-pick' && mineSel) { mine.assign(mineSel.l, mineSel.s, btn.dataset.id || null); renderMine(); }
+    if (act === 'mine-auto') { mine.autoAssign(); mineSel = null; audio.play('levelUp'); renderMine(); }
+    if (act === 'mine-up') { audio.play(mine.levelUp(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); renderMine(); }
+    if (act === 'travel') { show(null); onTravel(Number(btn.dataset.v)); }
+    if (act === 'trader-buy' || act === 'trader-surprise') {
+      const got = act === 'trader-buy' ? trader.buyOffer(Number(btn.dataset.v)) : trader.surprise(Number(btn.dataset.v));
+      if (!got) audio.play('error');
+      else {
+        reveals.push({ ...got, source: 'ERZHÄNDLER' });
+        renderTrader();
+        nextReveal();
+      }
+    }
     if (act === 'arena-tab') { arenaTab = btn.dataset.v; renderArena(); }
     if (act === 'slot') {
       const sel = { i: Number(btn.dataset.i), key: btn.dataset.k };
@@ -854,6 +1012,12 @@ export function createUI({ onToggle, onOutfit }) {
     openDungeon: () => show('dungeon'),
     openArena: () => show('arena'),
     openWardrobe: () => show('wardrobe'),
+    openMine: () => show('mine'),
+    openTrader: () => show('trader'),
+    updateTrader,
+    refreshMine() {
+      if (view === 'mine') renderMine();
+    },
     wakeUp(buffId) {
       reveals.push({ wake: buffId });
       nextReveal();

@@ -537,3 +537,52 @@ td b { color: var(--rc); }
 #fade.slow { transition-duration: 1s; }
 #fade .zzz { animation: zzz 1.6s steps(3) infinite; }
 @keyframes zzz { 50% { transform: translateY(-6px); opacity: 0.6; } }
+
+/* ---------------------------------------------------------------- Mine und Erzhändler */
+
+.ores { display: flex; flex-wrap: wrap; gap: 6px; }
+.ore-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1b1730;
+  padding: 3px 8px 3px 4px;
+  font-size: 11px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.ore-chip b { color: #fdf6e3; }
+.ore-chip .sprite, .mine-rate .sprite, .price .sprite { width: 20px; flex: none; }
+.mine-levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.mine-level {
+  background: #1b1730;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.mine-level > b { color: #fdf6e3; }
+.mine-level > b i { font-style: normal; color: var(--rc); margin-right: 4px; }
+.mine-level.locked { opacity: 0.55; }
+.mine-level.here { background: #2c2660; }
+.mine-level .tag { align-self: flex-start; }
+.mine-level > button { align-self: flex-start; font-size: 12px; padding: 5px 8px; }
+.mine-slots { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; }
+.mine-rate, .price { display: flex; align-items: center; gap: 4px; }
+.offers { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.offer {
+  background: #1b1730;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.offer .tile { width: 64px; cursor: default; }
+.offer b { color: #fdf6e3; font-weight: normal; }
+.offer.sold { opacity: 0.5; }
+.level .price { font-size: 13px; color: #fdf6e3; }

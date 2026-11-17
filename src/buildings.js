@@ -26,6 +26,13 @@ export const BUILDINGS = {
     pitch: 'Rüste drei Helden aus und lass sie gegen Bosse kämpfen. Siege bringen Stoff und Seide für den Arena-Händler.',
     unlocks: 'Bosse lassen sich bis zum Rang der Arena gezielt herausfordern, Ausrüstung bis zu diesem Rang verbessern.',
   },
+  mine: {
+    name: 'Mine',
+    buy: 800,
+    upgrades: [1500, 4000, 10000, 25000, 60000],
+    pitch: 'Sechs Ebenen tief: Deine Monster hacken dort Erz, das der seltene Erzhändler gegen Sammelstücke tauscht.',
+    unlocks: 'Jeder Rang öffnet eine tiefere Ebene mit wertvollerem Erz und erlaubt, Monster bis zu diesem Rang zu verbessern.',
+  },
 };
 
 const MAX_TIER = RARITIES.length - 1;

@@ -4,7 +4,7 @@ export const VIEW_W = 320;
 export const VIEW_H = 180;
 
 // Breite der begehbaren Welt (die Kamera scrollt darüber).
-export const WORLD_W = 800;
+export const WORLD_W = 960;
 
 // Oberkante der Wiese und die Linie, auf der die Spielfigur läuft.
 export const GROUND_Y = 146;
@@ -33,3 +33,9 @@ export const DAY_LENGTH = 720;
 // Haustür des Häuschens
 export const HOUSE_X = 209;
 export const HOUSE_RANGE = 9;
+
+// Mine am rechten Ende der Welt und der Platz des Erzhändlers neben dem Brunnen
+export const MINE_X = 892;
+export const MINE_RANGE = 22;
+export const TRADER_X = 462;
+export const TRADER_RANGE = 10;

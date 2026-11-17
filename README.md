@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `P` Pause · `M` Ton an/aus ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `P` Pause · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Tag und Nacht
@@ -52,6 +52,30 @@ Melodie immer wieder neu erfunden wird; nachts wird sie leiser und sparsamer,
 in der Pause gedämpft. Browser erlauben Ton erst nach der ersten Eingabe.
 Ton an/aus mit dem ♪-Knopf oder `M`, Lautstärke von Musik und Effekten im
 Pause-Fenster. Die Einstellungen werden im Browser gespeichert.
+
+## Mine und Erzhändler
+
+Ganz rechts liegt die Mine (betreten mit `E`). Jeder Minen-Rang öffnet eine
+tiefere Ebene: Lehmstollen (Kupfererz, D), Felsengang (Eisen, C), Silberader (B),
+Goldkammer (A), Kristallhöhle (Mithril, S), Sternengrund (Sternenerz, SS). Im
+Schacht wechselt man mit `↑`/`↓` oder über das Aufzug-Menü die Ebene.
+
+Bis zu drei Monster pro Ebene hacken sichtbar mit der Spitzhacke; das Erz
+sammelt sich von selbst, auch offline (bis zu 8 Stunden).
+
+- Hiebe pro Minute nach Rang des Monsters: D 2 · C 2,5 · B 3,2 · A 4 · S 5 · SS 6,5
+- Verbesserung mit Monster-Duplikaten (30 · 80 · 200 · 600 · 2000), bis zum
+  Minen-Rang: Tempo ×1 · 1,25 · 1,55 · 1,9 · 2,3 · 2,8 und Erz pro Hieb
+  1 · 1 · 2 · 2 · 3 · 4
+- Je tiefer, desto seltener das Erz: Faktor 1 · 0,6 · 0,4 · 0,25 · 0,15 · 0,08
+
+Der **Erzhändler** setzt sich ab und zu neben den Brunnen: alle 3 Minuten
+Spielzeit mit 8,9 % Chance (so selten wie ein A- oder S-Zug), dann bleibt er
+6 Minuten. Er bietet vier bestimmte Sammelstücke (bevorzugt fehlende) für
+20 · 20 · 25 · 30 · 40 · 50 Erz ihres Rangs und drei Überraschungstausche pro
+Besuch (10 · 10 · 12 · 15 · 20 · 25 Erz → zufälliges Stück dieses Rangs).
+
+Werte in `src/mine.js` und `src/trader.js`.
 
 ## Das Haus
 
@@ -92,14 +116,15 @@ in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
 ## Anlagen
 
-Expeditionslager, Dungeon-Tor und Bossarena müssen erst gebaut werden (250, 400
-und 600 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
+Expeditionslager, Dungeon-Tor, Bossarena und Mine müssen erst gebaut werden (250,
+400, 600 und 800 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
 
 | Ausbau auf | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- |
 | Expeditionslager | 1000 | 3000 | 8000 | 20000 | 50000 |
 | Dungeon-Tor | 800 | 2500 | 7000 | 18000 | 45000 |
 | Bossarena | 1200 | 3500 | 9000 | 22000 | 55000 |
+| Mine | 1500 | 4000 | 10000 | 25000 | 60000 |
 
 Der Lager-Rang begrenzt, bis zu welcher Stufe Lebewesen und Leitung entwickelt
 werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen; der Arena-Rang die
@@ -197,4 +222,7 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/audio.js` | Musik und Soundeffekte (Web Audio) |
 | `src/interior.js` | Innenraum des Hauses |
 | `src/buffs.js` | Rausch-Effekte nach dem Schlafen |
+| `src/mine.js` | Mine: Ebenen, Arbeiter, Erz |
+| `src/minescene.js` | Darstellung der Mine mit hackenden Monstern |
+| `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

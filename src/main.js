@@ -1,4 +1,7 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE } from './config.js';
+import * as mine from './mine.js';
+import * as trader from './trader.js';
+import { createMineScene, zoneAt as mineZoneAt, MINE_BOUNDS, LIFT_SPAWN } from './minescene.js';
 import { createInterior, zoneAt, ROOM_BOUNDS, DOOR_SPAWN } from './interior.js';
 import * as buffs from './buffs.js';
 import * as dungeon from './dungeon.js';
@@ -32,11 +35,17 @@ resize();
 
 initInput(canvas);
 
-const ui = createUI({ onToggle: (open) => setBlocked(open || sleeping), onOutfit: (id) => player.setOutfit(id) });
+const ui = createUI({
+  onToggle: (open) => setBlocked(open || sleeping),
+  onOutfit: (id) => player.setOutfit(id),
+  onTravel: (level) => travel(level),
+  where: () => ({ place, mineLevel }),
+});
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
 let near = null; // draußen: 'well' | 'camp' | 'dungeon' | 'arena' | 'house' · drinnen: 'door' | 'wardrobe' | 'bed'
-let inside = false; // im Haus?
+let place = 'outside'; // 'outside' | 'house' | 'mine'
+let mineLevel = 0; // Ebene in der Mine (0 = D … 5 = SS)
 let sleeping = false;
 
 // Pause: Figur, Münzen und Animationen halten an. Expedition und Dungeon
@@ -106,7 +115,7 @@ function fadeThrough(fn) {
 function enterHouse() {
   audio.play('door');
   fadeThrough(() => {
-    inside = true;
+    place = 'house';
     player.x = DOOR_SPAWN;
     player.facing = 1;
     player.bounds = ROOM_BOUNDS;
@@ -116,10 +125,44 @@ function enterHouse() {
 function leaveHouse() {
   audio.play('door');
   fadeThrough(() => {
-    inside = false;
+    place = 'outside';
     player.x = HOUSE_X;
     player.bounds = [10, WORLD_W - 10];
     camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  });
+}
+
+// ---------------------------------------------------------------- Mine
+
+function enterMine() {
+  audio.play('lift');
+  fadeThrough(() => {
+    place = 'mine';
+    mineLevel = Math.min(mineLevel, Math.max(0, mine.depth()));
+    player.x = LIFT_SPAWN;
+    player.facing = 1;
+    player.bounds = MINE_BOUNDS;
+  });
+}
+
+// zu einer Ebene fahren; -1 = zurück an die Oberfläche
+function travel(level) {
+  if (place !== 'mine') return;
+  if (level < 0) {
+    audio.play('lift');
+    fadeThrough(() => {
+      place = 'outside';
+      player.x = MINE_X - 2;
+      player.bounds = [10, WORLD_W - 10];
+      camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    });
+    return;
+  }
+  if (!mine.unlocked(level) || level === mineLevel) return;
+  audio.play('lift');
+  fadeThrough(() => {
+    mineLevel = level;
+    player.x = LIFT_SPAWN;
   });
 }
 
@@ -155,6 +198,9 @@ function sleep() {
 function act() {
   if (sleeping) return;
   if (near === 'house') enterHouse();
+  if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
+  if (near === 'lift') ui.openMine();
+  if (near === 'trader') ui.openTrader();
   if (near === 'door') leaveHouse();
   if (near === 'wardrobe') ui.openWardrobe();
   if (near === 'bed') sleep();
@@ -165,6 +211,7 @@ function act() {
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
+document.getElementById('btn-mine').addEventListener('click', () => ui.openMine());
 document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
 document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
@@ -175,6 +222,10 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyX') ui.openExpedition();
   if (e.code === 'KeyF') ui.openDungeon();
   if (e.code === 'KeyB') ui.openArena();
+  if (e.code === 'KeyN') ui.openMine();
+  // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
+  if (place === 'mine' && (e.code === 'ArrowUp' || e.code === 'KeyW')) travel(mineLevel - 1);
+  if (place === 'mine' && (e.code === 'ArrowDown' || e.code === 'KeyS') && mine.unlocked(mineLevel + 1)) travel(mineLevel + 1);
   if (near && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) {
     e.preventDefault();
     act();
@@ -184,7 +235,7 @@ addEventListener('keydown', (e) => {
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
   const chestX = CHEST_X - Math.round(camX);
-  if (paused || inside || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
+  if (paused || place !== 'outside' || !buildings.owned('camp') || Math.abs(x - chestX) > 11 || y < GROUND_Y - 16 || y > GROUND_Y + 10) return false;
   ui.collectChest();
   return true;
 });
@@ -225,6 +276,20 @@ function expeditionTick() {
   dungeonWas = dungeonNow;
   ui.updateDungeon();
 
+  // Mine: Erz wird laufend gehackt
+  const gained = mine.tick();
+  if (place === 'mine' && gained[mineLevel]) mineScene.addPop(mineLevel, gained[mineLevel]);
+  if (gained.some((n) => n > 0)) ui.refreshMine();
+
+  // Erzhändler kommt und geht
+  const visit = trader.tick();
+  if (visit === 'arrived') {
+    ui.toast('Ein Erzhändler hat sich neben den Brunnen gesetzt!');
+    audio.play('trader');
+  }
+  if (visit === 'left') ui.toast('Der Erzhändler ist weitergezogen.');
+  ui.updateTrader();
+
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
   ui.updateChest();
@@ -242,6 +307,16 @@ const background = createBackground();
 const world = createWorld();
 const player = createPlayer();
 const interior = createInterior();
+let lastPick = 0;
+const mineScene = createMineScene({
+  onStrike() {
+    const now = performance.now();
+    if (now - lastPick > 140) {
+      lastPick = now;
+      audio.play('pick');
+    }
+  },
+});
 
 let camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
 let time = 0;
@@ -299,6 +374,16 @@ function drawInside(ph) {
   interior.drawLights(ctx, time, ph.night);
 }
 
+// In der Mine ist es dunkel, nur Laternen und Funken leuchten.
+function drawMine() {
+  sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  mineScene.draw(sctx, mineLevel, time);
+  player.draw(sctx, 0);
+  tint('rgb(10 8 26)', 0.32);
+  ctx.drawImage(scene, 0, 0);
+  mineScene.drawLights(ctx, mineLevel, time);
+}
+
 function frame(now) {
   const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
   last = now;
@@ -309,16 +394,20 @@ function frame(now) {
   if (!paused) {
     player.update(dt);
     background.update(dt);
-    if (!inside) world.update(dt, player);
+    if (place === 'outside') world.update(dt, player);
+    if (place === 'mine') mineScene.update(dt, mineLevel, time);
   }
 
   near =
-    inside ? zoneAt(player.x)
+    place === 'house' ? zoneAt(player.x)
+    : place === 'mine' ? mineZoneAt(player.x)
     : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
     : Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
     : Math.abs(player.x - ARENA_X) < ARENA_RANGE ? 'arena'
+    : Math.abs(player.x - MINE_X) < MINE_RANGE ? 'mine'
+    : trader.present() && Math.abs(player.x - TRADER_X) < TRADER_RANGE ? 'trader'
     : null;
   actionButton.hidden = !near || paused || sleeping || ui.isOpen();
   const label =
@@ -326,23 +415,27 @@ function frame(now) {
     : near === 'door' ? 'Hinausgehen'
     : near === 'wardrobe' ? 'Kleiderschrank'
     : near === 'bed' ? (canSleep() ? 'Schlafen gehen' : 'Bett · schlafen ab dem Abend')
+    : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
+    : near === 'trader' ? '✦ Erzhändler'
     : near === 'well' ? '✦ Wunschbrunnen'
     : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
+    : near === 'mine' ? 'Mine betreten'
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
   if (actionLabel.textContent !== label) actionLabel.textContent = label;
 
   // Kamera folgt der Figur sanft (im Haus steht sie still)
-  if (!inside) {
+  if (place === 'outside') {
     const target = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
     camX += (target - camX) * Math.min(1, dt * 6);
   }
 
   const ph = phase(dayTime);
   audio.setNight(ph.night);
-  if (inside) drawInside(ph);
+  if (place === 'house') drawInside(ph);
+  else if (place === 'mine') drawMine();
   else drawOutside(ph);
 
   const dl = dayLabel(dayTime);

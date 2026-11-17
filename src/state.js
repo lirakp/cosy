@@ -26,6 +26,15 @@ const newArena = () => ({
   wins: 0,
 });
 
+const newMine = () => ({
+  lvl: {}, // Stufe je Monster (0 = D … 5 = SS)
+  slots: Array.from({ length: 6 }, () => [null, null, null]), // Arbeiter je Ebene
+  ore: [0, 0, 0, 0, 0, 0], // Erzvorrat je Rang
+  frac: [0, 0, 0, 0, 0, 0], // angefangenes Erz
+  last: 0,
+  trader: { until: 0, nextRoll: 0, offers: [], surprise: 0 },
+});
+
 const listeners = new Set();
 const data = load();
 
@@ -37,12 +46,14 @@ function load() {
       saved.dungeon = { run: null, ...saved.dungeon };
       saved.buildings = { camp: -1, dungeon: -1, arena: -1, ...saved.buildings };
       saved.arena = { ...newArena(), ...saved.arena };
+      saved.mine = { ...newMine(), ...saved.mine };
+      saved.buildings.mine ??= -1;
       return saved;
     }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1 }, arena: newArena() };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1 }, arena: newArena(), mine: newMine() };
 }
 
 function save() {
@@ -70,6 +81,9 @@ export const state = {
   },
   get dungeon() {
     return data.dungeon;
+  },
+  get mine() {
+    return data.mine;
   },
   get arena() {
     return data.arena;

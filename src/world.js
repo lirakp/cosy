@@ -1,4 +1,6 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X } from './config.js';
+import * as trader from './trader.js';
+import * as mine from './mine.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import { audio } from './audio.js';
@@ -234,6 +236,40 @@ function drawArena(ctx, x) {
   px(ctx, x - 1, base - 18, PAL.coinDark);
 }
 
+function drawMineEntrance(ctx, x) {
+  const base = GROUND_Y + 4;
+  // felsiger Hügel
+  for (const [dx, dy, r] of [[-20, -10, 12], [18, -12, 13], [0, -20, 15], [-8, -26, 9], [10, -28, 8]]) circle(ctx, x + dx, base + dy, r, PAL.stone);
+  for (const [dx, dy, r] of [[-22, -14, 6], [16, -18, 7], [-4, -30, 5], [6, -24, 6]]) circle(ctx, x + dx, base + dy, r, PAL.stoneLight);
+  for (const [dx, dy] of [[-26, -18], [20, -26], [-10, -34], [26, -10]]) {
+    px(ctx, x + dx, base + dy, PAL.leaf);
+    px(ctx, x + dx + 1, base + dy, PAL.leafLight);
+  }
+  rect(ctx, x - 34, base - 2, 68, 2, PAL.stone);
+  // Stollenöffnung mit Holzrahmen
+  rect(ctx, x - 9, base - 22, 18, 22, PAL.ink);
+  rect(ctx, x - 11, base - 24, 22, 3, PAL.woodDark);
+  rect(ctx, x - 11, base - 24, 22, 1, PAL.wood);
+  rect(ctx, x - 11, base - 21, 3, 21, PAL.woodDark);
+  rect(ctx, x + 8, base - 21, 3, 21, PAL.woodDark);
+  // Schienen heraus
+  rect(ctx, x - 7, base - 1, 1, 7, PAL.stoneLight);
+  rect(ctx, x + 6, base - 1, 1, 7, PAL.stoneLight);
+  for (let y = base; y < base + 7; y += 2) rect(ctx, x - 8, y, 16, 1, PAL.woodDark);
+  // Lore mit Erz
+  rect(ctx, x + 14, base - 8, 14, 7, PAL.stone);
+  rect(ctx, x + 14, base - 8, 14, 1, PAL.stoneLight);
+  for (let i = 0; i < 5; i++) circle(ctx, x + 16 + i * 2.5, base - 9 - (i % 2), 1, i % 2 ? PAL.coin : '#d07a4a');
+  circle(ctx, x + 17, base - 1, 1, PAL.ink);
+  circle(ctx, x + 25, base - 1, 1, PAL.ink);
+  // Schild
+  rect(ctx, x - 26, base - 18, 1, 18, PAL.woodDark);
+  rect(ctx, x - 31, base - 20, 12, 6, PAL.woodLight);
+  rect(ctx, x - 29, base - 18, 2, 2, PAL.ink);
+  rect(ctx, x - 26, base - 18, 2, 2, PAL.ink);
+  rect(ctx, x - 23, base - 18, 2, 2, PAL.ink);
+}
+
 function drawTent(ctx, x) {
   const base = GROUND_Y + 4;
   rect(ctx, x, base - 24, 1, 6, PAL.woodDark);
@@ -292,7 +328,7 @@ function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [22, 134, 482, 612, 664, 778]) drawTree(ctx, x, r);
+  for (const x of [22, 134, 482, 612, 664, 778, 836, 952]) drawTree(ctx, x, r);
   for (const x of [300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
@@ -343,6 +379,11 @@ export function createWorld() {
   const gate = prop(drawDungeonGate);
   const site = prop(drawSite);
   const arenaProp = prop(drawArena);
+  const mineProp = (() => {
+    const [c, ctx] = makeCanvas(80, VIEW_H);
+    drawMineEntrance(ctx, 40);
+    return c;
+  })();
   const foreground = makeForeground();
   const r = rng(1234);
 
@@ -449,61 +490,18 @@ export function createWorld() {
 
       drawTeam(ctx, cam, time);
 
-      // Dungeon-Eingang: Fackeln, Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
       ctx.drawImage(buildings.owned('dungeon') ? gate : site, DUNGEON_X - 24 - cam, 0);
       ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
+      if (buildings.owned('mine')) ctx.drawImage(mineProp, MINE_X - 40 - cam, 0);
+      else ctx.drawImage(site, MINE_X - 24 - cam, 0);
 
-      for (const s of smoke) {
-        s.age += dt;
-        s.y -= 6 * dt;
-        s.x += s.drift * dt;
-      }
-      while (smoke.length && smoke[0].age > 5) smoke.shift();
-    },
-
-    draw(ctx, camX, time) {
-      const cam = Math.round(camX);
-      ctx.drawImage(ground, -cam, 0);
-
-      drawTeam(ctx, cam, time);
-
-      // Dungeon-Eingang: Fackeln, Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
-      const gx = DUNGEON_X - cam;
-      const gy = GROUND_Y + 4;
-      const hasGate = buildings.owned('dungeon');
-      ctx.drawImage(hasGate ? gate : site, gx - 24, 0);
-      ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
-
-      const dungeonState = hasGate ? dungeon.status() : 'idle';
-      if (dungeonState !== 'idle') {
-        for (let i = 0; i < 5; i++) {
-          const t = Math.floor(time * 5 + i * 1.7);
-          px(ctx, gx - 5 + ((t * 7 + i * 3) % 11), gy - 3 - ((t * 5 + i * 4) % 14), i % 2 ? PAL.magic : '#b888f0');
-        }
-      }
-      if (dungeonState === 'done') {
-        const y = gy - 38 + Math.round(Math.sin(time * 5) * 1.5);
-        rect(ctx, gx - 2, y - 1, 4, 9, PAL.ink);
-        rect(ctx, gx - 1, y, 2, 4, PAL.coin);
-        rect(ctx, gx - 1, y + 5, 2, 2, PAL.coin);
-      }
-
-      for (const c of coins) {
-        const x = Math.round(c.x) - cam - 2;
-        const y = WALK_Y - 8 + Math.round(Math.sin(c.age * 3 + c.x) * 1.5);
-        const thin = Math.floor(c.age * 4 + c.x) % 4 === 3;
-        rect(ctx, x + (thin ? 1 : 0), y, thin ? 2 : 4, 5, PAL.ink);
-        rect(ctx, x - 1 + (thin ? 2 : 0), y + 1, thin ? 2 : 6, 3, PAL.ink);
-        rect(ctx, x + (thin ? 1 : 0), y + 1, thin ? 2 : 4, 3, PAL.coin);
-        if (!thin) {
-          rect(ctx, x + 1, y + 1, 2, 3, PAL.glowLight);
-          px(ctx, x + 3, y + 3, PAL.coinDark);
-        }
-      }
-      for (const p of pops) {
-        const d = 2 + Math.round(p.age * 12);
-        const x = Math.round(p.x) - cam, y = WALK_Y - 6;
-        for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) px(ctx, x + dx, y + dy, PAL.glowLight);
+      // Erzhändler am Brunnen, wenn er gerade da ist
+      if (trader.present()) {
+        const tx = TRADER_X - cam;
+        rect(ctx, tx - 11, GROUND_Y + 6, 22, 3, '#8a3c44');
+        rect(ctx, tx - 10, GROUND_Y + 7, 20, 1, '#c0504a');
+        ctx.drawImage(trader.traderImage(), tx - 8, GROUND_Y - 9);
+        for (const [dx, t] of [[-15, 0], [-19, 2], [12, 4]]) ctx.drawImage(mine.oreImage(t), tx + dx, GROUND_Y + 1, 8, 8);
       }
 
       for (const s of smoke) {
@@ -513,7 +511,6 @@ export function createWorld() {
       }
       ctx.globalAlpha = 1;
     },
-
 
     // Lichter werden nach der Tageszeit-Tönung gezeichnet und leuchten deshalb nachts.
     drawLights(ctx, camX, time, night) {
@@ -538,6 +535,15 @@ export function createWorld() {
       glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker + Math.round(night * 6), 0.35 * lamp);
 
       glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
+      if (trader.present()) {
+        const tx = TRADER_X - cam;
+        rect(ctx, tx + 10, GROUND_Y - 1, 3, 4, PAL.ink);
+        rect(ctx, tx + 11, GROUND_Y, 1, 2, PAL.glow);
+        glow(ctx, tx + 11, GROUND_Y + 1, 8 + Math.round(night * 6), 0.2 + 0.25 * night);
+        // schwebendes Erz über dem Kopf, damit man ihn bemerkt
+        const bob = Math.round(Math.sin(time * 3) * 1.5);
+        ctx.drawImage(mine.oreImage(3), tx - 4, GROUND_Y - 22 + bob, 8, 8);
+      }
       for (let i = 0; i < 4; i++) {
         const t = (time * 0.35 + i / 4) % 1;
         if (t > 0.85) continue;
@@ -554,6 +560,40 @@ export function createWorld() {
         rect(ctx, tx, gy - 18 - (tall ? 1 : 0), 1, 3 + (tall ? 1 : 0), PAL.glow);
         px(ctx, tx, gy - 16, PAL.glowLight);
       }
+      // Dungeon: Schimmern während einer Erkundung, Ausrufezeichen bei Rückkehr
+      const dungeonState = hasGate ? dungeon.status() : 'idle';
+      if (dungeonState !== 'idle') {
+        for (let i = 0; i < 5; i++) {
+          const t = Math.floor(time * 5 + i * 1.7);
+          px(ctx, gx - 5 + ((t * 7 + i * 3) % 11), gy - 3 - ((t * 5 + i * 4) % 14), i % 2 ? PAL.magic : '#b888f0');
+        }
+      }
+      if (dungeonState === 'done') {
+        const y = gy - 38 + Math.round(Math.sin(time * 5) * 1.5);
+        rect(ctx, gx - 2, y - 1, 4, 9, PAL.ink);
+        rect(ctx, gx - 1, y, 2, 4, PAL.coin);
+        rect(ctx, gx - 1, y + 5, 2, 2, PAL.coin);
+      }
+
+      // Münzen glänzen auch nachts
+      for (const c of coins) {
+        const x = Math.round(c.x) - cam - 2;
+        const y = WALK_Y - 8 + Math.round(Math.sin(c.age * 3 + c.x) * 1.5);
+        const thin = Math.floor(c.age * 4 + c.x) % 4 === 3;
+        rect(ctx, x + (thin ? 1 : 0), y, thin ? 2 : 4, 5, PAL.ink);
+        rect(ctx, x - 1 + (thin ? 2 : 0), y + 1, thin ? 2 : 6, 3, PAL.ink);
+        rect(ctx, x + (thin ? 1 : 0), y + 1, thin ? 2 : 4, 3, PAL.coin);
+        if (!thin) {
+          rect(ctx, x + 1, y + 1, 2, 3, PAL.glowLight);
+          px(ctx, x + 3, y + 3, PAL.coinDark);
+        }
+      }
+      for (const p of pops) {
+        const d = 2 + Math.round(p.age * 12);
+        const x = Math.round(p.x) - cam, y = WALK_Y - 6;
+        for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) px(ctx, x + dx, y + dy, PAL.glowLight);
+      }
+
       fireflies.forEach((f, i) => {
         if (i >= Math.round(fireflies.length * Math.min(1, night * 1.4))) return;
         const t = time * f.speed + f.phase;
