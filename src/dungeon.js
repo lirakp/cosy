@@ -33,9 +33,9 @@ export const LEVELS = [
 export const TYPES = [
   {
     id: 'blut', name: 'Blutdungeon', icon: '🩸',
-    text: 'Gefährlicher und stärker bewacht – dafür mehr Beute auf höherem Rang, vor allem Monster und Rüstungen.',
+    text: 'Gefährlicher und stärker bewacht – dafür mehr Beute auf höherem Rang, vor allem Waffen und Rüstungen.',
     needMult: 1.4, goldMult: 1.5, extraStandard: 0, extraBonus: 1, tierUp: 1,
-    weights: { monster: 0.4, ruestung: 0.4 },
+    weights: { waffen: 0.4, ruestung: 0.4 },
     names: ['Blutkeller', 'Rote Gruft', 'Blutkristallmine', 'Hort des Blutdrachen', 'Blutfeste', 'Abgrund der roten Ewigkeit'],
   },
   {

@@ -1231,7 +1231,7 @@ test('Dungeons: Beute folgt den Schwerpunkten, der Schleifendungeon zeigt Erinne
     Math.random = random;
   }
   const share = (t, cats) => cats.reduce((n, c) => n + (count[t][c] || 0), 0) / Object.values(count[t]).reduce((a, b) => a + b, 0);
-  assert.ok(share('blut', ['monster', 'ruestung']) > 0.6);
+  assert.ok(share('blut', ['waffen', 'ruestung']) > 0.6);
   assert.ok(share('dornen', ['lebewesen', 'relikte']) > 0.6);
   assert.ok(share('schleife', ['monster', 'artefakte']) > 0.7);
   assert.equal(dungeon.memoriesSeen().length, dungeon.MEMORIES.length, 'nach 60 Durchläufen alle Erinnerungen gesehen');

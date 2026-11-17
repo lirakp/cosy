@@ -635,7 +635,7 @@ schaltet die Ränge wie gehabt frei.
 
 | Art | Gefahr | Gold | Beute |
 | --- | --- | --- | --- |
-| 🩸 **Blutdungeon** (Blutkeller … Abgrund der roten Ewigkeit) | Stärke × 1,4 | × 1,5 | +1 Bonus-Stück, Bonus-Stücke einen Rang höher, 80 % Monster und Rüstung |
+| 🩸 **Blutdungeon** (Blutkeller … Abgrund der roten Ewigkeit) | Stärke × 1,4 | × 1,5 | +1 Bonus-Stück, Bonus-Stücke einen Rang höher, 80 % Waffen und Rüstung |
 | 🌿 **Dornendungeon** (Dornenkeller … Labyrinth der tausend Dornen) | Stärke × 1,15, Fallen kosten 8–20 % Erfolgschance | × 1,2 | +2 Standard- und +1 Bonus-Stück, 80 % Lebewesen und Relikte |
 | ⌛ **Schleifendungeon** (Echo des Kellers … Schleife der Ewigkeit) | Stärke × 1,25 | × 1,3 | +1 Bonus-Stück, 90 % Monster und Artefakte |
 
