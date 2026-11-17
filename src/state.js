@@ -54,8 +54,9 @@ const newVillage = () => ({
   quests: {}, // offene Aufgabe je Bewohner
   next: {}, // ab wann ein Bewohner eine neue Aufgabe hat
   done: 0,
-  fish: {}, // gefangene Fische je Rang
+  fish: {}, // gefangene Fische je Rang (Vorrat)
   caught: 0,
+  caughtBy: {}, // je Rang insgesamt gefangen, dazu Flaschenposts (fürs Angelbuch)
   seeds: {}, // Saatpäckchen auf Vorrat
   market: { stock: [], wants: [], refreshAt: 0 },
 });

@@ -14,6 +14,7 @@ const BOB = { x: 26, y: 165 };
 
 export function zoneAt(x) {
   if (x < 72) return 'fishing';
+  if (x >= 76 && x <= 98) return 'fishbook';
   if (x > VILLAGE_W - 34) return 'farm';
   if (Math.abs(x - village.MARKET.x) < 14) return 'market';
   for (const v of village.VILLAGERS) if (Math.abs(x - v.x) < 10) return `npc:${v.id}`;
@@ -68,6 +69,20 @@ function drawPond(ctx) {
   rect(ctx, 44, WALK_Y - 1, POND_W - 40, 1, PAL.woodLight);
   for (let x = 46; x < POND_W + 2; x += 6) rect(ctx, x, WALK_Y - 1, 1, 4, PAL.woodDark);
   for (const x of [46, 70]) rect(ctx, x, WALK_Y + 3, 2, 10, PAL.woodDark);
+}
+
+// Pult mit dem Angelbuch am Ende des Stegs
+function drawBookStand(ctx, x) {
+  const top = WALK_Y - 18;
+  rect(ctx, x, top + 5, 2, 12, PAL.woodDark);
+  rect(ctx, x - 3, WALK_Y - 2, 8, 1, PAL.woodDark);
+  rect(ctx, x - 6, top + 3, 14, 3, PAL.wood);
+  rect(ctx, x - 6, top + 3, 14, 1, PAL.woodLight);
+  rect(ctx, x - 5, top, 12, 3, '#fdf6e3');
+  rect(ctx, x, top, 1, 3, '#c8b8a0');
+  rect(ctx, x - 4, top + 1, 3, 1, '#4a86c0');
+  rect(ctx, x + 2, top + 1, 4, 1, '#c8b8a0');
+  rect(ctx, x - 6, top - 1, 14, 1, '#8a3c44');
 }
 
 function drawStall(ctx, x) {
@@ -135,6 +150,7 @@ function makeVillage() {
   WINDOWS.length = 0; // beim Neuzeichnen (Landschaftswechsel) nicht doppelt sammeln
   const { canvas, ctx } = makeGround();
   drawPond(ctx);
+  drawBookStand(ctx, 86);
   // Bäckerei mit Brezel-Schild
   WINDOWS.push(house(ctx, 128, 46, '#e8c9a0', PAL.roof, PAL.roofDark, (c, x, top) => {
     rect(c, x + 18, top - 4, 1, 4, PAL.woodDark);
@@ -175,6 +191,15 @@ function makeVillage() {
   return canvas;
 }
 
+function drawSprite(ctx, img, x, y, flip) {
+  if (!flip) return ctx.drawImage(img, x, y);
+  ctx.save();
+  ctx.translate(x + img.width, y);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
 function glow(ctx, cx, cy, radius, alpha, color = PAL.glow) {
   ctx.fillStyle = color;
   ctx.globalAlpha = alpha;
@@ -200,12 +225,78 @@ function mark(ctx, ch, x, y, color) {
   rows.forEach((row, j) => [...row].forEach((b, i) => b === '1' && ctx.fillRect(x + i, y + j, 1, 1)));
 }
 
+
+// ---------------------------------------------------------------- Seesicht beim Angeln
+
+const SURFACE = 72; // Wasseroberfläche in der Seesicht
+const LAKE_BOB = 214; // Schwimmer
+const HOOK_Y = SURFACE + 34;
+const ROD_TIP = [64, 22];
+const WATER = ['#4a86c0', '#3a74b0', '#2e64a0', '#26568e', '#1e467a', '#183a68'];
+
+function makeLake() {
+  const [c, ctx] = makeCanvas(VIEW_W, VIEW_H);
+  const r = rng(404);
+  // gegenüberliegendes Ufer mit Bäumen
+  rect(ctx, 0, SURFACE - 8, VIEW_W, 8, PAL.grassDark);
+  rect(ctx, 0, SURFACE - 8, VIEW_W, 1, PAL.grassLight);
+  for (let x = 4; x < VIEW_W; x += 9 + Math.floor(r() * 8)) {
+    const h = 6 + Math.floor(r() * 9);
+    if (r() < 0.5) {
+      for (let i = 0; i < h; i++) rect(ctx, x - Math.floor(i / 2), SURFACE - 8 - h + i, Math.floor(i / 2) * 2 + 1, 1, PAL.pineFront);
+    } else {
+      circle(ctx, x, SURFACE - 10 - Math.floor(h / 2), Math.floor(h / 2) + 2, PAL.leafDark);
+      circle(ctx, x - 1, SURFACE - 11 - Math.floor(h / 2), Math.floor(h / 2), PAL.leaf);
+    }
+  }
+  // Wasser, nach unten dunkler (gerastert)
+  const depth = VIEW_H - SURFACE;
+  for (let y = SURFACE; y < VIEW_H; y++) {
+    const t = ((y - SURFACE) / depth) * (WATER.length - 1);
+    const i = Math.min(Math.floor(t), WATER.length - 2);
+    for (let x = 0; x < VIEW_W; x++) px(ctx, x, y, dither(x, y, t - i) ? WATER[i + 1] : WATER[i]);
+  }
+  rect(ctx, 0, SURFACE, VIEW_W, 1, '#a8d4f0');
+  // Grund mit Sand, Steinen und Muscheln
+  for (let x = 0; x < VIEW_W; x++) {
+    const h = 10 + Math.round(Math.sin(x / 23) * 3 + Math.sin(x / 7));
+    rect(ctx, x, VIEW_H - h, 1, h, '#a89060');
+    if (x % 3 === 0) px(ctx, x, VIEW_H - h, '#c8b078');
+  }
+  for (let i = 0; i < 9; i++) {
+    const x = Math.floor(r() * VIEW_W);
+    circle(ctx, x, VIEW_H - 8, 2 + Math.floor(r() * 3), PAL.stone);
+    px(ctx, x - 1, VIEW_H - 10, PAL.stoneLight);
+  }
+  // Steg im Vordergrund links
+  rect(ctx, 0, SURFACE - 4, 54, 4, PAL.wood);
+  rect(ctx, 0, SURFACE - 4, 54, 1, PAL.woodLight);
+  for (let x = 2; x < 54; x += 6) rect(ctx, x, SURFACE - 4, 1, 4, PAL.woodDark);
+  for (const x of [10, 44]) rect(ctx, x, SURFACE, 3, VIEW_H - SURFACE - 8, PAL.woodDark);
+  // Seerosen
+  for (const x of [120, 268, 300]) {
+    rect(ctx, x - 3, SURFACE - 1, 7, 2, PAL.leaf);
+    px(ctx, x, SURFACE - 2, '#f2a0b0');
+  }
+  return c;
+}
+
 // ---------------------------------------------------------------- Szene
 
 export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
   const ground = makeVillage();
+  const lake = makeLake();
+  // Fische, die in der Seesicht umherschwimmen (meist häufige Arten)
+  const swimmers = Array.from({ length: 7 }, (_, i) => ({
+    tier: [0, 0, 0, 1, 1, 2, 0][i],
+    x: Math.random() * VIEW_W,
+    y: SURFACE + 22 + Math.random() * 70,
+    dir: Math.random() < 0.5 ? -1 : 1,
+    speed: 6 + Math.random() * 10,
+    phase: Math.random() * 6,
+  }));
   // Angeln: idle → cast → wait → bite → reel → idle
-  const fish = { phase: 'idle', t: 0, biteAt: 0, text: '', textT: 0 };
+  const fish = { phase: 'idle', t: 0, biteAt: 0, text: '', textT: 0, target: null, from: 1 };
 
   function say(text) {
     fish.text = text;
@@ -220,7 +311,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
     fishPress() {
       if (fish.phase === 'idle') {
         const [a, b] = village.BITE_SECONDS;
-        Object.assign(fish, { phase: 'cast', t: 0, biteAt: a + Math.random() * (b - a) });
+        Object.assign(fish, { phase: 'cast', t: 0, biteAt: a + Math.random() * (b - a), target: village.rollCatch(), from: Math.random() < 0.5 ? -1 : 1 });
         return 'cast';
       }
       if (fish.phase === 'bite') {
@@ -242,6 +333,11 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
 
     update(dt) {
       fish.t += dt;
+      for (const s of swimmers) {
+        s.x += s.dir * s.speed * dt;
+        if (s.x < -20) s.x = VIEW_W + 10;
+        if (s.x > VIEW_W + 20) s.x = -10;
+      }
       if (fish.textT > 0) fish.textT -= dt;
       if (fish.phase === 'cast' && fish.t > 0.5) Object.assign(fish, { phase: 'wait', t: 0 });
       if (fish.phase === 'wait' && fish.t > fish.biteAt) {
@@ -255,7 +351,7 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
       }
       if (fish.phase === 'reel' && fish.t > 0.45) {
         fish.phase = 'idle';
-        onCatch?.(village.catchFish());
+        onCatch?.(village.applyCatch(fish.target));
       }
     },
 
@@ -318,6 +414,94 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         mark(ctx, '!', Math.round(playerX) - cam, WALK_Y - 28 + (Math.floor(time * 10) % 2), PAL.coin);
         for (const [dx, dy] of [[-4, 1], [4, 1], [-3, -1], [3, -1]]) px(ctx, bx + dx, by + dy, '#8ab8e8');
       }
+    },
+
+    // Seesicht: Querschnitt durch den Teich, solange geangelt wird
+    drawLake(ctx, time) {
+      ctx.drawImage(lake, 0, 0);
+      // Wellen auf der Oberfläche und Lichtstrahlen
+      for (let i = 0; i < 10; i++) {
+        const x = Math.floor((i * 37 + time * 8) % (VIEW_W + 20)) - 10;
+        rect(ctx, x, SURFACE + 2 + (i % 3) * 3, 5, 1, '#8ab8e8');
+      }
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = '#e8f4ff';
+      for (let k = 0; k < 4; k++) {
+        const x0 = 40 + k * 80 + Math.sin(time * 0.5 + k) * 6;
+        for (let y = SURFACE; y < VIEW_H - 12; y++) {
+          const x = Math.round(x0 + (y - SURFACE) * 0.35);
+          for (let w = 0; w < 6; w++) if (dither(x + w, y, 0.5)) ctx.fillRect(x + w, y, 1, 1);
+        }
+      }
+      ctx.globalAlpha = 1;
+      // Wasserpflanzen wiegen sich
+      for (const [x, h] of [[30, 26], [34, 20], [150, 30], [154, 22], [286, 24], [290, 32]]) {
+        for (let y = 0; y < h; y++) px(ctx, x + Math.round(Math.sin(time * 1.5 + y / 5 + x) * 2 * (y / h)), VIEW_H - 10 - y, y % 4 ? '#3f7a4a' : '#6aa85a');
+      }
+      // umherschwimmende Fische
+      for (const s of swimmers) {
+        const y = Math.round(s.y + Math.sin(time * 2 + s.phase) * 2);
+        drawSprite(ctx, village.fishImage(s.tier), Math.round(s.x) - 8, y - 8, s.dir < 0);
+      }
+
+      // Angelrute vom Steg aus, Schnur zum Schwimmer
+      for (let i = 0; i < 26; i++) px(ctx, Math.round(i * 2.4), 46 - Math.round(i * 0.92), i < 6 ? PAL.woodDark : PAL.wood);
+      let bx = LAKE_BOB;
+      let by = SURFACE - 1;
+      if (fish.phase === 'cast') {
+        const u = Math.min(1, fish.t / 0.5);
+        bx = Math.round(ROD_TIP[0] + (LAKE_BOB - ROD_TIP[0]) * u);
+        by = Math.round(ROD_TIP[1] + (SURFACE - 1 - ROD_TIP[1]) * u - Math.sin(u * Math.PI) * 18);
+      } else if (fish.phase === 'wait') by += Math.round(Math.sin(time * 3) * 0.7);
+      else if (fish.phase === 'bite') by += 3 + (Math.floor(time * 12) % 2);
+      for (let i = 0; i <= 30; i++) {
+        const u = i / 30;
+        const x = ROD_TIP[0] + (bx - ROD_TIP[0]) * u;
+        const y = ROD_TIP[1] + (by - ROD_TIP[1]) * u + Math.sin(u * Math.PI) * 8;
+        px(ctx, Math.round(x), Math.round(y), '#e8e0d0');
+      }
+
+      // Haken unter dem Schwimmer und der Fisch, der gleich anbeißt
+      let hookY = HOOK_Y + (fish.phase === 'bite' ? 3 : 0);
+      if (fish.phase === 'reel') hookY = Math.round(HOOK_Y - (HOOK_Y - SURFACE + 6) * Math.min(1, fish.t / 0.45));
+      if (fish.phase !== 'cast') {
+        for (let y = by + 2; y < hookY; y++) px(ctx, bx, y, '#c8d8e8');
+        px(ctx, bx, hookY, PAL.stoneLight);
+        px(ctx, bx + 1, hookY + 1, PAL.stoneLight);
+      }
+      const target = fish.target;
+      const img = target ? (target.treasure ? village.bottleImage() : village.fishImage(target.tier)) : null;
+      if (img) {
+        const left = fish.from < 0;
+        if (fish.phase === 'wait' && fish.t > fish.biteAt - 2.4) {
+          const u = Math.min(1, (fish.t - (fish.biteAt - 2.4)) / 2.2);
+          const sx = left ? -16 : VIEW_W + 4;
+          const x = Math.round(sx + (bx - (left ? 14 : -2) - sx) * u);
+          const y = Math.round(HOOK_Y - 6 + Math.sin(time * 3) * 3 * (1 - u));
+          drawSprite(ctx, img, x, y, !left);
+        } else if (fish.phase === 'bite') {
+          const wiggle = Math.floor(time * 14) % 2;
+          drawSprite(ctx, img, bx - (left ? 14 : -2) + wiggle, hookY - 6, !left);
+        } else if (fish.phase === 'reel') {
+          drawSprite(ctx, img, bx - 8, hookY - 4, !left);
+        }
+      }
+
+      // Schwimmer
+      if (fish.phase !== 'reel') {
+        rect(ctx, bx - 1, by - 3, 3, 3, '#d9574a');
+        rect(ctx, bx - 1, by, 3, 2, '#fdf6e3');
+      }
+      if (fish.phase === 'bite') {
+        const r = 3 + (Math.floor(time * 10) % 3);
+        rect(ctx, bx - r - 2, SURFACE, 2, 1, '#e8f4ff');
+        rect(ctx, bx + r + 1, SURFACE, 2, 1, '#e8f4ff');
+      }
+    },
+
+    // Zeichen über der Seesicht (nach der Tönung, damit sie nachts leuchten)
+    drawLakeFront(ctx, time) {
+      if (fish.phase === 'bite') mark(ctx, '!', LAKE_BOB, SURFACE - 22 + (Math.floor(time * 10) % 2), PAL.coin);
     },
 
     drawLights(ctx, camX, time, night) {

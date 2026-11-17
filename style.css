@@ -675,3 +675,24 @@ table.stats td { border-top: 1px solid #3a3170; }
 .theme-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .theme-buttons button { font-size: 12px; padding: 6px 4px; }
 .theme-buttons button.on { background: #6a549e; box-shadow: 0 0 0 2px #fdf6e3; }
+
+/* ---------------------------------------------------------------- Angelbuch */
+
+.fishcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.fishcard {
+  background: #1b1730;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 4px 10px;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.fishcard > .sprite { grid-row: span 3; width: 56px; align-self: center; }
+.fishcard b { color: #fdf6e3; }
+.fishcard .evo { color: var(--rc); }
+.fishcard p { margin: 0; }
+.fishcard.unknown > .sprite { filter: brightness(0); opacity: 0.5; }
+.fishcard.unknown { box-shadow: 0 0 0 2px #3a3170; }
+.fishstats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.fishcard .line { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }

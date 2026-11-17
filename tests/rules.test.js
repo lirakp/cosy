@@ -432,3 +432,15 @@ test('Arena: Helden werden mit Helden-Duplikaten gelevelt, bis zum Arena-Rang', 
   state.arena.team[0].hero = hero.id;
   assert.equal(arena.memberPower(state.arena.team[0]), arena.heroPower(hero));
 });
+
+test('Angeln: der beim Auswerfen gewürfelte Fang wird erst beim Einholen gezählt', () => {
+  const random = seeded(21);
+  let res;
+  do res = village.rollCatch(random); while (res.treasure);
+  assert.equal(village.fishCount(res.tier), 0, 'Würfeln allein ändert nichts');
+  village.applyCatch(res);
+  assert.equal(village.fishCount(res.tier), 1);
+  assert.equal(village.caughtTotal(res.tier), 1, 'fürs Angelbuch mitgezählt');
+  village.sellFish(res.tier);
+  assert.equal(village.caughtTotal(res.tier), 1, 'Verkaufen ändert das Angelbuch nicht');
+});

@@ -293,6 +293,7 @@ function act() {
   if (near === 'farm') leaveVillage();
   if (near === 'fishing') fishAction();
   if (near === 'market') ui.openMarket();
+  if (near === 'fishbook') ui.openFishBook();
   if (near?.startsWith('npc:')) ui.talk(near.slice(4));
   if (near === 'house') enterHouse();
   if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
@@ -546,6 +547,16 @@ function npcLabel(id) {
 
 // Das Dorf liegt draußen: gleicher Himmel und gleiche Tageszeit wie auf dem Hof
 function drawVillage(ph) {
+  // beim Angeln: Sicht auf den See
+  if (villageScene.fishing()) {
+    background.drawSky(ctx, 0, time, ph);
+    sctx.clearRect(0, 0, VIEW_W, VIEW_H);
+    villageScene.drawLake(sctx, time);
+    tint(ph.tint, ph.tintAlpha);
+    ctx.drawImage(scene, 0, 0);
+    villageScene.drawLakeFront(ctx, time);
+    return;
+  }
   background.drawSky(ctx, camX, time, ph);
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);
   background.drawLand(sctx, camX, ph);
@@ -620,6 +631,7 @@ function frame(now) {
     : near === 'farm' ? 'Zurück zum Hof →'
     : near === 'fishing' ? fishLabel()
     : near === 'market' ? 'Marktstand'
+    : near === 'fishbook' ? 'Angelbuch'
     : near?.startsWith('npc:') ? npcLabel(near.slice(4))
     : near === 'house' ? 'Haus betreten'
     : near === 'door' ? 'Hinausgehen'

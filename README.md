@@ -64,7 +64,12 @@ Dorf; rechts im Dorf führt der Weg zurück.
   Sammelstücke zum Kaufen (Verkaufswert × 5) und drei gesuchte Stücke, die sie
   für den doppelten Verkaufswert ankauft (nur Duplikate). Das Angebot wechselt
   alle 20 Minuten.
-- **Angeln am Steg:** `E` wirft aus. Nach 3–8 Sekunden beißt etwas („!“), dann
+- **Angelbuch:** Pult am Ende des Stegs (`E`): alle sechs Fischarten mit Bild
+  (unbekannte als Schatten), Rang, Seltenheit, Marktwert, wie viele je
+  gefangen und wie viele im Vorrat; dazu gefundene Flaschenposts.
+- **Angeln am Steg:** `E` wirft aus, und die Kamera wechselt in eine Sicht
+  auf den See: Fische schwimmen umher, und der Fisch, der gleich anbeißt, schwimmt
+  sichtbar zum Haken – ein seltener Fang ist also schon vorher zu erkennen. Nach 3–8 Sekunden beißt etwas („!“), dann
   hat man 0,9 Sekunden zum Einholen. Fische nach den Brunnen-Chancen: Weißfisch
   (D), Forelle (C), Karpfen (B), Hecht (A), Goldkarpfen (S), Mondfisch (SS); mit
   3 % eine Flaschenpost mit einem Sammelstück.

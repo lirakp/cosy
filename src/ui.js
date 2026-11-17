@@ -89,6 +89,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'kitchen') renderKitchen();
     if (view === 'villager') renderVillager();
     if (view === 'market') renderMarket();
+    if (view === 'fishbook') renderFishBook();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -449,6 +450,37 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     $('button[data-act]', el).focus();
     if (b) audio.play('reveal', 4);
     onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Angelbuch
+
+  function renderFishBook() {
+    const chances = tierChances();
+    const known = village.FISH.filter((_, t) => village.caughtTotal(t) > 0).length;
+    const total = village.FISH.reduce((n, _, t) => n + village.caughtTotal(t), 0);
+    const cards = village.FISH.map((f, t) => {
+      const caught = village.caughtTotal(t);
+      const rank = RARITIES[t].id;
+      return `<div class="fishcard r-${rank}${caught ? '' : ' unknown'}" data-fish="${t}">
+        <div class="line"><b>${caught ? f.name : '???'}</b><span class="evo">Rang ${rank}</span></div>
+        <p class="muted">${caught ? village.FISH_INFO[t] : 'Noch nie gefangen.'}</p>
+        <div class="fishstats">
+          <span>Gefangen <b>${fmt(caught)}</b></span>
+          <span>Im Vorrat <b>${fmt(village.fishCount(t))}</b></span>
+          <span>Seltenheit <b>${percent(chances[t] * (1 - village.TREASURE_CHANCE))}</b></span>
+          <span>Marktwert <b class="gold-text">${fmt(f.price)}</b></span>
+        </div>
+      </div>`;
+    }).join('');
+    overlay.innerHTML = `
+      <section class="panel fishbookpanel">
+        ${head('Angelbuch')}
+        <p class="lead">${known} von ${village.FISH.length} Arten entdeckt · ${fmt(total)} Fische gefangen · ${fmt(village.bottlesFound())} Flaschenposts gefunden</p>
+        <div class="bar"><i style="width:${(known / village.FISH.length) * 100}%"></i></div>
+        <div class="fishcards">${cards}</div>
+        <p class="muted">Mit ${percent(village.TREASURE_CHANCE)} hängt statt eines Fisches eine Flaschenpost mit einem Sammelstück am Haken.</p>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-fish]')) el.prepend(picture(village.fishImage(Number(el.dataset.fish))));
   }
 
   // ------------------------------------------------------------ Dorf
@@ -1562,6 +1594,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       show('villager');
     },
     openMarket: () => show('market'),
+    openFishBook: () => show('fishbook'),
     updateMarket,
     caught(res) {
       if (res.treasure) {

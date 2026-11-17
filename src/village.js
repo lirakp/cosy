@@ -153,19 +153,42 @@ export const BITE_SECONDS = [3, 8]; // Wartezeit bis zum Biss
 export const REACT_SECONDS = 0.9; // so lange hat man Zeit zum Einholen
 
 // Was am Haken hängt: ein Fisch (Rang nach den Brunnen-Chancen) oder selten ein Schatz.
-export function catchFish(r = Math.random) {
-  if (r() < TREASURE_CHANCE) {
-    const item = rollItem({ random: r });
-    const isNew = !state.count(item.id);
-    state.addItems([item], 'angeln');
-    return { treasure: true, item, isNew };
-  }
+// Würfelt aus, was anbeißen wird – beim Auswerfen, damit genau dieser Fisch
+// in der Seesicht zum Haken schwimmt. Gutgeschrieben wird erst beim Einholen.
+export function rollCatch(r = Math.random) {
+  if (r() < TREASURE_CHANCE) return { treasure: true, item: rollItem({ random: r }) };
   const tier = rollTier(0, r);
-  v().fish[tier] = (v().fish[tier] || 0) + 1;
-  v().caught++;
-  state.changed();
   return { tier, fish: FISH[tier] };
 }
+
+export function applyCatch(res) {
+  const by = v().caughtBy;
+  if (res.treasure) {
+    const isNew = !state.count(res.item.id);
+    state.addItems([res.item], 'angeln');
+    by.bottle = (by.bottle || 0) + 1;
+    return { ...res, isNew };
+  }
+  v().fish[res.tier] = (v().fish[res.tier] || 0) + 1;
+  by[res.tier] = (by[res.tier] || 0) + 1;
+  v().caught++;
+  state.changed();
+  return res;
+}
+
+export const catchFish = (r = Math.random) => applyCatch(rollCatch(r));
+
+// Für das Angelbuch: wie oft eine Art je gefangen wurde
+export const caughtTotal = (tier) => v().caughtBy[tier] || 0;
+export const bottlesFound = () => v().caughtBy.bottle || 0;
+export const FISH_INFO = [
+  'Flink und überall im Teich zu Hause.',
+  'Liebt klares, kühles Wasser und schnelle Würfe.',
+  'Ein gemütlicher Grundfisch, der sich Zeit lässt.',
+  'Lauert im Schilf und beißt kräftig zu.',
+  'Glänzt in der Sonne wie ein kleiner Schatz.',
+  'Man erzählt, er steige nur bei Mondschein auf.',
+];
 
 export const fishCount = (tier) => v().fish[tier] || 0;
 
