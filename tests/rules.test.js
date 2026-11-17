@@ -125,13 +125,70 @@ test('Schmiede: Rang-Sperre, Glutverbrauch und Nachladen', () => {
 // ---------------------------------------------------------------- Dungeon, Arena, Rausch
 
 test('Dungeon: Erfolgschance zwischen 5 % und 95 %, Gladiatorrausch +10 Punkte bis 99 %', () => {
-  const weak = [getGroup('helden', 'D')[0].id];
-  const strong = getGroup('helden', 'SS').slice(0, 5).map((h) => h.id);
-  assert.equal(dungeon.chance(5, weak), dungeon.MIN_CHANCE);
-  assert.equal(dungeon.chance(0, strong), dungeon.MAX_CHANCE);
+  state.buildings.dungeon = 0;
+  state.addItems([getGroup('helden', 'D')[0]]);
+  dungeon.party.autoEquip();
+  assert.equal(dungeon.chance(5), dungeon.MIN_CHANCE, 'ein D-Held gegen SS');
+  assert.equal(dungeon.chance(0, 100000), dungeon.MAX_CHANCE);
   buffs.grant('gladiator');
-  close(dungeon.chance(5, weak), dungeon.MIN_CHANCE + 0.1, 1e-9, 'schwaches Team');
-  assert.equal(dungeon.chance(0, strong), buffs.GLADIATOR_MAX);
+  close(dungeon.chance(5), dungeon.MIN_CHANCE + 0.1, 1e-9, 'schwaches Team');
+  assert.equal(dungeon.chance(0, 100000), buffs.GLADIATOR_MAX);
+});
+
+test('Dungeon: Ausrüstung erhöht die Team-Stärke wie in der Arena', () => {
+  state.buildings.dungeon = 0;
+  const hero = getGroup('helden', 'C')[0];
+  state.addItems([hero, getGroup('waffen', 'C')[0], getGroup('ruestung', 'C')[0]]);
+  assert.ok(dungeon.party.equip(0, 'hero', hero.id));
+  const bare = dungeon.power();
+  assert.equal(bare, dungeon.party.heroPower(hero));
+  dungeon.party.autoEquip();
+  assert.ok(dungeon.power() > bare);
+});
+
+test('Teams: Ein Held oder Stück kann nicht gleichzeitig in Arena und Dungeon sein', () => {
+  state.buildings.dungeon = 0;
+  state.buildings.arena = 0;
+  const [h1, h2] = getGroup('helden', 'B');
+  const sword = getGroup('waffen', 'B')[0];
+  state.addItems([h1, h2, sword]);
+  assert.ok(arena.equip(0, 'hero', h1.id));
+  assert.ok(arena.equip(0, 'waffen', sword.id));
+  assert.equal(dungeon.party.equip(0, 'hero', h1.id), false, 'Held kämpft schon in der Arena');
+  assert.equal(dungeon.party.equip(0, 'waffen', sword.id), false, 'Waffe wird schon in der Arena getragen');
+  dungeon.party.autoEquip();
+  assert.deepEqual(dungeon.party.heroIds(), [h2.id], 'automatisch nur freie Helden');
+  assert.equal(arena.equip(1, 'hero', h2.id), false, 'umgekehrt genauso');
+  assert.ok(arena.candidates('hero').every((h) => h.id !== h2.id));
+});
+
+test('Dungeon: Team ist während einer Erkundung gesperrt, die Stärke beim Aufbruch zählt', () => {
+  state.buildings.dungeon = 0;
+  const [h1, h2] = getGroup('helden', 'D');
+  state.addItems([h1, h2]);
+  dungeon.party.equip(0, 'hero', h1.id);
+  const p = dungeon.power();
+  assert.ok(dungeon.start(0));
+  assert.equal(dungeon.party.equip(1, 'hero', h2.id), false);
+  assert.equal(dungeon.party.autoEquip(), false);
+  assert.equal(state.dungeon.run.power, p);
+  dungeon.abort();
+  assert.ok(dungeon.party.equip(1, 'hero', h2.id));
+});
+
+test('Stufen gelten in Arena und Dungeon, jeweils bis zum Rang der Anlage', () => {
+  const hero = getGroup('helden', 'B')[0];
+  state.addItems([hero, ...getGroup('helden', 'C').slice(0, 6), ...getGroup('helden', 'C').slice(0, 6)]);
+  state.buildings.arena = 2;
+  state.buildings.dungeon = 0;
+  assert.ok(arena.levelUp(hero));
+  assert.ok(arena.levelUp(hero));
+  assert.equal(arena.levelOf(hero.id), 2);
+  assert.equal(dungeon.party.levelOf(hero.id), 0, 'Tor-Rang D begrenzt die Stufe im Dungeon');
+  state.buildings.dungeon = 1;
+  assert.equal(dungeon.party.levelOf(hero.id), 1);
+  state.buildings.dungeon = 5;
+  assert.equal(dungeon.party.levelOf(hero.id), 2, 'dieselbe Stufe wie in der Arena');
 });
 
 test('Arena: Siegchance wächst mit der Team-Stärke', () => {

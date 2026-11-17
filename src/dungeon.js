@@ -1,44 +1,50 @@
-import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
+import { RARITIES, getItem, rollItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
-import * as sets from './sets.js';
+import { createParty, emptyMember } from './party.js';
 
-// Dungeon: Bis zu fünf Helden ziehen für eine feste Zeit los. Die Dauer ist
-// zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber schwerer.
+// Dungeon: Bis zu fünf ausgerüstete Helden ziehen für eine feste Zeit los. Die
+// Dauer ist zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber
+// schwerer. Helden und Ausrüstung funktionieren wie in der Bossarena.
 
 export const MAX_HEROES = 5;
 
-// Stärke eines Helden nach seinem Rang (D … SS).
-export const HERO_POWER = [1, 2, 4, 7, 12, 20];
-
-// need: nötige Team-Stärke für die beste Erfolgschance
+// need: nötige Team-Stärke für die beste Erfolgschance (gleiche Rechnung wie in der Arena)
 // gold: Gold bei Erfolg (±20 %)
 // standard: garantierte D-Rang-Stücke · bonus: zusätzliche Stücke ab Rang `minTier`
 export const LEVELS = [
-  { rank: 'D', name: 'Mooskeller', seconds: 30, need: 2, gold: 15, standard: 0, bonus: 1, minTier: 0 },
-  { rank: 'C', name: 'Alte Krypta', seconds: 60, need: 6, gold: 35, standard: 3, bonus: 1, minTier: 0 },
-  { rank: 'B', name: 'Kristallmine', seconds: 300, need: 14, gold: 150, standard: 3, bonus: 2, minTier: 1 },
-  { rank: 'A', name: 'Drachenhort', seconds: 900, need: 28, gold: 500, standard: 3, bonus: 3, minTier: 1 },
-  { rank: 'S', name: 'Schattenfeste', seconds: 1800, need: 50, gold: 1200, standard: 3, bonus: 4, minTier: 2 },
-  { rank: 'SS', name: 'Abgrund der Ewigkeit', seconds: 3600, need: 85, gold: 3000, standard: 3, bonus: 5, minTier: 3 },
+  { rank: 'D', name: 'Mooskeller', seconds: 30, need: 30, gold: 15, standard: 0, bonus: 1, minTier: 0 },
+  { rank: 'C', name: 'Alte Krypta', seconds: 60, need: 90, gold: 35, standard: 3, bonus: 1, minTier: 0 },
+  { rank: 'B', name: 'Kristallmine', seconds: 300, need: 210, gold: 150, standard: 3, bonus: 2, minTier: 1 },
+  { rank: 'A', name: 'Drachenhort', seconds: 900, need: 420, gold: 500, standard: 3, bonus: 3, minTier: 1 },
+  { rank: 'S', name: 'Schattenfeste', seconds: 1800, need: 750, gold: 1200, standard: 3, bonus: 4, minTier: 2 },
+  { rank: 'SS', name: 'Abgrund der Ewigkeit', seconds: 3600, need: 1275, gold: 3000, standard: 3, bonus: 5, minTier: 3 },
 ];
 
 export const MIN_CHANCE = 0.05;
 export const MAX_CHANCE = 0.95;
 
-const HEROES = ITEMS.filter((item) => item.cat === 'helden');
 const d = () => state.dungeon;
 
-// Alle eigenen Helden, die stärksten zuerst.
-export const heroes = () => HEROES.filter((h) => state.count(h.id)).sort((a, b) => b.tier - a.tier);
+// Dungeon-Team: fünf Plätze; gesperrt, solange eine Erkundung läuft.
+// Wer in der Arena kämpft, kann nicht in den Dungeon und umgekehrt.
+export const party = createParty({
+  name: 'dungeon',
+  members: () => state.dungeon.team,
+  tier: () => buildings.tier('dungeon'),
+  other: () => state.arena.team,
+  locked: () => !!state.dungeon.run,
+  bonus: 'dungeonPower',
+});
+export { emptyMember };
 
-export const power = (ids) => Math.round(ids.reduce((sum, id) => sum + (HERO_POWER[getItem(id)?.tier] || 0), 0) * (1 + sets.bonus('dungeonPower')));
+export const power = () => party.teamPower();
 
 // Erfolgschance: Team-Stärke im Verhältnis zur Anforderung, nie ganz sicher, nie ganz aussichtslos.
-export function chance(level, ids) {
-  if (!ids.length) return 0;
-  return buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, power(ids) / LEVELS[level].need)));
+export function chance(level, teamPower = power()) {
+  if (!teamPower) return 0;
+  return buffs.gladiator(Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, teamPower / LEVELS[level].need)));
 }
 
 // Der Rang des Tors bestimmt, welche Gefahrenstufen offen sind.
@@ -54,10 +60,11 @@ export function status(now = Date.now()) {
 
 export const remaining = (now = Date.now()) => (run() ? Math.max(0, Math.ceil((run().end - now) / 1000)) : 0);
 
-export function start(level, ids, now = Date.now()) {
-  ids = ids.filter((id) => state.count(id) && getItem(id)?.cat === 'helden').slice(0, MAX_HEROES);
-  if (run() || !LEVELS[level] || !unlocked(level) || !ids.length) return false;
-  d().run = { level, heroes: ids, start: now, end: now + LEVELS[level].seconds * 1000 };
+export function start(level, now = Date.now()) {
+  const heroes = party.heroIds();
+  if (run() || !LEVELS[level] || !unlocked(level) || !heroes.length) return false;
+  // Die Stärke beim Aufbruch zählt – das Team ist bis zur Rückkehr gesperrt.
+  d().run = { level, heroes, power: power(), start: now, end: now + LEVELS[level].seconds * 1000 };
   state.changed();
   return true;
 }
@@ -73,7 +80,9 @@ export function collect() {
   if (status() !== 'done') return null;
   const r = run();
   const level = LEVELS[r.level];
-  const odds = chance(r.level, r.heroes);
+  // ältere Erkundungen ohne gespeicherte Stärke: Stärke der losgezogenen Helden
+  const fallback = () => r.heroes.reduce((sum, id) => sum + (getItem(id) ? party.heroPower(getItem(id)) : 0), 0);
+  const odds = chance(r.level, r.power ?? fallback());
   const result = { level, odds, success: Math.random() < odds, gold: 0, items: [] };
   d().run = null;
 

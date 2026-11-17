@@ -668,3 +668,6 @@ table.stats td { border-top: 1px solid #3a3170; }
 .marketpanel .seed button { font-size: 11px; padding: 4px 8px; }
 .gold-won { font-size: 20px; color: #ffd04a; margin: 0; }
 @media (max-width: 520px) { .villager-row { flex-direction: column; } }
+.tile.elsewhere { opacity: 0.45; cursor: not-allowed; }
+.tile .away-tag { background: #6a549e; color: #fdf6e3; }
+.members.dungeon { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }

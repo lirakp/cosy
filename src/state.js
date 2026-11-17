@@ -18,8 +18,10 @@ const newExpedition = () => ({
   loot: [], // gefundene Stücke in der Truhe
 });
 
+const member = () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null } });
+
 const newArena = () => ({
-  team: Array.from({ length: 3 }, () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null } })),
+  team: Array.from({ length: 3 }, member),
   lvl: {}, // Stufe je Held und Ausrüstungsstück (0 = D … 5 = SS)
   boss: null, // wartender Boss: { tier, kind }
   mats: { stoff: [0, 0, 0, 0, 0, 0], seide: [0, 0, 0, 0, 0, 0] },
@@ -63,7 +65,7 @@ const fresh = () => ({
   owned: {},
   pulls: 0,
   exp: newExpedition(),
-  dungeon: { run: null },
+  dungeon: { run: null, team: Array.from({ length: 5 }, member) },
   buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1 },
   arena: newArena(),
   mine: newMine(),

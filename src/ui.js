@@ -52,9 +52,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   let filter = { cat: CATEGORIES[0].id, rank: 'D' };
   let selected = null;
   let lastPull = [];
-  const pick = { level: 0, heroes: [] }; // Auswahl im Dungeon-Menü
+  const pick = { level: 0 }; // gewählte Gefahrenstufe im Dungeon-Menü
   let arenaTab = 'fight';
-  let arenaSel = null; // angetippter Platz im Arena-Team: { i, key }
+  const partySel = { arena: null, dungeon: null }; // angetippter Platz je Team: { i, key }
+  const rerenderParty = (pk) => (pk === 'arena' ? renderArena() : renderDungeon());
   let mineSel = null; // angetippter Arbeitsplatz in der Mine: { l, s }
   const forgeSel = { cat: CATEGORIES[0].id, rank: 'D', item: null };
   let talkTo = null; // Dorfbewohner im Gespräch
@@ -201,16 +202,39 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
 
   // ------------------------------------------------------------ Bossarena
 
+  // Team-Bausteine für Arena und Dungeon (gemeinsame Logik in party.js)
+  const PARTY = { arena: () => arena.party, dungeon: () => dungeon.party };
+  const OTHER = { arena: 'Dungeon', dungeon: 'Arena' };
+  const PLACE_RANK = { arena: 'Arena-Rang', dungeon: 'Tor-Rang' };
   const slotLabel = (key) => (key === 'hero' ? 'Held' : arena.SLOTS.find((s) => s.cat === key).name);
-  const levelBadge = (id) => `<span class="count">${RARITIES[arena.levelOf(id)].id}</span>`;
+  const levelBadge = (pk, id) => `<span class="count">${RARITIES[PARTY[pk]().levelOf(id)].id}</span>`;
 
   // Ein Platz im Team: belegt als Kachel, sonst als leeres Feld mit Beschriftung.
-  function slotButton(i, key, id) {
-    const on = arenaSel && arenaSel.i === i && arenaSel.key === key ? ' sel' : '';
+  function slotButton(pk, i, key, id) {
+    const sel = partySel[pk];
+    const on = sel && sel.i === i && sel.key === key ? ' sel' : '';
+    const lock = PARTY[pk]().locked() ? ' disabled' : '';
     const item = id && getItem(id);
-    if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-i="${i}" data-k="${key}">${slotLabel(key)}</button>`;
-    return `<button class="tile r-${item.rank}${on}" data-act="slot" data-i="${i}" data-k="${key}" data-sprite="${id}" title="${item.name}">
-      <span class="rank">${item.rank}</span>${levelBadge(id)}</button>`;
+    if (!item) return `<button class="tile empty-slot${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="${key}"${lock}>${slotLabel(key)}</button>`;
+    return `<button class="tile r-${item.rank}${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="${key}" data-sprite="${id}" title="${item.name}"${lock}>
+      <span class="rank">${item.rank}</span>${levelBadge(pk, id)}</button>`;
+  }
+
+  function membersHtml(pk) {
+    const P = PARTY[pk]();
+    const members = P.team().map((m, i) => `
+      <div class="member">
+        <div class="hero-slot">${slotButton(pk, i, 'hero', m.hero)}</div>
+        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}</div>
+        <span>Stärke <b class="gold-text">${fmt(P.memberPower(m))}</b></span>
+      </div>`).join('');
+    const actions = P.locked()
+      ? '<p class="muted">Das Team ist gerade unterwegs und kann erst nach der Rückkehr umgestellt werden.</p>'
+      : `<div class="leader-actions">
+          <button data-act="auto-equip" data-p="${pk}">Automatisch ausrüsten</button>
+          <span class="muted">Tippe einen Platz an, um ihn zu besetzen. Wer im ${OTHER[pk]}-Team steckt, ist hier nicht verfügbar.</span>
+        </div>`;
+    return `<div class="members ${pk}">${members}</div>${actions}${P.locked() ? '' : pickerHtml(pk)}`;
   }
 
   function renderArena() {
@@ -232,23 +256,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   }
 
   function fightHtml() {
-    const team = arena.team();
-    const members = team.map((m, i) => `
-      <div class="member">
-        <div class="hero-slot">${slotButton(i, 'hero', m.hero)}</div>
-        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(i, s.cat, m.gear[s.cat])).join('')}</div>
-        <span>Stärke <b class="gold-text">${fmt(arena.memberPower(m))}</b></span>
-      </div>`).join('');
-
     return `
       ${upgradeBar('arena')}
       <h4>Team · Stärke ${fmt(arena.teamPower())}</h4>
-      <div class="members">${members}</div>
-      <div class="leader-actions">
-        <button data-act="auto-equip">Automatisch ausrüsten</button>
-        <span class="muted">Tippe einen Platz an, um ihn zu besetzen. Ausrüstung zählt nur an einem Helden.</span>
-      </div>
-      ${pickerHtml()}
+      ${membersHtml('arena')}
       <h4>Boss</h4>
       ${bossHtml()}
       <p class="muted">Vorrat: ${matSummary() || 'noch kein Stoff und keine Seide'}</p>`;
@@ -260,36 +271,40 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     ).join(' · ');
   }
 
-  function pickerHtml() {
-    if (!arenaSel) return '';
-    const { i, key } = arenaSel;
-    const m = arena.team()[i];
+  function pickerHtml(pk) {
+    const sel = partySel[pk];
+    if (!sel) return '';
+    const P = PARTY[pk]();
+    const { i, key } = sel;
+    const m = P.team()[i];
     const current = key === 'hero' ? m.hero : m.gear[key];
-    const list = arena.candidates(key).slice(0, 44);
+    const list = P.candidates(key, true).slice(0, 44);
     let detail = '';
     if (current) {
       const item = getItem(current);
-      const level = arena.levelOf(current);
-      const cost = arena.levelCost(item);
+      const level = P.levelOf(current);
+      const cost = P.levelCost(item);
       const isHero = key === 'hero';
       detail = `<div class="crow r-${RARITIES[level].id}">
         <div class="info"><b>${item.name}</b>
-          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> · Stärke <span class="gold-text">${arena.powerOf(item)}</span>
-          ${cost === null ? '' : `→ ${arena.powerOf(item, level + 1)}`}</span></div>
+          <span>Rang ${item.rank} · Stufe <span class="evo">${RARITIES[level].id}</span> · Stärke <span class="gold-text">${P.powerOf(item)}</span>
+          ${cost === null ? '' : `→ ${P.powerOf(item, level + 1)}`}</span></div>
         ${cost === null
-          ? `<button disabled>${arena.capped(level) ? 'Arena-Rang nötig' : 'Maximal'}</button>`
-          : `<button data-act="gear-up" data-id="${current}" ${arena.material(item) >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
+          ? `<button disabled>${P.capped(level) ? `${PLACE_RANK[pk]} nötig` : 'Maximal'}</button>`
+          : `<button data-act="gear-up" data-p="${pk}" data-id="${current}" ${P.material(item) >= cost ? '' : 'disabled'}>→ ${RARITIES[level + 1].id} · ${fmt(cost)}</button>`}
       </div>
-      <p class="muted">Verbessert wird mit ${isHero ? 'Helden-Duplikaten' : 'Duplikaten von Waffen, Rüstung, Relikten und Artefakten'} (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(arena.material(item))}</b>.</p>`;
+      <p class="muted">Verbessert wird mit ${isHero ? 'Helden-Duplikaten' : 'Duplikaten von Waffen, Rüstung, Relikten und Artefakten'} (Verkaufswert). Verfügbar: <b class="gold-text">${fmt(P.material(item))}</b>. Stufen gelten in Arena und Dungeon.</p>`;
     }
     const tiles = list.map((item) => {
-      const at = arena.equippedAt(item.id);
-      return `<button class="tile r-${item.rank}${item.id === current ? ' picked' : ''}" data-act="equip" data-id="${item.id}" data-sprite="${item.id}" title="${item.name}">
-        <span class="rank">${item.rank}</span>${levelBadge(item.id)}${at >= 0 && item.id !== current ? `<span class="new">${at + 1}</span>` : ''}</button>`;
+      const elsewhere = P.usedElsewhere(item.id);
+      const at = P.equippedAt(item.id);
+      const tag = elsewhere ? `<span class="new away-tag">${OTHER[pk][0]}</span>` : at >= 0 && item.id !== current ? `<span class="new">${at + 1}</span>` : '';
+      return `<button class="tile r-${item.rank}${item.id === current ? ' picked' : ''}${elsewhere ? ' elsewhere' : ''}" data-act="equip" data-p="${pk}" data-id="${item.id}" data-sprite="${item.id}" title="${item.name}${elsewhere ? ` – im ${OTHER[pk]}-Team` : ''}" ${elsewhere ? 'disabled' : ''}>
+        <span class="rank">${item.rank}</span>${levelBadge(pk, item.id)}${tag}</button>`;
     }).join('');
     return `<div class="chest picker">
       <div class="line"><span>${slotLabel(key)} für Platz ${i + 1} wählen</span>
-        <span><button data-act="equip" data-id="" ${current ? '' : 'disabled'}>Ablegen</button> <button data-act="slot-close">Fertig</button></span></div>
+        <span><button data-act="equip" data-p="${pk}" data-id="" ${current ? '' : 'disabled'}>Ablegen</button> <button data-act="slot-close" data-p="${pk}">Fertig</button></span></div>
       ${detail}
       ${list.length ? `<div class="grid heroes">${tiles}</div>` : '<p class="muted">Davon besitzt du noch nichts – ziehe am Wunschbrunnen.</p>'}
     </div>`;
@@ -1017,6 +1032,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
 
   function renderDungeon() {
     if (!buildings.owned('dungeon')) return renderPurchase('dungeon', 'Dungeon');
+    dungeon.party.clean();
     const status = dungeon.status();
     const run = dungeon.run();
 
@@ -1025,7 +1041,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       overlay.innerHTML = `
         <section class="panel dungeon r-${level.rank}">
           ${head('Dungeon')}
-          <p class="lead"><b class="evo">${level.rank}</b> · ${level.name} · Erfolgschance ${percent(dungeon.chance(run.level, run.heroes))}</p>
+          <p class="lead"><b class="evo">${level.rank}</b> · ${level.name} · Stärke beim Aufbruch ${fmt(run.power ?? dungeon.power())} · Erfolgschance ${percent(dungeon.chance(run.level, run.power ?? dungeon.power()))}</p>
           <div class="party${status === 'running' ? ' away' : ''}" id="party"></div>
           <div class="chest">
             <div class="line"><span id="run-text"></span></div>
@@ -1035,21 +1051,24 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
               <button data-act="dungeon-abort" id="run-abort">Abbrechen (ohne Beute)</button>
             </div>
           </div>
+          <h4>Team</h4>
+          ${membersHtml('dungeon')}
         </section>`;
-      $('#party').replaceChildren(...run.heroes.map((id) => tile(getItem(id))));
+      $('#party').replaceChildren(...run.heroes.filter((id) => getItem(id)).map((id) => tile(getItem(id))));
+      for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
       updateDungeon();
       return;
     }
 
-    const owned = dungeon.heroes();
-    pick.heroes = pick.heroes.filter((id) => state.count(id));
     if (!dungeon.unlocked(pick.level)) pick.level = buildings.tier('dungeon');
-    const odds = dungeon.chance(pick.level, pick.heroes);
+    const power = dungeon.power();
+    const odds = dungeon.chance(pick.level, power);
     const level = dungeon.LEVELS[pick.level];
+    const heroes = dungeon.party.heroIds().length;
     const levels = dungeon.LEVELS.map((l, i) => `
       <button class="level r-${l.rank}${i === pick.level ? ' on' : ''}" data-act="level" data-v="${i}" ${dungeon.unlocked(i) ? '' : 'disabled'}>
         <b><i>${l.rank}</i>${l.name}</b>
-        <span>${duration(l.seconds)} · Stärke ${l.need}</span>
+        <span>${duration(l.seconds)} · Stärke ${fmt(l.need)}</span>
         <span class="gold-text">~${fmt(l.gold)} Gold</span>
         <span>${l.standard ? `${l.standard}× D + ` : ''}${l.bonus}× ${l.minTier ? `ab ${dungeon.rankOf(l.minTier)}` : 'Zufall'}</span>
         ${dungeon.unlocked(i) ? '' : `<span class="lock">Tor-Rang ${l.rank} nötig</span>`}
@@ -1058,33 +1077,24 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     overlay.innerHTML = `
       <section class="panel dungeon">
         ${head('Dungeon')}
-        <p class="lead">Schicke bis zu ${dungeon.MAX_HEROES} Helden los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
+        <p class="lead">Rüste bis zu ${dungeon.MAX_HEROES} Helden aus und schicke sie los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
         ${upgradeBar('dungeon')}
         <h4>Gefahrenstufe</h4>
         <div class="levels">${levels}</div>
-        <h4>Helden (${pick.heroes.length}/${dungeon.MAX_HEROES})</h4>
-        ${owned.length
-          ? '<div class="grid heroes" id="hero-grid"></div>'
-          : '<p class="muted">Noch keine Helden – ziehe welche am Wunschbrunnen.</p>'}
+        <h4>Team · Stärke ${fmt(power)}</h4>
+        ${membersHtml('dungeon')}
         <div class="chest">
           <div class="line odds">
-            <span>Team-Stärke <b>${dungeon.power(pick.heroes)}</b> / ${level.need}</span>
-            <span>Erfolgschance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${pick.heroes.length ? percent(odds) : '–'}</b></span>
+            <span>Team-Stärke <b>${fmt(power)}</b> / ${fmt(level.need)}</span>
+            <span>Erfolgschance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${heroes ? percent(odds) : '–'}</b></span>
           </div>
-          <p class="muted">Stärke je Held: ${RARITIES.map((r, i) => `${r.id} ${dungeon.HERO_POWER[i]}`).join(' · ')}. Scheitert die Erkundung, gibt es keine Beute.</p>
+          <p class="muted">Gleiche Stärke-Rechnung wie in der Arena: Held plus Ausrüstung, jeweils nach Rang und Stufe. Scheitert die Erkundung, gibt es keine Beute.</p>
           <div class="line">
-            <button data-act="best" ${owned.length ? '' : 'disabled'}>Stärkste wählen</button>
-            <button class="big" data-act="dungeon-start" ${pick.heroes.length ? '' : 'disabled'}>Losschicken · ${duration(level.seconds)}</button>
+            <button class="big" data-act="dungeon-start" ${heroes ? '' : 'disabled'}>Losschicken · ${duration(level.seconds)}</button>
           </div>
         </div>
       </section>`;
-    $('#hero-grid')?.replaceChildren(
-      ...owned.map((h) => {
-        const el = tile(h);
-        if (pick.heroes.includes(h.id)) el.classList.add('picked');
-        return el;
-      })
-    );
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
   }
 
   // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
@@ -1357,14 +1367,6 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       renderGallery();
       return;
     }
-    if (tileEl && view === 'dungeon') {
-      if (dungeon.run()) return;
-      const id = tileEl.dataset.id;
-      if (pick.heroes.includes(id)) pick.heroes = pick.heroes.filter((h) => h !== id);
-      else if (pick.heroes.length < dungeon.MAX_HEROES) pick.heroes.push(id);
-      renderDungeon();
-      return;
-    }
     if (tileEl && view === 'well') {
       const item = getItem(tileEl.dataset.id);
       filter = { cat: item.cat, rank: item.rank };
@@ -1485,14 +1487,21 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     }
     if (act === 'arena-tab') { arenaTab = btn.dataset.v; renderArena(); }
     if (act === 'slot') {
+      const pk = btn.dataset.p;
       const sel = { i: Number(btn.dataset.i), key: btn.dataset.k };
-      arenaSel = arenaSel && arenaSel.i === sel.i && arenaSel.key === sel.key ? null : sel;
-      renderArena();
+      const cur = partySel[pk];
+      partySel[pk] = cur && cur.i === sel.i && cur.key === sel.key ? null : sel;
+      rerenderParty(pk);
     }
-    if (act === 'slot-close') { arenaSel = null; renderArena(); }
-    if (act === 'equip' && arenaSel) { arena.equip(arenaSel.i, arenaSel.key, btn.dataset.id || null); renderArena(); }
-    if (act === 'auto-equip') { arena.autoEquip(); arenaSel = null; renderArena(); }
-    if (act === 'gear-up') { audio.play(arena.levelUp(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); renderArena(); }
+    if (act === 'slot-close') { partySel[btn.dataset.p] = null; rerenderParty(btn.dataset.p); }
+    if (act === 'equip') {
+      const pk = btn.dataset.p;
+      const sel = partySel[pk];
+      if (sel && !PARTY[pk]().equip(sel.i, sel.key, btn.dataset.id || null)) audio.play('error');
+      rerenderParty(pk);
+    }
+    if (act === 'auto-equip') { PARTY[btn.dataset.p]().autoEquip(); partySel[btn.dataset.p] = null; rerenderParty(btn.dataset.p); }
+    if (act === 'gear-up') { audio.play(PARTY[btn.dataset.p]().levelUp(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); rerenderParty(btn.dataset.p); }
     if (act === 'boss-random') { audio.play(arena.challengeRandom() ? 'start' : 'error'); renderArena(); }
     if (act === 'boss') { audio.play(arena.challenge(Number(btn.dataset.v)) ? 'start' : 'error'); renderArena(); }
     if (act === 'fight') fightBoss();
@@ -1506,8 +1515,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     }
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
-    if (act === 'best') { pick.heroes = dungeon.heroes().slice(0, dungeon.MAX_HEROES).map((h) => h.id); renderDungeon(); }
-    if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level, pick.heroes) ? 'start' : 'error'); renderDungeon(); }
+    if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level) ? 'start' : 'error'); renderDungeon(); }
     if (act === 'dungeon-abort') { dungeon.abort(); renderDungeon(); }
     if (act === 'dungeon-collect') collectDungeon();
     if (act === 'leader') { exp.setLeader(btn.dataset.id); renderExpedition(); }

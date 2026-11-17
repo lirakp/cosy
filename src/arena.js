@@ -1,9 +1,8 @@
 import { ITEMS, RARITIES, getItem, rollTier, rollItem } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
-import { dupValue, payWithDuplicates } from './dupes.js';
+import { createParty } from './party.js';
 import * as buffs from './buffs.js';
-import * as sets from './sets.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
@@ -12,20 +11,7 @@ import { cloth, silk } from './art/materials.js';
 // Siege bringen Stoff und Seide, die der Arena-Händler gegen Sammelstücke tauscht.
 
 export const TEAM_SIZE = 3;
-export const SLOTS = [
-  { cat: 'waffen', name: 'Waffe' },
-  { cat: 'ruestung', name: 'Rüstung' },
-  { cat: 'relikte', name: 'Relikt' },
-  { cat: 'artefakte', name: 'Artefakt' },
-];
-const MAX_TIER = RARITIES.length - 1;
-
-// Stärke nach Rang (D … SS)
-export const HERO_POWER = [10, 20, 40, 70, 120, 200];
-export const GEAR_POWER = [4, 7, 12, 20, 35, 60];
-// Ausrüstung beginnt auf Stufe D und wird mit Ausrüstungs-Duplikaten verbessert.
-export const LEVEL_MULT = [1, 1.3, 1.7, 2.2, 3, 4];
-export const LEVEL_COST = [30, 80, 200, 600, 2000];
+export { SLOTS, HERO_POWER, GEAR_POWER, LEVEL_MULT, LEVEL_COST } from './party.js';
 
 // Bosse: Stärke und Preis, um einen Boss dieses Rangs gezielt herauszufordern.
 export const BOSS_POWER = [40, 100, 220, 500, 1100, 2400];
@@ -48,92 +34,26 @@ export const MATERIALS = {
 const BOSS_NAMES = ['Schleimkönig', 'Spukfürst', 'Urbestie', 'Erzdämon', 'Allsehendes Auge', 'Knochenkaiser',
   'Nachtschwinge', 'Sporenmutter', 'Tiefenkrake', 'Titanengolem'];
 
-const GEAR = ITEMS.filter((item) => SLOTS.some((s) => s.cat === item.cat));
-const HEROES = ITEMS.filter((item) => item.cat === 'helden');
 const a = () => state.arena;
 const arenaTier = () => buildings.tier('arena');
+const MAX_TIER = RARITIES.length - 1;
 const clamp = (v) => Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, v));
-
-// ---------------------------------------------------------------- Helden und Ausrüstung verbessern
-
-// Helden und Ausrüstung haben getrennte IDs und teilen sich daher die Stufen-Tabelle.
-const rawLevel = (id) => a().lvl[id] || 0;
-// Der Rang der Arena begrenzt, wie weit Helden und Ausrüstung verbessert werden können.
-export const levelOf = (id) => Math.max(0, Math.min(rawLevel(id), arenaTier()));
-export const capped = (level) => level < MAX_TIER && level >= arenaTier();
-export const gearPower = (item, level = levelOf(item.id)) => Math.round(GEAR_POWER[item.tier] * LEVEL_MULT[level]);
-export const heroPower = (item, level = levelOf(item.id)) => Math.round(HERO_POWER[item.tier] * LEVEL_MULT[level]);
-// Stärke eines Stücks, egal ob Held oder Ausrüstung
-export const powerOf = (item, level) => (item.cat === 'helden' ? heroPower(item, level) : gearPower(item, level));
-// Helden werden mit Helden-Duplikaten verbessert, Ausrüstung mit Ausrüstungs-Duplikaten
-const pool = (item) => (item?.cat === 'helden' ? HEROES : GEAR);
-export const material = (item) => dupValue(pool(item));
-export const levelCost = (item) => (rawLevel(item.id) < MAX_TIER && rawLevel(item.id) < arenaTier() ? LEVEL_COST[rawLevel(item.id)] : null);
-
-export function levelUp(item) {
-  const cost = levelCost(item);
-  if (cost === null || !state.count(item.id) || !payWithDuplicates(pool(item), cost)) return false;
-  a().lvl[item.id] = rawLevel(item.id) + 1;
-  state.changed();
-  return true;
-}
 
 // ---------------------------------------------------------------- Team
 
-export const team = () => a().team;
-
-// Entfernt Stücke, die es (nach altem Spielstand) nicht mehr gibt.
-export function clean() {
-  for (const m of a().team) {
-    if (m.hero && !state.count(m.hero)) m.hero = null;
-    for (const s of SLOTS) if (m.gear[s.cat] && !state.count(m.gear[s.cat])) m.gear[s.cat] = null;
-  }
-}
-
-function remove(id) {
-  for (const m of a().team) {
-    if (m.hero === id) m.hero = null;
-    for (const s of SLOTS) if (m.gear[s.cat] === id) m.gear[s.cat] = null;
-  }
-}
-
-// key: 'hero' oder eine Ausrüstungs-Kategorie. Jedes Stück kann nur einmal getragen werden.
-export function equip(index, key, id) {
-  const m = a().team[index];
-  const item = id && getItem(id);
-  if (!m || (id && (!item || !state.count(id) || item.cat !== (key === 'hero' ? 'helden' : key)))) return;
-  if (id) remove(id);
-  if (key === 'hero') m.hero = id || null;
-  else m.gear[key] = id || null;
-  state.changed();
-}
-
-export const equippedAt = (id) => a().team.findIndex((m) => m.hero === id || SLOTS.some((s) => m.gear[s.cat] === id));
-
-export const candidates = (key) =>
-  key === 'hero'
-    ? HEROES.filter((i) => state.count(i.id)).sort((x, y) => heroPower(y) - heroPower(x) || y.tier - x.tier)
-    : GEAR.filter((i) => i.cat === key && state.count(i.id)).sort((x, y) => gearPower(y) - gearPower(x));
-
-// Stellt die stärksten Helden auf und verteilt die beste Ausrüstung der Reihe nach.
-export function autoEquip() {
-  const heroes = candidates('hero');
-  a().team.forEach((m, i) => {
-    m.hero = heroes[i]?.id || null;
-    for (const s of SLOTS) m.gear[s.cat] = null;
-  });
-  for (const s of SLOTS) {
-    const gear = candidates(s.cat);
-    a().team.filter((m) => m.hero).forEach((m, i) => (m.gear[s.cat] = gear[i]?.id || null));
-  }
-  state.changed();
-}
-
-export function memberPower(m) {
-  if (!m.hero || !getItem(m.hero)) return 0;
-  return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0);
-}
-export const teamPower = () => Math.round(a().team.reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus('arenaPower')));
+// Helden, Ausrüstung und Stufen: gemeinsame Logik mit dem Dungeon (party.js).
+// Wer im Dungeon-Team steckt, kann nicht in der Arena kämpfen und umgekehrt.
+export const party = createParty({
+  name: 'arena',
+  members: () => state.arena.team,
+  tier: () => buildings.tier('arena'),
+  other: () => state.dungeon.team,
+  bonus: 'arenaPower',
+});
+export const {
+  team, clean, equip, equippedAt, candidates, autoEquip, memberPower, teamPower,
+  levelOf, capped, heroPower, gearPower, powerOf, material, levelCost, levelUp, usedElsewhere,
+} = party;
 
 // ---------------------------------------------------------------- Bosse
 

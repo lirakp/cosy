@@ -244,20 +244,27 @@ Alle Werte stehen oben in `src/expedition.js`.
 
 ## Dungeon
 
-Am Tor ganz links ziehen bis zu fünf Helden los. Die Dauer ist die
-Gefahrenstufe; es läuft immer eine Erkundung zur selben Zeit, auch bei
-geschlossenem Spiel. Erfolgschance = Team-Stärke ÷ nötige Stärke, begrenzt auf
-5–95 %. Stärke je Held: D 1 · C 2 · B 4 · A 7 · S 12 · SS 20. Scheitert die
-Erkundung, gibt es keine Beute.
+Am Tor ganz links zieht ein Team aus bis zu fünf Helden los – ausgerüstet und
+gelevelt wie in der Bossarena (Waffe, Rüstung, Relikt, Artefakt; Stufen D bis
+SS). Die Dauer ist die Gefahrenstufe; es läuft immer eine Erkundung zur selben
+Zeit, auch bei geschlossenem Spiel. Erfolgschance = Team-Stärke ÷ nötige Stärke,
+begrenzt auf 5–95 %; es zählt die Stärke beim Aufbruch, und das Team ist bis zur
+Rückkehr gesperrt. Scheitert die Erkundung, gibt es keine Beute.
+
+**Arena und Dungeon teilen sich nichts gleichzeitig:** Ein Held oder ein
+Ausrüstungsstück im Arena-Team ist im Dungeon nicht verfügbar und umgekehrt
+(in der Auswahl ausgegraut und mit „A“ bzw. „D“ markiert). Stufen gehören zum
+Stück und gelten überall – wie weit sie zählen und gelevelt werden können,
+begrenzt der Rang der jeweiligen Anlage (Arena bzw. Dungeon-Tor).
 
 | Stufe | Dauer | Nötige Stärke | Gold | Sammelstücke |
 | --- | --- | --- | --- | --- |
-| D | 30 s | 2 | ~15 | 1× Zufall |
-| C | 1 min | 6 | ~35 | 3× D + 1× Zufall |
-| B | 5 min | 14 | ~150 | 3× D + 2× ab C |
-| A | 15 min | 28 | ~500 | 3× D + 3× ab C |
-| S | 30 min | 50 | ~1200 | 3× D + 4× ab B |
-| SS | 60 min | 85 | ~3000 | 3× D + 5× ab A |
+| D | 30 s | 30 | ~15 | 1× Zufall |
+| C | 1 min | 90 | ~35 | 3× D + 1× Zufall |
+| B | 5 min | 210 | ~150 | 3× D + 2× ab C |
+| A | 15 min | 420 | ~500 | 3× D + 3× ab C |
+| S | 30 min | 750 | ~1200 | 3× D + 4× ab B |
+| SS | 60 min | 1275 | ~3000 | 3× D + 5× ab A |
 
 Alle Werte stehen oben in `src/dungeon.js`.
 
@@ -314,6 +321,7 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/arena.js` | Bossarena: Team, Ausrüstung, Bosse, Beute, Händler |
 | `src/dupes.js` | Bezahlen mit Duplikaten |
 | `src/buildings.js` | Bau und Ausbau von Lager, Dungeon-Tor und Bossarena |
+| `src/party.js` | Gemeinsame Team-Logik für Arena und Dungeon (Ausrüstung, Stufen) |
 | `src/dungeon.js` | Gefahrenstufen, Erfolgschance, Beute |
 | `src/state.js` | Gold, Sammlung, Verkaufen, Speichern |
 | `src/ui.js` | Menüs für Brunnen, Galerie, Expedition und Dungeon, Pop-ups |
