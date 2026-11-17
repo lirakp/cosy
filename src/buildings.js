@@ -3,55 +3,55 @@ import { state } from './state.js';
 
 // Zusatzanlagen: Sie müssen erst gebaut werden und starten auf Rang D.
 // Jeder Ausbau schaltet den nächsten Rang frei (C, B, A, S, SS).
-// Die ersten drei Ausbauten (D→C, C→B, B→A) sind bewusst günstig, damit es am Anfang zügig vorangeht.
+// Die Preise steigen gleichmäßig (etwa ×2–2,5 je Rang), damit es ohne große Sprünge vorangeht.
 
 export const BUILDINGS = {
   camp: {
     name: 'Expeditionslager',
     buy: 250,
-    upgrades: [600, 1800, 4800, 20000, 50000],
+    upgrades: [600, 1800, 4800, 11000, 27500],
     pitch: 'Deine vier stärksten Lebewesen sammeln hier laufend Gold und finden ab und zu ein Sammelstück.',
     unlocks: 'Lebewesen und Expeditionsleitung lassen sich bis zum Rang des Lagers entwickeln.',
   },
   dungeon: {
     name: 'Dungeon-Tor',
     buy: 400,
-    upgrades: [480, 1500, 4200, 18000, 45000],
+    upgrades: [480, 1500, 4200, 10000, 25000],
     pitch: 'Schicke bis zu fünf Helden auf Erkundung, um Gold und Sammelstücke zu erbeuten.',
     unlocks: 'Gefahrenstufen sind bis zum Rang des Tors zugänglich.',
   },
   arena: {
     name: 'Bossarena',
     buy: 600,
-    upgrades: [720, 2100, 5400, 22000, 55000],
+    upgrades: [720, 2100, 5400, 12000, 30500],
     pitch: 'Rüste drei Helden aus und lass sie gegen Bosse kämpfen. Siege bringen Stoff und Seide für den Arena-Händler.',
     unlocks: 'Bosse lassen sich bis zum Rang der Arena gezielt herausfordern, Helden und Ausrüstung bis zu diesem Rang verbessern.',
   },
   mine: {
     name: 'Mine',
     buy: 800,
-    upgrades: [900, 2400, 6000, 25000, 60000],
+    upgrades: [900, 2400, 6000, 14000, 33000],
     pitch: 'Sechs Ebenen tief: Deine Monster hacken dort Erz, das der seltene Erzhändler gegen Sammelstücke tauscht.',
     unlocks: 'Jeder Rang öffnet eine tiefere Ebene mit wertvollerem Erz und erlaubt, Monster bis zu diesem Rang zu verbessern.',
   },
   forge: {
     name: 'Schmiede',
     buy: 1000,
-    upgrades: [1200, 3000, 7200, 30000, 70000],
+    upgrades: [1200, 3000, 7200, 16500, 38500],
     pitch: 'Ein Anbau am Haus: Hier kopierst du gezielt eigene Sammelstücke – für Gold, Erz aus der Mine und Schmiedeglut.',
     unlocks: 'Kopiert werden Stücke bis zum Rang der Schmiede. Jeder Ausbau vergrößert den Glutvorrat und lässt die Glut schneller nachladen.',
   },
   well: {
     name: 'Wunschbrunnen',
     buy: 0,
-    upgrades: [900, 2400, 6000, 25000, 60000],
+    upgrades: [900, 2400, 6000, 14000, 33000],
     pitch: 'Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.',
     unlocks: 'Jeder Rang macht Wünsche günstiger (bis −20 %), erhöht die Chance auf einen Gratis-Folgewunsch und auf ein Geschenk des Brunnengeists. Ab Rang A zwei, bei SS drei Gratiswünsche am Tag.',
   },
   tower: {
     name: 'Magierturm',
     buy: 1500,
-    upgrades: [1800, 4200, 9000, 35000, 80000],
+    upgrades: [1800, 4200, 9000, 19000, 44000],
     pitch: 'Ein Turm voller Sterne: Er sammelt Mana, mit dem du Zauber aus deinen Schriftrollen wirkst.',
     unlocks: 'Jeder Rang vergrößert den Mana-Vorrat, lässt es schneller nachladen und erlaubt stärkere Zauber.',
   },

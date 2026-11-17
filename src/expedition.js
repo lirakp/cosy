@@ -15,7 +15,10 @@ export const TEAM_SIZE = 4;
 const MAX_TIER = RARITIES.length - 1;
 
 // Gold pro Minute nach Ausgangsrang (D … SS) – nur dieser Grundwert hängt am Rang.
-export const BASE_RATE = [2, 3, 5, 8, 14, 30];
+export const BASE_RATE = [7, 11, 18, 30, 52, 110];
+// Faktor nach Rang des Expeditionslagers (D … SS): Ausbauen lohnt sich spürbar.
+// Bezugspunkt: Lager Rang B, vier Lebewesen Rang C auf Stufe B, Leitung auf B → rund 500 Gold/min.
+export const CAMP_MULT = [1, 2, 4, 5, 6, 7];
 // Faktor nach Entwicklungsstufe (D … SS). Jedes Lebewesen beginnt auf Stufe D.
 export const EVO_MULT = [1, 1.5, 2.25, 3.5, 5, 8];
 // Preis der nächsten Stufe, bezahlt mit Lebewesen-Duplikaten (gerechnet in deren Verkaufswert).
@@ -47,7 +50,7 @@ const rawEvo = (id) => e().evo[id] || 0;
 export const evoOf = (id) => Math.max(0, Math.min(rawEvo(id), campTier()));
 // true, wenn nur noch der Lager-Rang die nächste Entwicklung verhindert
 export const capped = (tier) => tier < MAX_TIER && tier >= campTier();
-export const rateOf = (item, tier = evoOf(item.id)) => BASE_RATE[item.tier] * EVO_MULT[tier];
+export const rateOf = (item, tier = evoOf(item.id)) => BASE_RATE[item.tier] * EVO_MULT[tier] * CAMP_MULT[Math.max(0, campTier())];
 
 // Alle eigenen Lebewesen, die stärksten zuerst.
 export function roster() {
