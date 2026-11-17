@@ -1,5 +1,6 @@
 import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X } from './config.js';
 import * as garden from './garden.js';
+import * as gardener from './gardener.js';
 import * as trader from './trader.js';
 import * as mine from './mine.js';
 import * as dungeon from './dungeon.js';
@@ -764,9 +765,31 @@ export function createWorld(theme = {}) {
     drawChest(ctx, CHEST_X - cam, GROUND_Y + 7, cap ? gold / cap : 0, loot > 0, time);
   }
 
+  // Gartenhelfer läuft zwischen den Beeten und arbeitet an ihnen
+  const gh = { x: GARDEN_BED_X + 20, target: null, wait: 1, dir: 1, work: 0 };
+  function updateGardener(dt) {
+    if (!gardener.creature()) return;
+    if (gh.work > 0) gh.work -= dt;
+    if (gh.wait > 0) {
+      gh.wait -= dt;
+      return;
+    }
+    const n = garden.beds().length;
+    if (gh.target === null) gh.target = GARDEN_BED_X + 6 + Math.floor(r() * n) * GARDEN_BED_STEP;
+    const d = gh.target - gh.x;
+    gh.dir = d < 0 ? -1 : 1;
+    if (Math.abs(d) <= 14 * dt) {
+      gh.x = gh.target;
+      gh.target = null;
+      gh.wait = 1.5 + r() * 2;
+      gh.work = 1.2;
+    } else gh.x += gh.dir * 14 * dt;
+  }
+
   return {
     update(dt, player) {
       updateTeam(dt);
+      updateGardener(dt);
       coinTimer -= dt;
       if (coinTimer <= 0) {
         coinTimer = 2.5 + r() * 2;
@@ -837,6 +860,22 @@ export function createWorld(theme = {}) {
           }
         }
       });
+
+      // Gartenhelfer
+      const helperItem = gardener.creature();
+      if (helperItem) {
+        const hop = gh.work > 0 ? Math.floor(time * 8) % 2 : gh.wait <= 0 ? Math.floor(time * 6) % 2 : 0;
+        const x = Math.round(gh.x) - 8 - cam;
+        const y = GROUND_Y - 6 - hop;
+        if (gh.dir < 0) {
+          ctx.save();
+          ctx.translate(x + 16, y);
+          ctx.scale(-1, 1);
+          ctx.drawImage(itemImage(helperItem), 0, 0);
+          ctx.restore();
+        } else ctx.drawImage(itemImage(helperItem), x, y);
+        if (gh.work > 0) for (let k = 0; k < 3; k++) px(ctx, x + 8 + Math.round(Math.sin(time * 6 + k * 2) * 6), y + 14 - ((Math.floor(time * 10) + k * 3) % 8), k % 2 ? PAL.leafLight : PAL.leaf);
+      }
 
       // Erzhändler am Brunnen, wenn er gerade da ist
       if (trader.present()) {

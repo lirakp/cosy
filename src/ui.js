@@ -12,6 +12,8 @@ import * as forgeMod from './forge.js';
 import * as sets from './sets.js';
 import * as garden from './garden.js';
 import * as village from './village.js';
+import * as gardener from './gardener.js';
+import * as fishtrap from './fishtrap.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -90,6 +92,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'villager') renderVillager();
     if (view === 'market') renderMarket();
     if (view === 'fishbook') renderFishBook();
+    if (view === 'trap') renderTrap();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -452,6 +455,42 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     onToggle(true);
   }
 
+  // ------------------------------------------------------------ Fischreuse
+
+  function renderTrap() {
+    fishtrap.tick();
+    const cost = fishtrap.nextCost();
+    if (!fishtrap.built()) {
+      overlay.innerHTML = `
+        <section class="panel">
+          ${head('Fischreuse')}
+          <p class="lead">Eine Reuse am Ufer fängt laufend Fische – auch, während du nicht da bist. Sie ist langsamer als selbst angeln und fängt keine Flaschenposts.</p>
+          <div class="chest"><p>Stufe D: alle ${fishtrap.MINUTES[0]} Minuten ein Fisch, Platz für ${fishtrap.CAPACITY[0]} Fische.</p>
+            <div class="line"><button class="big" data-act="trap-up" ${state.gold >= cost ? '' : 'disabled'}>Reuse bauen<small>${fmt(cost)} Gold</small></button></div></div>
+        </section>`;
+      return;
+    }
+    const lv = fishtrap.level();
+    const entries = Object.entries(state.village.trap.stored);
+    overlay.innerHTML = `
+      <section class="panel trappanel">
+        ${head('Fischreuse')}
+        <div class="chest upgrade r-${fishtrap.rank()}">
+          <div class="line"><span>Fischreuse · Rang <b class="evo">${fishtrap.rank()}</b> · alle ${fmt1(fishtrap.minutes())} min ein Fisch · Platz für ${fishtrap.capacity()}</span>
+            ${cost === null ? '<span class="muted">voll ausgebaut</span>' : `<button data-act="trap-up" ${state.gold >= cost ? '' : 'disabled'}>Auf Rang ${RARITIES[lv + 1].id} ausbauen · ${fmt(cost)} Gold</button>`}</div>
+          ${cost === null ? '' : `<p class="muted">Nächster Rang: alle ${fmt1(fishtrap.MINUTES[lv + 1])} min, Platz für ${fishtrap.CAPACITY[lv + 1]}.</p>`}
+        </div>
+        <div class="chest">
+          <div class="line"><span>Im Korb: <b>${fishtrap.stored()} / ${fishtrap.capacity()}</b>${fishtrap.full() ? ' – voll, die Reuse wartet' : ''}</span>
+            <button class="big" data-act="trap-collect" ${fishtrap.stored() ? '' : 'disabled'}>Reuse leeren</button></div>
+          <div class="bar"><i style="width:${(fishtrap.stored() / fishtrap.capacity()) * 100}%"></i></div>
+          <div class="ores">${entries.map(([id, n]) => `<span class="ore-chip r-${RARITIES[village.fishSpec(id).tier].id}" data-fish-img="${id}"><b>${n}</b> ${village.fishSpec(id).name}</span>`).join('') || '<span class="muted">Noch leer.</span>'}</div>
+        </div>
+        <p class="muted">Gefangen wird nach denselben Chancen wie beim Angeln; offline beißen Arten aller Tageszeiten. Fänge zählen fürs Angelbuch.</p>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
+  }
+
   // ------------------------------------------------------------ Angelbuch
 
   const TIME_ICON = { any: '◯', day: '☀', night: '☾', twilight: '◐' };
@@ -655,6 +694,51 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   };
   let gardenSel = null; // Beet, für das gerade Saatgut gewählt wird
 
+  // Gartenhelfer-Bereich im Garten-Menü
+  let helperPick = false;
+  function helperHtml() {
+    const c = gardener.creature();
+    const h = gardener.info();
+    if (!c || helperPick) {
+      const list = ITEMS.filter((i) => i.cat === 'lebewesen' && state.count(i.id)).sort((a, b) => b.tier - a.tier).slice(0, 44);
+      return `<div class="chest helper">
+        <div class="line"><b>Gartenhelfer</b>${c ? '<button data-act="helper-close">Abbrechen</button>' : ''}</div>
+        <p class="muted">Ein Lebewesen kann sich um die Beete kümmern: ernten, neu pflanzen und – wenn du es erlaubst – Ernte am Markt verkaufen, um Saat zu kaufen. Es zieht dann nicht mehr mit auf Expedition.</p>
+        ${list.length
+          ? `<div class="grid heroes">${list.map((i) => `<button class="tile r-${i.rank}${i.id === h.creature ? ' picked' : ''}" data-act="helper-pick" data-id="${i.id}" data-sprite="${i.id}" title="${i.name}"><span class="rank">${i.rank}</span></button>`).join('')}</div>`
+          : '<p class="muted">Du besitzt noch keine Lebewesen – ziehe welche am Wunschbrunnen.</p>'}
+      </div>`;
+    }
+    const options = (i) => {
+      const cur = h.plan[i] || '';
+      const last = state.garden.last[i];
+      return `<select data-act="helper-plan" data-i="${i}">
+        <option value="" ${cur === '' ? 'selected' : ''}>wie zuletzt${last ? ` (${garden.crop(last).name})` : ''}</option>
+        ${garden.CROPS.map((cr) => `<option value="${cr.id}" ${cur === cr.id ? 'selected' : ''}>${cr.name}</option>`).join('')}
+        <option value="none" ${cur === 'none' ? 'selected' : ''}>leer lassen</option>
+      </select>`;
+    };
+    return `<div class="chest helper">
+      <div class="helper-row">
+        <div class="tile r-${c.rank}" data-sprite="${c.id}"><span class="rank">${c.rank}</span></div>
+        <div class="info">
+          <b>${c.name}</b>
+          <span class="muted">kümmert sich um die Beete · ${fmt(h.harvests)} Ernten · ${fmt(h.sold)} Gold verkauft · ${fmt(h.spent)} Gold für Saat</span>
+        </div>
+        <button data-act="helper-change">Wechseln</button>
+        <button data-act="helper-off">Entlassen</button>
+      </div>
+      <label class="check"><input type="checkbox" data-act="helper-sell" ${h.sell ? 'checked' : ''}> Darf Ernte am Markt verkaufen und davon Saat kaufen</label>
+      <div class="line"><span>Vorrat behalten (fürs Kochen): <b>${h.reserve}</b> je Pflanze</span>
+        <span><button data-act="helper-res" data-v="-1">−</button> <button data-act="helper-res" data-v="1">+</button></span></div>
+      <div class="plans">${garden.beds().map((_, i) => `<label>Beet ${i + 1} ${options(i)}</label>`).join('')}</div>
+      <div class="line"><span>Kasse des Helfers: <b class="gold-text">${fmt(gardener.purse())} Gold</b></span>
+        <span><button data-act="helper-deposit" ${state.gold >= gardener.DEPOSIT ? '' : 'disabled'}>+${gardener.DEPOSIT} einzahlen</button>
+        <button data-act="helper-withdraw" ${gardener.purse() ? '' : 'disabled'}>Kasse leeren</button></span></div>
+      ${h.sell ? '' : '<p class="note">Ohne Verkaufserlaubnis erntet der Helfer nur und pflanzt nur mit Saatpäckchen vom Markt.</p>'}
+    </div>`;
+  }
+
   function renderGarden() {
     const now = Date.now();
     const bedCards = garden.beds().map((b, i) => {
@@ -690,8 +774,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <div class="beds">${bedCards}</div>
         <h4>Vorrat</h4>
         <div class="ores">${garden.CROPS.map((c) => cropChip(c.id, garden.have(c.id))).join('')}</div>
+        <h4>Gartenhelfer</h4>
+        ${helperHtml()}
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
     fillCrops();
   }
 
@@ -792,6 +879,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     leitung: 'Expeditionsleitung',
     garten: 'Garten (Saatgut)',
     aufgaben: 'Aufgaben im Dorf',
+    gartenhelfer: 'Gartenhelfer (Kasse)',
     markt: 'Markt im Dorf',
     angeln: 'Angeln (Flaschenpost)',
     sonstiges: 'Sonstiges',
@@ -1464,6 +1552,21 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       }
     }
     if (act === 'market-sell') { if (village.sellWanted(Number(btn.dataset.v))) audio.play('sell'); renderMarket(); }
+    if (act === 'helper-pick') { gardener.assign(btn.dataset.id); helperPick = false; audio.play('levelUp'); renderGarden(); }
+    if (act === 'helper-change') { helperPick = true; renderGarden(); }
+    if (act === 'helper-close') { helperPick = false; renderGarden(); }
+    if (act === 'helper-off') { gardener.assign(null); renderGarden(); }
+    if (act === 'helper-res') { gardener.setReserve(gardener.info().reserve + Number(btn.dataset.v)); renderGarden(); }
+    if (act === 'helper-deposit') { audio.play(gardener.deposit() ? 'coin' : 'error'); renderGarden(); }
+    if (act === 'helper-withdraw') { if (gardener.withdraw()) audio.play('gold'); renderGarden(); }
+    if (act === 'trap-up') { audio.play(fishtrap.upgrade() ? 'build' : 'error'); renderTrap(); }
+    if (act === 'trap-collect') {
+      const got = fishtrap.collect();
+      const fresh = got.filter((g) => g.isNew).map((g) => g.fish.name);
+      toast(`${got.length} Fische aus der Reuse${fresh.length ? ` – neu im Angelbuch: ${fresh.join(', ')}` : ''}`);
+      audio.play('gold');
+      renderTrap();
+    }
     if (act === 'bed') { gardenSel = Number(btn.dataset.v); renderGarden(); }
     if (act === 'bed-close') { gardenSel = null; renderGarden(); }
     if (act === 'plant') {
@@ -1568,6 +1671,13 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     audio.click();
   });
 
+  // Auswahlfelder und Häkchen (Gartenhelfer)
+  overlay.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
+    if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
+  });
+
   document.body.addEventListener('click', (e) => {
     if (e.target.closest('[data-act="reveal-next"]')) {
       audio.click();
@@ -1603,6 +1713,13 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     },
     openMarket: () => show('market'),
     openFishBook: () => show('fishbook'),
+    openTrap: () => show('trap'),
+    refreshGarden() {
+      if (view === 'garden') renderGarden();
+    },
+    refreshTrap() {
+      if (view === 'trap') renderTrap();
+    },
     updateMarket,
     caught(res) {
       if (res.treasure) {

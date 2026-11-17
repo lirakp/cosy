@@ -2,6 +2,8 @@ import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_
 import * as village from './village.js';
 import { createVillageScene, zoneAt as villageZoneAt, VILLAGE_W, VILLAGE_BOUNDS, VILLAGE_SPAWN } from './villagescene.js';
 import * as garden from './garden.js';
+import * as gardener from './gardener.js';
+import * as fishtrap from './fishtrap.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
 import * as mine from './mine.js';
@@ -294,6 +296,7 @@ function act() {
   if (near === 'fishing') fishAction();
   if (near === 'market') ui.openMarket();
   if (near === 'fishbook') ui.openFishBook();
+  if (near === 'trap') ui.openTrap();
   if (near?.startsWith('npc:')) ui.talk(near.slice(4));
   if (near === 'house') enterHouse();
   if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
@@ -413,6 +416,11 @@ function expeditionTick() {
   forge.tick();
   ui.updateForge();
   ui.updateGarden();
+  // Gartenhelfer und Fischreuse arbeiten laufend
+  if (gardener.tick()) ui.refreshGarden();
+  const wasFull = fishtrap.full();
+  if (fishtrap.tick()) ui.refreshTrap();
+  if (!wasFull && fishtrap.full() && !document.hidden) ui.toast('Die Fischreuse im Dorf ist voll!', true);
   ui.updateMarket();
 
   const found = expedition.tick();
@@ -632,6 +640,7 @@ function frame(now) {
     : near === 'fishing' ? fishLabel()
     : near === 'market' ? 'Marktstand'
     : near === 'fishbook' ? 'Angelbuch'
+    : near === 'trap' ? (fishtrap.built() ? `Fischreuse · ${fishtrap.stored()}/${fishtrap.capacity()}${fishtrap.full() ? ' voll!' : ''}` : `Fischreuse bauen · ${fishtrap.BUY} Gold`)
     : near?.startsWith('npc:') ? npcLabel(near.slice(4))
     : near === 'house' ? 'Haus betreten'
     : near === 'door' ? 'Hinausgehen'

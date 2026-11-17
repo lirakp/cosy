@@ -50,7 +50,8 @@ export const rateOf = (item, tier = evoOf(item.id)) => BASE_RATE[item.tier] * EV
 
 // Alle eigenen Lebewesen, die stärksten zuerst.
 export function roster() {
-  return CREATURES.filter((item) => state.count(item.id)).sort((a, b) => rateOf(b) - rateOf(a) || b.tier - a.tier);
+  // der Gartenhelfer bleibt zu Hause
+  return CREATURES.filter((item) => state.count(item.id) && item.id !== state.garden.helper?.creature).sort((a, b) => rateOf(b) - rateOf(a) || b.tier - a.tier);
 }
 export const team = () => (buildings.owned('camp') ? roster().slice(0, TEAM_SIZE) : []);
 

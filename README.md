@@ -64,6 +64,10 @@ Dorf; rechts im Dorf führt der Weg zurück.
   Sammelstücke zum Kaufen (Verkaufswert × 5) und drei gesuchte Stücke, die sie
   für den doppelten Verkaufswert ankauft (nur Duplikate). Das Angebot wechselt
   alle 20 Minuten.
+- **Fischreuse:** am Ufer neben dem Steg, kaufbar (400 Gold) und ausbaubar
+  (1200 · 3500 · 9000 · 22000). Fängt alle 8 · 6 · 4,5 · 3,5 · 2,5 Minuten einen
+  Fisch (gleiche Chancen wie beim Angeln, offline Arten aller Tageszeiten, keine
+  Flaschenpost), bis zu 8 · 12 · 18 · 25 · 35 Fische; dann wartet sie aufs Leeren.
 - **Angelbuch:** Pult am Ende des Stegs (`E`): alle sechs Fischarten mit Bild
   (unbekannte als Schatten), Rang, Seltenheit, Marktwert, wie viele je
   gefangen und wie viele im Vorrat; dazu gefundene Flaschenposts.
@@ -102,6 +106,16 @@ wird geerntet oder gepflanzt.
 | Beeren | 30 Gold | 20 min | 3 |
 | Kürbis | 50 Gold | 30 min | 1 |
 | Sternenblume | 150 Gold | 60 min | 1 |
+
+**Gartenhelfer:** Im Garten-Menü lässt sich eines deiner Lebewesen als Helfer
+einsetzen (es zieht dann nicht mehr mit auf Expedition). Es läuft zwischen den
+Beeten, erntet Reifes und pflanzt neu – je Beet „wie zuletzt“, eine feste
+Pflanze oder „leer lassen“ –, auch offline (bis 8 Stunden, mehrere Durchgänge).
+Saat nimmt es zuerst aus dem Päckchen-Vorrat. Mit Verkaufserlaubnis verkauft es
+Ernte über dem eingestellten Vorrat (Standard 5 je Pflanze, fürs Kochen) zu
+Marktpreisen, kauft davon Saat und sammelt den Gewinn in seiner Kasse, die du
+leeren kannst; reicht das Geld für die nächste Saat nicht, greift es auch den
+Vorrat an. Ohne Erlaubnis erntet es nur und pflanzt mit Päckchen.
 
 Am Kamin im Haus wird gekocht – Gerichte geben gezielt einen Rausch:
 
@@ -379,6 +393,8 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
 | `src/village.js` | Dorf: Aufgaben, Markt, Angeln |
 | `src/villagescene.js` | Darstellung des Dorfs und der Angel |
+| `src/gardener.js` | Gartenhelfer: automatisch ernten, verkaufen, pflanzen |
+| `src/fishtrap.js` | Fischreuse: automatisch Fische fangen |
 | `src/garden.js` | Garten (Beete, Wachstum, Ernte) und Küche (Rezepte) |
 | `src/sets.js` | Sammel-Sets und ihre Boni |
 | `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |

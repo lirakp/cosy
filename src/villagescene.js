@@ -2,6 +2,8 @@ import { VIEW_W, VIEW_H, GROUND_Y, WALK_Y } from './config.js';
 import { PAL } from './palette.js';
 import { rng, makeCanvas, rect, px, circle, dither } from './utils.js';
 import * as village from './village.js';
+import * as fishtrap from './fishtrap.js';
+import { state } from './state.js';
 
 // Das Dorf von außen: Häuser, Rathaus, Marktstand, Teich mit Steg.
 // Links wird geangelt, rechts geht es zurück zum Hof.
@@ -15,6 +17,7 @@ const BOB = { x: 26, y: 165 };
 export function zoneAt(x) {
   if (x < 72) return 'fishing';
   if (x >= 76 && x <= 98) return 'fishbook';
+  if (x > 98 && x <= 112) return 'trap';
   if (x > VILLAGE_W - 34) return 'farm';
   if (Math.abs(x - village.MARKET.x) < 14) return 'market';
   for (const v of village.VILLAGERS) if (Math.abs(x - v.x) < 10) return `npc:${v.id}`;
@@ -378,6 +381,22 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         ctx.drawImage(village.villagerImage(v.id), v.x - 8 - cam, WALK_Y - 16 + bob);
       }
       ctx.drawImage(village.villagerImage('hilde'), village.MARKET.x - 8 - cam, WALK_Y - 25);
+
+      // Fischreuse: Pfosten am Ufer, Seil zum Korb im Wasser
+      const tx = 106 - cam;
+      if (fishtrap.built()) {
+        rect(ctx, tx, GROUND_Y - 10, 2, 16, PAL.woodDark);
+        rect(ctx, tx - 1, GROUND_Y - 11, 4, 2, PAL.wood);
+        const bob = Math.round(Math.sin(time * 2) * 1);
+        for (let k = 0; k < 18; k++) px(ctx, tx - k, GROUND_Y - 6 + Math.round(k * 0.7) + (k > 12 ? bob : 0), '#d8c8a0');
+        rect(ctx, tx - 24, GROUND_Y + 6 + bob, 9, 6, '#8a6a40');
+        for (let k = 0; k < 9; k += 2) rect(ctx, tx - 24 + k, GROUND_Y + 6 + bob, 1, 6, '#5a4028');
+        rect(ctx, tx - 22, GROUND_Y + 4 + bob, 3, 2, '#d9574a');
+      } else {
+        rect(ctx, tx, GROUND_Y - 4, 2, 10, PAL.woodDark);
+        rect(ctx, tx - 5, GROUND_Y - 8, 12, 6, PAL.woodLight);
+        rect(ctx, tx - 3, GROUND_Y - 6, 8, 1, PAL.woodDark);
+      }
     },
 
     // Angelschnur und Schwimmer (nach der Spielfigur gezeichnet)
@@ -528,6 +547,10 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         rect(ctx, x - 4 - cam, GROUND_Y - 15, 3, 4, PAL.glow);
         glow(ctx, x - 3 - cam, GROUND_Y - 13, 10 + Math.round(night * 6), 0.12 + 0.25 * night);
       }
+      // Reuse voll: Zeichen über dem Pfosten
+      if (fishtrap.full()) mark(ctx, '!', 107 - cam, WALK_Y - 34 + Math.round(Math.sin(time * 3) * 1.5), PAL.coin);
+      else if (fishtrap.stored()) ctx.drawImage(village.fishImage(Object.keys(state.village.trap.stored)[0]), 99 - cam, WALK_Y - 36, 16, 16);
+
       // Aufgaben-Zeichen über den Köpfen
       for (const v of village.VILLAGERS) {
         const q = village.quest(v.id);

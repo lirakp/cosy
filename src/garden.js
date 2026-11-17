@@ -63,6 +63,7 @@ export function plant(i, cropId, now = Date.now()) {
   // erst Saatpäckchen vom Markt, sonst direkt mit Gold bezahlen
   if (!village.useSeed(cropId) && !state.spend(c.seed, 'garten')) return false;
   gd().beds[i] = { crop: cropId, planted: now };
+  gd().last[i] = cropId;
   state.changed();
   return true;
 }

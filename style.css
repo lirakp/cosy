@@ -696,3 +696,15 @@ table.stats td { border-top: 1px solid #3a3170; }
 .fishcard.unknown { box-shadow: 0 0 0 2px #3a3170; }
 .fishstats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
 .fishcard .line { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+/* ---------------------------------------------------------------- Gartenhelfer und Reuse */
+
+.helper { gap: 10px; }
+.helper-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.helper-row .tile { width: 56px; cursor: default; }
+.helper-row .info { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.check input { width: 16px; height: 16px; accent-color: #ffd04a; }
+.plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; font-size: 12px; }
+.plans label { display: flex; flex-direction: column; gap: 3px; }
+.plans select { font: inherit; background: #2a2456; color: #fdf6e3; border: 0; padding: 4px; box-shadow: 0 0 0 2px #4b3b78; }

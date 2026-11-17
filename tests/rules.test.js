@@ -477,3 +477,57 @@ test('Angeln: der beim Auswerfen gewürfelte Fang wird erst beim Einholen gezäh
   village.sellFish(res.species);
   assert.equal(village.caughtTotal(res.species), 1, 'Verkaufen ändert das Angelbuch nicht');
 });
+
+// ---------------------------------------------------------------- Automatik
+
+import * as gardener from '../src/gardener.js';
+import * as fishtrap from '../src/fishtrap.js';
+
+test('Gartenhelfer: erntet und pflanzt offline mehrere Durchgänge, finanziert aus Verkäufen', () => {
+  const c = getGroup('lebewesen', 'D')[0];
+  state.addItems([c]);
+  assert.ok(gardener.assign(c.id));
+  gardener.setSell(true);
+  assert.ok(garden.plant(0, 'karotte'));
+  const gold = state.gold;
+  state.garden.beds[0].planted -= 61 * MIN;
+  const res = gardener.tick();
+  assert.equal(res.harvested.karotte, 24, '12 Durchgänge à 2 Karotten');
+  assert.equal(garden.beds()[0].crop, 'karotte', 'wieder bepflanzt');
+  assert.equal(garden.have('karotte'), 5, 'Vorrat fürs Kochen bleibt');
+  assert.ok(gardener.purse() > 0, 'Gewinn in der Kasse');
+  assert.equal(state.gold, gold, 'eigenes Gold bleibt unangetastet');
+  const p = gardener.purse();
+  gardener.withdraw();
+  assert.equal(state.gold, gold + p);
+});
+
+test('Gartenhelfer: ohne Verkaufserlaubnis nur mit Saatpäckchen, und er geht nicht auf Expedition', () => {
+  const c = getGroup('lebewesen', 'B')[0];
+  state.addItems([c]);
+  state.buildings.camp = 0;
+  gardener.assign(c.id);
+  assert.ok(expedition.roster().every((x) => x.id !== c.id));
+  garden.plant(0, 'karotte');
+  state.garden.beds[0].planted -= 6 * MIN;
+  gardener.tick();
+  assert.equal(garden.beds()[0], null, 'geerntet, aber keine Saat');
+  village.buySeeds('karotte', 1);
+  state.garden.beds[0] = { crop: 'karotte', planted: Date.now() - 6 * MIN };
+  gardener.tick();
+  assert.equal(garden.beds()[0].crop, 'karotte', 'mit Päckchen neu gepflanzt');
+});
+
+test('Fischreuse: fängt nach Zeit bis zur Kapazität, ohne Flaschenpost, Fänge zählen fürs Angelbuch', () => {
+  assert.equal(fishtrap.built(), false);
+  assert.ok(fishtrap.upgrade());
+  state.village.trap.last = Date.now() - 1000 * MIN;
+  fishtrap.tick();
+  assert.equal(fishtrap.stored(), fishtrap.capacity(), 'nie mehr als die Kapazität');
+  const got = fishtrap.collect();
+  assert.equal(got.length, fishtrap.CAPACITY[0]);
+  assert.ok(got.every((g) => !g.treasure));
+  assert.equal(fishtrap.stored(), 0);
+  const counted = village.FISH.reduce((n, f) => n + village.caughtTotal(f.id), 0);
+  assert.equal(counted, got.length);
+});

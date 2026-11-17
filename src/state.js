@@ -48,6 +48,8 @@ const newStats = (now = Date.now()) => ({
 const newGarden = () => ({
   beds: [null, null], // je Beet: { crop, planted } oder null
   crops: {}, // Ernte-Vorrat je Pflanze
+  last: [], // zuletzt gepflanzt je Beet
+  helper: { creature: null, sell: false, reserve: 5, plan: [], purse: 0, last: 0, harvests: 0, sold: 0, spent: 0 },
 });
 
 const newVillage = () => ({
@@ -56,7 +58,8 @@ const newVillage = () => ({
   done: 0,
   fish: {}, // gefangene Fische je Rang (Vorrat)
   caught: 0,
-  caughtBy: {}, // je Rang insgesamt gefangen, dazu Flaschenposts (fürs Angelbuch)
+  caughtBy: {}, // je Art insgesamt gefangen, dazu Flaschenposts (fürs Angelbuch)
+  trap: { level: -1, stored: {}, last: 0, frac: 0 }, // Fischreuse
   seeds: {}, // Saatpäckchen auf Vorrat
   market: { stock: [], wants: [], refreshAt: 0 },
 });
@@ -101,8 +104,8 @@ function normalize(saved) {
     mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
     forge: { ...base.forge, ...saved.forge },
     stats: { ...base.stats, ...saved.stats },
-    garden: { ...base.garden, ...saved.garden },
-    village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market } },
+    garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
+    village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market }, trap: { ...base.village.trap, ...saved.village?.trap } },
   };
   merged.village.fish = migrateFish(merged.village.fish);
   merged.village.caughtBy = migrateFish(merged.village.caughtBy);
