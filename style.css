@@ -988,3 +988,5 @@ body[data-display="fill"] { background: #0b0a1f; }
 .rush-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .rush-modes .ultimate { background: linear-gradient(90deg, #8a2a4a, #b888f0); }
 .rush-modes small { display: block; font-size: 10px; }
+.afk-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; background: rgba(106, 84, 200, 0.25); padding: 6px 8px; font-size: 12px; margin: 6px 0; }
+.afk-line button { font-size: 11px; padding: 4px 8px; }

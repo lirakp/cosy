@@ -4,7 +4,8 @@ import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
 import * as realm from './realm.js';
 import * as companions from './companions.js';
-import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE, MAX_CHANCE } from './dungeon.js';
+import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE } from './dungeon.js';
+import { runChance } from './bossrush.js';
 
 // Abstieg: Das Dungeon-Team steigt Etage für Etage hinab – alle FLOOR_SECONDS
 // eine, auch offline – bis es fällt. Jede Etage ist schwerer; alle 5 Etagen
@@ -15,12 +16,16 @@ import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE, MAX_CHANCE 
 export const FLOOR_SECONDS = 10;
 export const MAX_FLOORS_PER_TICK = 15000; // höchstens so viele Etagen auf einmal (z. B. nach langer Abwesenheit)
 export const BASE_NEED = 30; // Stärke für Etage 1 (× Art)
-export const GROWTH = 1.1; // je Etage
 export const GUARD_EVERY = 5;
 export const BOSS_EVERY = 10;
 export const GUARD_MULT = 1.5;
 export const BOSS_MULT = 2.5;
-export const ITEM_CHANCE = 0.15; // Sammelstück auf einer normalen Etage
+export const ITEM_CHANCE = 0.08; // Sammelstück auf einer normalen Etage
+export const GUARD_ITEM_CHANCE = 0.5; // Sammelstück beim Wächter (Etagenboss: immer)
+// Lange Läufe: höchstens so hohe Siegchance je Etage (ein starkes Team hält Stunden durch)
+export const RUN_MAX_CHANCE = 0.9998;
+// Anforderung wächst linear mit der Tiefe
+export const LINEAR = 0.012;
 export const EVENT_CHANCE = 0.25; // Ereignis-Raum statt Kampf (nicht auf Wächter-/Boss-Etagen)
 export const REVIVE_BASE = 300;
 export const REVIVE_STEP = 150;
@@ -28,6 +33,7 @@ export const REVIVE_MAX = 15000;
 export const RETREAT_LOSS = 0.5; // so viel geht verloren, wer nach einer Niederlage aufgibt
 export const TRAP_MALUS = 0.1; // Falle: −10 % Stärke für den Rest des Laufs
 export const MERCHANT_BOOST = 0.15; // Händler: +15 % Stärke
+export const MAX_BOOST = 0.5; // Stärkungen durch Händler und Erinnerungen zusammen höchstens +50 %
 export const MERCHANT_PRICE = (floor) => Math.min(8000, 200 + floor * 60);
 
 // Ereignis-Räume und ihre Gewichte je Dungeon-Art
@@ -54,22 +60,31 @@ export const KIND_NAMES = { etage: 'Etage', waechter: 'Wächter', boss: 'Etagenb
 // Stärke, die eine Etage verlangt
 export function need(floor, typeId) {
   const mult = kindOf(floor) === 'boss' ? BOSS_MULT : kindOf(floor) === 'waechter' ? GUARD_MULT : 1;
-  return Math.round(BASE_NEED * type(typeId).needMult * GROWTH ** (floor - 1) * mult);
+  return Math.round(BASE_NEED * type(typeId).needMult * (1 + LINEAR * (floor - 1)) * mult);
 }
 export const effectivePower = (x = current()) => Math.round(x.power * (1 + x.boost - x.malus));
 export function chance(floor, x = current()) {
-  const trap = type(x.type).trap ? type(x.type).trap[Math.min(5, Math.floor(floor / 10))] : 0;
-  const base = Math.min(MAX_CHANCE, effectivePower(x) / need(floor, x.type) + party.gemSum('smaragd')) * (1 - trap);
-  return buffs.gladiator(Math.max(MIN_CHANCE, base));
+  // Fallen schwächen das Team (statt direkt Erfolgschance zu kosten)
+  const trap = type(x.type).trap ? type(x.type).trap[Math.min(5, Math.floor(floor / 100))] : 0;
+  return buffs.gladiator(runChance((effectivePower(x) * (1 - trap)) / need(floor, x.type) + party.gemSum('smaragd')));
 }
 export const reviveCost = (x = current()) => Math.min(REVIVE_MAX, REVIVE_BASE + REVIVE_STEP * (x?.floor || 0));
 export const remaining = (now = Date.now()) => (current()?.status === 'running' ? Math.max(0, Math.ceil((current().next - now) / 1000)) : 0);
 // Mindest-Rang der Beute: alle 10 Etagen einer mehr
-const minTierAt = (floor) => Math.min(5, Math.floor(floor / BOSS_EVERY));
+// Mindest-Rang der Beute: alle 100 Etagen einer mehr, höchstens A (Etagenboss: einer mehr)
+const minTierAt = (floor) => Math.min(3, Math.floor(floor / 100));
 
-export function start(typeId, now = Date.now()) {
+// afk: nach einer Niederlage automatisch einsammeln und neu starten
+export function start(typeId, now = Date.now(), afk = false) {
   if (d().run || current() || !buildings.owned('dungeon') || !party.heroIds().length) return false;
-  d().descent = {
+  d().descent = newRun(typeId, now, afk);
+  state.changed();
+  return true;
+}
+function newRun(typeId, now, afk, totals = null) {
+  return {
+    afk: !!afk,
+    totals: totals || { runs: 0, gold: 0, items: 0, best: 0 },
     type: type(typeId).id,
     power: party.teamPower(),
     boost: 0,
@@ -83,8 +98,6 @@ export function start(typeId, now = Date.now()) {
     log: [],
     memories: [],
   };
-  state.changed();
-  return true;
 }
 
 function addItem(x, minTier, rand) {
@@ -123,10 +136,10 @@ function resolve(x, rand) {
       x.memories.push(m.id);
       if (!memoriesSeen().includes(m.id)) d().memories = [...memoriesSeen(), m.id];
       // die Szene stärkt oder erschüttert das Team
-      x.boost += rand() < 0.5 ? 0.1 : -0.05;
+      x.boost = Math.max(-0.3, Math.min(MAX_BOOST, x.boost + (rand() < 0.5 ? 0.1 : -0.05)));
     }
     log(x, { floor, event: ev });
-    if (ev === 'haendler') {
+    if (ev === 'haendler' && !x.afk) {
       x.status = 'merchant';
       return;
     }
@@ -135,9 +148,11 @@ function resolve(x, rand) {
   }
   const odds = chance(floor, x);
   if (rand() < odds) {
-    const gold = Math.round(10 * (1 + floor * 0.35) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
+    // Gold wächst mit der Tiefe, aber gebremst (Wurzel) – lange Läufe sollen nicht ausufern
+    const gold = Math.round(8 * (1 + Math.sqrt(floor)) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
     x.loot.gold += gold;
-    if (kind !== 'etage' || rand() < ITEM_CHANCE + party.gemSum('topas')) addItem(x, Math.min(5, minTierAt(floor) + (kind === 'boss' ? 1 : 0)), rand);
+    const itemChance = kind === 'boss' ? 1 : kind === 'waechter' ? GUARD_ITEM_CHANCE : ITEM_CHANCE;
+    if (rand() < itemChance + party.gemSum('topas')) addItem(x, Math.min(5, minTierAt(floor) + (kind === 'boss' ? 1 : 0)), rand);
     log(x, { floor, kind, win: true, odds });
     x.floor++;
     return;
@@ -154,13 +169,22 @@ function resolve(x, rand) {
 
 // Rechnet alle fälligen Etagen ab
 export function tick(now = Date.now(), rand = Math.random) {
-  const x = current();
+  let x = current();
   if (!x || x.status !== 'running') return 0;
   let n = 0;
   while (x.status === 'running' && now >= x.next && n < MAX_FLOORS_PER_TICK) {
     resolve(x, rand);
     x.next += FLOOR_SECONDS * 1000;
     n++;
+    // AFK: gefallen → Beute einsammeln und gleich neu absteigen
+    if (x.status === 'down' && x.afk) {
+      d().depthBest = { ...d().depthBest, [x.type]: Math.max(best(x.type), x.floor - 1) };
+      const res = bank(x, false, rand);
+      const totals = { runs: x.totals.runs + 1, gold: x.totals.gold + res.gold, items: x.totals.items + res.items.length, best: Math.max(x.totals.best, res.floors) };
+      d().descent = newRun(x.type, x.next - FLOOR_SECONDS * 1000, true, totals);
+      d().descent.power = x.power;
+      x = d().descent;
+    }
   }
   if (x.status === 'running' && now >= x.next) x.next = now + FLOOR_SECONDS * 1000;
   if (n) {
@@ -176,7 +200,7 @@ export function merchant(buy, now = Date.now()) {
   if (!x || x.status !== 'merchant') return false;
   if (buy) {
     if (!state.spend(MERCHANT_PRICE(x.floor), 'dungeon')) return false;
-    x.boost += MERCHANT_BOOST;
+    x.boost = Math.min(MAX_BOOST, x.boost + MERCHANT_BOOST);
   }
   x.status = 'running';
   x.floor++;
@@ -201,7 +225,15 @@ export function retreat(rand = Math.random) {
   const x = current();
   if (!x) return null;
   if (x.status === 'running') tick();
-  const lost = x.status === 'down';
+  const y = current();
+  const res = bank(y, y.status === 'down', rand);
+  d().descent = null;
+  state.changed();
+  return { ...res, afkTotals: y.afk ? y.totals : null };
+}
+
+// Rucksack gutschreiben (mit Verlust, wenn man nach einer Niederlage aufgibt)
+function bank(x, lost, rand) {
   let gold = x.loot.gold;
   let ids = [...x.loot.items];
   if (lost) {
@@ -217,8 +249,6 @@ export function retreat(rand = Math.random) {
   });
   state.addGold(gold, 'dungeon');
   state.addItems(items, 'dungeon');
-  d().descent = null;
-  state.changed();
   return { type: x.type, floors: x.floor - 1, gold, items: result, lost, lostItems: x.loot.items.length - items.length };
 }
 

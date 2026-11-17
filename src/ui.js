@@ -67,6 +67,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   let selected = null;
   let lastPull = [];
   const pick = { level: 0, type: 'blut' }; // gewählte Art und Gefahrenstufe im Dungeon-Menü
+  let descentAfk = false;
   let dungeonTab = 'erkundung'; // 'erkundung' (feste Zeit) oder 'abstieg' (endlos)
   let descentShown = '';
   let arenaTab = 'fight';
@@ -389,6 +390,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   // ------------------------------------------------------------ Bossrush
 
   let rushShown = ''; // zuletzt angezeigter Stand (Siege + Status)
+  let rushAfk = false; // AFK-Modus für den nächsten Start
+  const afkLine = (x, unit) => (x.afk ? `<div class="afk-line"><span>🌙 <b>AFK aktiv</b> · ${x.totals.runs} Läufe beendet · Rekord ${x.totals.best} ${unit} · bisher +${fmt(x.totals.gold)} Gold eingesammelt</span><button data-act="afk-off" data-v="${unit}">AFK beenden</button></div>` : '');
 
   function rushHtml() {
     const x = bossrush.run();
@@ -401,6 +404,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${membersHtml('rush')}
         <div class="chest">
           <p class="muted">Bester Lauf: <b class="gold-text">${bossrush.best('normal')}</b> Bosse · ultimativ: <b class="gold-text">${bossrush.best('ultimate')}</b>. Wiederbeleben kostet ${fmt(bossrush.REVIVE_BASE)} Gold + ${bossrush.REVIVE_STEP} je besiegtem Boss (höchstens ${fmt(bossrush.REVIVE_MAX)}).</p>
+          <label class="popup-toggle"><input type="checkbox" data-act="rush-afk" ${rushAfk ? 'checked' : ''}> 🌙 AFK-Modus: nach einer Niederlage automatisch heimkehren und neu starten</label>
           <div class="rush-modes">
             <button class="big" data-act="rush-start" data-v="normal" ${P.heroIds().length ? '' : 'disabled'}>Bossrush starten<small>Bosse D–SS</small></button>
             <button class="big ultimate" data-act="rush-start" data-v="ultimate" ${P.heroIds().length ? '' : 'disabled'}>⚔ Ultimativer Bossrush<small>nur A–SS · halb so stark, wachsen langsamer · Gold × 1,5 · mehr Seide</small></button>
@@ -418,6 +422,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           <div><b>${x.status === 'down' ? 'Besiegt von' : 'Nächster Gegner'}: ${boss.name}</b> <span class="evo">Rang ${boss.rank}</span><br>
           Stärke ${fmt(boss.power)} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b><br>
           ${x.status === 'fighting' ? `Kampf in <b id="rush-time">${clock(bossrush.remaining())}</b>` : '<b class="bad">Die Gruppe ist gefallen.</b>'}</div></div>
+        ${afkLine(x, 'Bosse')}
         <div class="line"><span>Beute: <b class="gold-text">${fmt(x.loot.gold)} Gold</b></span></div>
         <p class="muted">${matLine(x.loot)}</p>
         ${log ? `<ul class="rush-log">${log}</ul>` : ''}
@@ -1810,6 +1815,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${membersHtml('dungeon')}
         <div class="chest">
           <p class="muted">Heimkehren sichert den ganzen Rucksack. Fällt das Team, kannst du es wiederbeleben (${fmt(descent.REVIVE_BASE)} Gold + ${descent.REVIVE_STEP} je Etage, höchstens ${fmt(descent.REVIVE_MAX)}) – oder aufgeben und die Hälfte der Beute verlieren.</p>
+          <label class="popup-toggle"><input type="checkbox" data-act="descent-afk" ${descentAfk ? 'checked' : ''}> 🌙 AFK-Modus: nach einer Niederlage automatisch einsammeln (ohne Verlust) und neu absteigen; Händler werden übersprungen</label>
           <div class="line"><button class="big" data-act="descent-start" ${dungeon.party.heroIds().length && !dungeon.run() ? '' : 'disabled'}>⬇ Abstieg beginnen · ${T.name}</button></div>
           ${dungeon.run() ? '<p class="note">Gerade läuft noch eine Erkundung.</p>' : ''}
         </div>`;
@@ -1829,6 +1835,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       body = `
         <div class="chest rush dtype-${T.id}">
           <div class="line"><span>${T.icon} <b>${T.name}</b> · Etage <b class="gold-text">${x.floor}</b> · Rekord ${descent.best(x.type)}</span><span>Stärke ${fmt(descent.effectivePower(x))}</span></div>
+          ${afkLine(x, 'Etagen')}
           ${mods ? `<p class="muted">${mods}</p>` : ''}
           <p>${x.status === 'down' ? `<b class="bad">Das Team ist auf Etage ${x.floor} gefallen.</b>` : x.status === 'merchant' ? 'Ein Händler versperrt den Weg …' : `Nächste: <b>${descent.KIND_NAMES[kind]} ${x.floor}</b> · Stärke ${fmt(descent.need(x.floor, x.type))} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b> · in <b id="descent-time">${clock(descent.remaining())}</b>`}</p>
           ${event}
@@ -1878,6 +1885,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <div class="gold-won">+${fmt(res.gold)} Gold</div>
         <div class="grid" id="loot"></div>
         <p>${res.items.length} Sammelstück${res.items.length === 1 ? '' : 'e'}${res.lost ? ` · ${res.lostItems} gingen beim Rückzug verloren` : ''}</p>
+        ${res.afkTotals ? `<p class="muted">🌙 Dazu im AFK-Modus: ${res.afkTotals.runs} Läufe, +${fmt(res.afkTotals.gold)} Gold und ${res.afkTotals.items} Sammelstücke (schon in deiner Sammlung), Rekord Etage ${res.afkTotals.best}.</p>` : ''}
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     $('#loot', el).replaceChildren(...res.items.map(({ item, isNew }) => tile(item, { badge: isNew ? '<span class="new">NEU</span>' : '' })));
@@ -2368,13 +2376,14 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         nextReveal();
       }
     }
-    if (act === 'rush-start') { audio.play(bossrush.start(btn.dataset.v || 'normal') ? 'start' : 'error'); partySel.rush = null; renderArena(); }
+    if (act === 'afk-off') { const x = btn.dataset.v === 'Bosse' ? bossrush.run() : descent.current(); if (x) x.afk = false; state.changed(); show(view); }
+    if (act === 'rush-start') { audio.play(bossrush.start(btn.dataset.v || 'normal', { afk: rushAfk }) ? 'start' : 'error'); partySel.rush = null; renderArena(); }
     if (act === 'rush-revive') { audio.play(bossrush.revive() ? 'levelUp' : 'error'); renderArena(); }
     if (act === 'rush-collect') {
       const res = bossrush.collect();
       if (res) {
         audio.play('gold');
-        toast(`Bossrush beendet: ${res.bosses} Bosse besiegt · +${fmt(res.gold)} Gold, Stoff und Seide im Vorrat`);
+        toast(`Bossrush beendet: ${res.bosses} Bosse besiegt · +${fmt(res.gold)} Gold${res.afkTotals ? ` (dazu ${res.afkTotals.runs} AFK-Läufe mit ${fmt(res.afkTotals.gold)} Gold)` : ''}, Stoff und Seide im Vorrat`);
       }
       renderArena();
     }
@@ -2422,7 +2431,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'dtype') { pick.type = btn.dataset.v; renderDungeon(); }
     if (act === 'dtab') { dungeonTab = btn.dataset.v; renderDungeon(); }
-    if (act === 'descent-start') { audio.play(descent.start(pick.type) ? 'start' : 'error'); partySel.dungeon = null; renderDungeon(); }
+    if (act === 'descent-start') { audio.play(descent.start(pick.type, Date.now(), descentAfk) ? 'start' : 'error'); partySel.dungeon = null; renderDungeon(); }
     if (act === 'descent-buy') { audio.play(descent.merchant(true) ? 'levelUp' : 'error'); renderDungeon(); }
     if (act === 'descent-skip') { descent.merchant(false); renderDungeon(); }
     if (act === 'descent-revive') { audio.play(descent.revive() ? 'levelUp' : 'error'); renderDungeon(); }
@@ -2453,6 +2462,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   overlay.addEventListener('change', (e) => {
     const el = e.target;
     if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
+    if (el.dataset.act === 'rush-afk') { rushAfk = el.checked; audio.click(); }
+    if (el.dataset.act === 'descent-afk') { descentAfk = el.checked; audio.click(); }
     if (el.dataset.act === 'well-popups') { setWellPopups(el.checked); audio.click(); renderWell(); }
     if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
 

@@ -1264,7 +1264,7 @@ test('Bossrush: kämpft bis zur Niederlage, sammelt Beute, Wiederbeleben wird te
   state.addItems(getGroup('helden', 'SS').slice(0, 5));
   bossrush.party.autoEquip();
   const t0 = Date.now();
-  assert.ok(bossrush.start(t0, seeded(2)));
+  assert.ok(bossrush.start('normal', { now: t0, rand: seeded(2) }));
   assert.equal(arena.party.autoEquip() && state.bossrush.team.length, 10);
   // eine Stunde später: viele Kämpfe auf einmal
   bossrush.tick(t0 + 3600 * 1000, seeded(5));
@@ -1291,8 +1291,9 @@ import * as descent from '../src/descent.js';
 
 test('Abstieg: Etagen werden schwerer, Wächter alle 5, Etagenboss alle 10', () => {
   assert.ok(descent.need(4, 'blut') > descent.need(3, 'blut'));
-  close(descent.need(5, 'blut') / (descent.need(4, 'blut') * descent.GROWTH), descent.GUARD_MULT, 0.02, 'Wächter');
-  close(descent.need(10, 'blut') / (descent.need(9, 'blut') * descent.GROWTH), descent.BOSS_MULT, 0.02, 'Boss');
+  const step = (f) => (1 + descent.LINEAR * (f - 1)) / (1 + descent.LINEAR * (f - 2));
+  close(descent.need(5, 'blut') / (descent.need(4, 'blut') * step(5)), descent.GUARD_MULT, 0.02, 'Wächter');
+  close(descent.need(10, 'blut') / (descent.need(9, 'blut') * step(10)), descent.BOSS_MULT, 0.02, 'Boss');
   assert.ok(descent.need(1, 'blut') > descent.need(1, 'dornen'), 'Blut ist härter');
 });
 
@@ -1306,7 +1307,7 @@ test('Abstieg: läuft bis zur Niederlage, Heimkehren sichert alles, Aufgeben kos
   assert.equal(dungeon.party.autoEquip(), false, 'Team gesperrt');
   let x = descent.current();
   const random = seeded(8);
-  for (let k = 0; k < 50 && x.status !== 'down'; k++) {
+  for (let k = 0; k < 400 && x.status !== 'down'; k++) {
     descent.tick(t0 + (k + 1) * 3600 * 1000, random);
     if (x.status === 'merchant') descent.merchant(false, t0 + (k + 1) * 3600 * 1000);
   }
@@ -1435,7 +1436,7 @@ test('Bossrush ultimativ: nur Bosse A–SS, schwächer angesetzt, mehr Gold', ()
   state.addItems(getGroup('helden', 'S').slice(0, 5));
   bossrush.party.autoEquip();
   const t0 = Date.now();
-  assert.ok(bossrush.start(t0, seeded(9), 'ultimate'));
+  assert.ok(bossrush.start('ultimate', { now: t0, rand: seeded(9) }));
   const x = bossrush.run();
   assert.equal(x.mode, 'ultimate');
   bossrush.tick(t0 + 3600 * 1000, seeded(11));
@@ -1443,4 +1444,38 @@ test('Bossrush ultimativ: nur Bosse A–SS, schwächer angesetzt, mehr Gold', ()
   assert.ok(bossrush.bossPower(4, 10, 'ultimate') < bossrush.bossPower(4, 10) * 0.6);
   assert.ok(x.bosses > 0);
   assert.equal(bossrush.best('ultimate'), x.bosses);
+});
+
+test('Lange Läufe: starke Teams halten Stunden durch, AFK sammelt ein und startet neu', () => {
+  state.buildings.arena = 5;
+  state.buildings.dungeon = 5;
+  state.addItems([...getGroup('helden', 'SS').slice(0, 5), ...getGroup('helden', 'S').slice(0, 5)]);
+  dungeon.party.autoEquip();
+  bossrush.party.autoEquip();
+  // fast sichere Siege: höchstens 0,05 % Verlust je Kampf
+  assert.equal(bossrush.winChance(1e9, 100), bossrush.RUN_MAX_CHANCE);
+  const t0 = Date.now();
+  // ein sehr starkes Team kämpft 4 Stunden lang durch
+  assert.ok(bossrush.start('normal', { now: t0, rand: seeded(1) }));
+  bossrush.run().power = 60000;
+  bossrush.tick(t0 + 4 * 3600 * 1000, seeded(2));
+  assert.equal(bossrush.run().status, 'fighting');
+  assert.ok(bossrush.run().bosses > 2000);
+  bossrush.collect();
+  // AFK mit schwächerem Team: fällt, sammelt ein, startet neu
+  const gold = state.gold;
+  assert.ok(bossrush.start('ultimate', { afk: true, now: t0, rand: seeded(3) }));
+  bossrush.run().power = 500;
+  bossrush.tick(t0 + 8 * 3600 * 1000, seeded(4));
+  const res = bossrush.collect();
+  assert.ok(res.afkTotals.runs >= 1, 'automatisch neu gestartet');
+  assert.ok(state.gold > gold);
+  // AFK-Abstieg: Händler werden übersprungen, Neustart nach Niederlage ohne Verlust
+  assert.ok(descent.start('blut', t0, true));
+  descent.current().power = 2000;
+  descent.tick(t0 + 12 * 3600 * 1000, seeded(5));
+  const d2 = descent.current();
+  assert.equal(d2.status, 'running');
+  assert.ok(d2.totals.runs >= 1 && d2.totals.best > 300, `Rekord ${d2.totals.best}`);
+  assert.equal(descent.retreat().lost, false);
 });

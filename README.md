@@ -692,7 +692,7 @@ Dungeon-Team (5 Helden) steigt in der gewählten Art Etage für Etage hinab: all
 **10 Sekunden** eine, auch offline, bis es fällt. Solange der Abstieg läuft,
 ist das Team gesperrt. Eine normale Erkundung geht dann nicht.
 
-- Jede Etage verlangt 10 % mehr Stärke (× Art). Alle **5** Etagen wartet ein
+- Jede Etage verlangt 1,2 % mehr Stärke (linear, × Art). Alle **5** Etagen wartet ein
   **Wächter** (× 1,5, sicheres Sammelstück), alle **10** ein **Etagenboss**
   (× 2,5, Sammelstück einen Rang höher). Der Mindest-Rang der Beute steigt alle
   10 Etagen.
@@ -769,6 +769,19 @@ Damit die Siegchancen passen, sind sie nur halb so stark angesetzt und werden je
 Sieg nur um 3,5 % statt 6 % zäher. Die Beute ist größer: Gold × 1,5 und +15 %
 Seide-Chance. Wiederbeleben und Heimkehren funktionieren wie im normalen Rush. Der
 beste Lauf wird getrennt gespeichert.
+
+**Lange Läufe und AFK-Modus** (Bossrush, ultimativer Bossrush und Abstieg):
+Ist das Team mindestens so stark wie der Gegner, liegt die Siegchance bei 99,98 %.
+Ist der Gegner stärker, sinkt sie nur sanft. Bosse wachsen je Sieg nur um 0,15 %
+(ultimativ 0,1 %), Abstieg-Etagen linear um 1,2 %. Ein Team mit Stärke ~3000 hält
+im Bossrush im Schnitt etwa 3 Stunden durch; im Abstieg hält Stärke ~2000 etwa
+8 Stunden. Das Gold je Boss nimmt bei sehr langen Läufen langsam ab
+(1 / (1 + Bosse/500)), im Abstieg wächst es nur mit der Wurzel der Tiefe. Der
+Mindest-Rang der Beute steigt im Abstieg alle 100 Etagen, höchstens bis A.
+Mit dem Häkchen **🌙 AFK-Modus** vor dem Start wird nach einer Niederlage
+automatisch eingesammelt und neu gestartet. Im Abstieg geschieht das ohne Verlust,
+Händler werden übersprungen. Während des Laufs zeigt eine Zeile die bisherigen
+AFK-Läufe, den Rekord und das eingesammelte Gold. „AFK beenden“ schaltet es ab.
 
 Werte in `src/bossrush.js`.
 ## Statistik
