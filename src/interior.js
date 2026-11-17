@@ -17,6 +17,7 @@ export const ROOM_BOUNDS = [22, 300];
 export const DOOR_SPAWN = 36;
 export function zoneAt(x) {
   if (x < 48) return 'door';
+  if (x >= 60 && x <= 112) return 'sewing';
   if (x >= 134 && x <= 186) return 'kitchen';
   if (x >= 198 && x <= 246) return 'wardrobe';
   if (x >= 252) return 'bed';
@@ -129,6 +130,96 @@ function drawTable(ctx) {
   rect(ctx, 88, 115, 9, 1, '#fdf6e3');
 }
 
+// Nähkorb neben dem Tisch: hier ist die Schneiderei
+function drawSewingBasket(ctx) {
+  const x = 102, y = FLOOR - 8;
+  rect(ctx, x, y, 10, 8, '#b08050');
+  rect(ctx, x, y, 10, 1, '#d0a070');
+  for (let i = 1; i < 10; i += 3) rect(ctx, x + i, y + 2, 1, 5, '#8a6038');
+  circle(ctx, x + 3, y - 1, 2, '#e8577a');
+  circle(ctx, x + 7, y - 1, 2, '#5aa0e0');
+  rect(ctx, x + 5, y - 5, 1, 4, '#c8c8d0'); // Stricknadel
+  rect(ctx, x + 2, y - 3, 6, 1, '#ffd04a'); // Stoffzipfel
+}
+
+// ---------------------------------------------------------------- Einrichtung aus der Schneiderei
+
+const has = (id) => state.tailor?.decor.includes(id);
+function drawDecor(ctx, time) {
+  if (has('teppich')) {
+    const x0 = 100, x1 = 220, y0 = 149, y1 = 170;
+    rect(ctx, x0, y0, x1 - x0, y1 - y0, '#3a4a8a');
+    rect(ctx, x0 + 2, y0 + 2, x1 - x0 - 4, y1 - y0 - 4, '#e8c070');
+    rect(ctx, x0 + 4, y0 + 3, x1 - x0 - 8, y1 - y0 - 6, '#4a6ab0');
+    for (let x = x0 + 10; x < x1 - 8; x += 12) {
+      const cy = (y0 + y1) >> 1;
+      for (let d = 0; d < 4; d++) {
+        px(ctx, x + d, cy - 3 + d, '#f2a0b0');
+        px(ctx, x + d, cy + 3 - d, '#f2a0b0');
+        px(ctx, x + 6 - d, cy - 3 + d, '#f2a0b0');
+        px(ctx, x + 6 - d, cy + 3 - d, '#f2a0b0');
+      }
+    }
+    for (let x = x0; x < x1; x += 2) {
+      px(ctx, x, y0 - 1, '#fdf6e3');
+      px(ctx, x, y1, '#fdf6e3');
+    }
+  }
+  if (has('tischdecke')) {
+    rect(ctx, 64, 119, 38, 2, '#fdf6e3');
+    for (let x = 64; x < 102; x += 2) {
+      px(ctx, x, 121, '#fdf6e3');
+      if (x % 4 === 0) px(ctx, x, 122, '#fdf6e3');
+    }
+  }
+  if (has('kissen')) {
+    for (const [x, c, d] of [[262, '#e8577a', '#b03a5a'], [272, '#ffd04a', '#c09030'], [282, '#5aa0e0', '#3a70b0']]) {
+      rect(ctx, x, 113, 9, 6, c);
+      rect(ctx, x, 118, 9, 1, d);
+      px(ctx, x + 4, 115, '#fdf6e3');
+    }
+  }
+  if (has('wandbehang')) {
+    const x0 = 262, x1 = 298, y0 = 28, y1 = 80;
+    rect(ctx, x0 - 2, y0 - 2, x1 - x0 + 4, 2, PAL.woodDark);
+    rect(ctx, x0, y0, x1 - x0, y1 - y0, '#6a3a5a');
+    rect(ctx, x0 + 2, y0 + 2, x1 - x0 - 4, y1 - y0 - 4, '#8ac0e8');
+    rect(ctx, x0 + 2, y0 + 30, x1 - x0 - 4, y1 - y0 - 32, '#4f8f55');
+    for (let i = 0; i < 12; i++) rect(ctx, x0 + 6 + i * 2, y0 + 26 - Math.abs(i - 6) * 2, 2, Math.abs(i - 6) * 2 + 4, '#7a7a9a');
+    circle(ctx, x1 - 9, y0 + 9, 3, '#fff1b8');
+    for (let x = x0; x < x1; x += 3) rect(ctx, x, y1, 1, 3, '#e8c070');
+  }
+  if (has('baldachin')) {
+    const x0 = 250, x1 = 310;
+    rect(ctx, x0, 84, 2, 57, PAL.woodDark);
+    rect(ctx, x1 - 2, 84, 2, 57, PAL.woodDark);
+    rect(ctx, x0, 84, x1 - x0, 2, PAL.woodDark);
+    for (let x = x0 + 2; x < x1 - 2; x++) {
+      const sag = Math.round(Math.sin(((x - x0) / (x1 - x0)) * Math.PI) * 4);
+      rect(ctx, x, 86, 1, 3 + sag, (x >> 2) % 2 ? '#f8c0d8' : '#fff0f6');
+    }
+    for (const x of [x0 + 2, x1 - 6]) for (let y = 86; y < 120; y++) rect(ctx, x + Math.round(Math.sin(y / 5)), y, 4, 1, y % 6 < 3 ? '#f8c0d8' : '#fff0f6');
+  }
+  if (has('girlande')) {
+    const cols = ['#e8577a', '#ffd04a', '#5aa0e0', '#6fbf6a', '#b888f0'];
+    for (let x = 46; x < 312; x++) px(ctx, x, 14 + Math.round(Math.sin((x - 46) / 42 * Math.PI) * 4), PAL.woodDark);
+    for (let i = 0, x = 52; x < 306; x += 9, i++) {
+      const y = 15 + Math.round(Math.sin((x - 46) / 42 * Math.PI) * 4);
+      for (let r = 0; r < 4; r++) rect(ctx, x + r, y + r, 6 - r * 2 > 0 ? 6 - r * 2 : 1, 1, cols[i % cols.length]);
+    }
+  }
+  if (has('lampions')) {
+    for (const x of [123, 203]) {
+      const sway = Math.round(Math.sin(time * 1.2 + x) * 1);
+      rect(ctx, x + 2, 12, 1, 6, PAL.ink);
+      rect(ctx, x - 1 + sway, 18, 8, 10, '#e8577a');
+      rect(ctx, x + sway, 17, 6, 1, '#ffd04a');
+      rect(ctx, x + sway, 28, 6, 1, '#ffd04a');
+      for (let y = 20; y < 27; y += 3) rect(ctx, x - 1 + sway, y, 8, 1, '#c03a5a');
+    }
+  }
+}
+
 function drawFireplace(ctx) {
   const x0 = FIRE_X - 24, x1 = FIRE_X + 24, top = 90;
   rect(ctx, x0, top, x1 - x0, FLOOR - top, PAL.stone);
@@ -222,6 +313,7 @@ function makeRoom() {
   drawDoor(ctx);
   drawPlant(ctx);
   drawTable(ctx);
+  drawSewingBasket(ctx);
   drawFireplace(ctx);
   drawWardrobe(ctx);
   drawBed(ctx);
@@ -261,6 +353,7 @@ export function createInterior() {
     // Raum ohne Lichter; der Fensterausschnitt bleibt durchsichtig für den Himmel.
     draw(ctx, time) {
       ctx.drawImage(room, 0, 0);
+      drawDecor(ctx, time);
       shelfItems().forEach((item, i) => ctx.drawImage(itemImage(item), FIRE_X - 26 + i * 18, 70));
 
       // Kaminfeuer
@@ -292,6 +385,7 @@ export function createInterior() {
       const flicker = Math.sin(time * 11) > 0.3 ? 1 : 0;
       glow(ctx, FIRE_X, FLOOR - 12, 24 + flicker + Math.round(night * 10), 0.22 + 0.2 * night, PAL.glow);
       glow(ctx, CANDLE.x, CANDLE.y - 2, 9 + flicker + Math.round(night * 5), 0.2 + 0.25 * night);
+      if (has('lampions')) for (const x of [126, 206]) glow(ctx, x, 23, 10 + flicker + Math.round(night * 6), 0.15 + 0.3 * night, '#ff9ab0');
       for (let i = 0; i < 7; i++) {
         const h = 6 + Math.round((Math.sin(time * 9 + i * 1.7) + 1) * 3) + (i % 3 === 1 ? 4 : 0);
         rect(ctx, FIRE_X - 8 + i * 3, FLOOR - 5 - Math.round(h * 0.7), 1, Math.round(h * 0.7), PAL.glow);

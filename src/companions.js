@@ -1,6 +1,6 @@
 import { RARITIES, rollTier } from './items.js';
 import { state } from './state.js';
-import { sprite, flipped } from './sprites.js';
+import { sprite, flipped, getOutfit } from './sprites.js';
 import { makeCanvas } from './utils.js';
 
 // Begleiter: Unterwegs (auf dem Hof und im Dorf) taucht ab und zu ein
@@ -160,7 +160,12 @@ export function progress(id) {
 // Bonus eines Begleiters auf seiner Stufe
 export const bonusOf = (c, kind) => (c.bonus[kind] || 0) * LEVEL_MULT[level(c.id) - 1];
 // Bonus des aktiven Begleiters (0, wenn keiner dabei ist)
-export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0);
+// Bonus des aktiven Begleiters plus genähter Kleidung (0, wenn nichts davon passt)
+const outfitBonus = (kind) => {
+  const o = getOutfit(state.outfit);
+  return o.sew && state.tailor?.sewn.includes(o.id) ? o.bonus?.[kind] || 0 : 0;
+};
+export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0) + outfitBonus(kind);
 
 export function befriend(id) {
   if (!companion(id) || owned(id)) return false;

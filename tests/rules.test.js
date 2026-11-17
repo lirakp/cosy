@@ -876,3 +876,54 @@ test('Brunnen: Geschenk des Brunnengeists ist selten und garantiert Rang A–SS'
   close(gifts / n, 1 - (1 - well.SPIRIT_CHANCE[0]) ** 10, 0.012, 'je 10er-Zug');
   assert.ok(well.pull('spirit').error, 'ohne Geschenk geht es nicht');
 });
+
+// ---------------------------------------------------------------- Schneiderei
+
+import * as tailor from '../src/tailor.js';
+
+test('Schneiderei: Umhänge kosten Stoff und Seide und machen Helden stärker, der Vorrat gilt für beide Teams', () => {
+  state.arena.mats.stoff[2] = 6;
+  state.arena.mats.seide[2] = 1;
+  assert.ok(tailor.sewCape(2));
+  assert.equal(tailor.sewCape(2), false, 'Seide fehlt');
+  assert.equal(tailor.capes(2), 1);
+  state.buildings.arena = 0;
+  state.buildings.dungeon = 0;
+  state.addItems(getGroup('helden', 'D').slice(0, 2));
+  arena.party.autoEquip();
+  const m = state.arena.team[0];
+  assert.equal(m.cape, 2, 'automatisch angelegt');
+  const withCape = arena.party.memberPower(m);
+  assert.ok(arena.party.equipCape(0, null));
+  assert.equal(withCape - arena.party.memberPower(m), tailor.CAPE_POWER[2]);
+  assert.ok(arena.party.equipCape(0, 2));
+  dungeon.party.autoEquip();
+  assert.ok(dungeon.party.team().every((x) => x.cape == null), 'der einzige Umhang steckt schon in der Arena');
+  assert.equal(dungeon.party.equipCape(0, 2), false);
+});
+
+test('Schneiderei: Kleidung erst nähen, dann tragen – ihr Bonus wirkt nur angezogen', () => {
+  const o = tailor.SEWN.find((x) => x.id === 'seidenrobe');
+  assert.equal(tailor.sewn(o.id), false);
+  state.arena.mats.seide[o.sew.tier] = o.sew.seide;
+  assert.ok(tailor.sewOutfit(o.id));
+  assert.equal(state.arena.mats.seide[o.sew.tier], 0);
+  assert.equal(companions.bonus('mana'), 0, 'noch nicht angezogen');
+  state.outfit = o.id;
+  assert.equal(companions.bonus('mana'), o.bonus.mana);
+  state.outfit = 'wanderer';
+});
+
+test('Schneiderei: Einrichtung macht das Haus gemütlich, Veredeln tauscht Material', () => {
+  assert.equal(tailor.cozy(), 0);
+  for (const d of tailor.DECOR) for (const c of d.cost) state.arena.mats[c.kind][c.tier] += c.n;
+  for (const d of tailor.DECOR) assert.ok(tailor.buyDecor(d.id), d.name);
+  assert.equal(tailor.cozy(), tailor.MAX_COZY);
+  close(buffs.sleepChance(), 0.1 + tailor.MAX_COZY * 0.01, 1e-9, 'bis 25 %');
+  assert.equal(tailor.MAX_COZY, 15);
+  state.arena.mats.stoff[0] = 9;
+  assert.ok(tailor.refine('seide', 0));
+  assert.ok(tailor.refine('stoff-up', 0));
+  assert.deepEqual([state.arena.mats.stoff[0], state.arena.mats.seide[0], state.arena.mats.stoff[1]], [0, 1, 1]);
+  assert.equal(tailor.refine('seide-up', 5), false, 'über SS geht nichts');
+});

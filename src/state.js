@@ -80,6 +80,7 @@ const fresh = () => ({
   village: newVillage(),
   magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
   companions: { owned: [], active: null, pts: {}, gifts: 0 },
+  tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
 });
 
 // Ältere Spielstände zählten Fische nur nach Rang (0 … 5) – das waren genau diese Arten.
@@ -129,6 +130,7 @@ function normalize(saved) {
     magic: { ...base.magic, ...saved.magic },
     companions: { ...base.companions, ...saved.companions },
     well: { ...base.well, ...saved.well },
+    tailor: { ...base.tailor, ...saved.tailor },
     garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
     village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market }, trap: { ...base.village.trap, ...saved.village?.trap } },
   };
@@ -329,6 +331,9 @@ export const state = {
   },
   set dayCount(n) {
     data.dayCount = n;
+  },
+  get tailor() {
+    return data.tailor;
   },
   get well() {
     return data.well;

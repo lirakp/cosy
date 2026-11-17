@@ -2,6 +2,7 @@ import { ITEMS, RARITIES, getItem } from './items.js';
 import { state } from './state.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
 import * as sets from './sets.js';
+import { CAPE_POWER } from './tailor.js';
 
 // Gemeinsame Team-Logik für Bossarena und Dungeon: Helden mit vier
 // Ausrüstungsplätzen, Stufen D … SS und die Regel, dass ein Held oder ein
@@ -25,7 +26,11 @@ export const LEVEL_COST = [30, 80, 200, 600, 2000];
 const GEAR = ITEMS.filter((item) => SLOTS.some((s) => s.cat === item.cat));
 const HEROES = ITEMS.filter((item) => item.cat === 'helden');
 
-export const emptyMember = () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null } });
+export const emptyMember = () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null }, cape: null });
+
+// Umhänge (aus der Schneiderei) liegen als Anzahl je Rang vor; beide Teams teilen sich den Vorrat.
+const capesOwned = (tier) => state.tailor.capes[tier] || 0;
+const capesWorn = (list, tier) => list.filter((m) => m.hero && m.cape === tier).length;
 
 // Ein Stück hat überall dieselbe Stufe; wie weit sie zählt, begrenzt die jeweilige Anlage.
 const levels = () => state.arena.lvl;
@@ -104,19 +109,40 @@ export function createParty({ name, members, tier, other, locked = () => false, 
       const gear = candidates(s.cat);
       members().filter((m) => m.hero).forEach((m, i) => (m.gear[s.cat] = gear[i]?.id || null));
     }
+    // beste freie Umhänge verteilen
+    members().forEach((m) => (m.cape = null));
+    for (const m of members().filter((x) => x.hero)) {
+      for (let t = CAPE_POWER.length - 1; t >= 0; t--) {
+        if (capesFree(t) > 0) {
+          m.cape = t;
+          break;
+        }
+      }
+    }
     state.changed();
     return true;
   }
 
   function memberPower(m) {
     if (!m.hero || !getItem(m.hero)) return 0;
-    return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0);
+    return heroPower(getItem(m.hero)) + SLOTS.reduce((sum, s) => sum + (m.gear[s.cat] ? gearPower(getItem(m.gear[s.cat])) : 0), 0) + (m.cape != null ? CAPE_POWER[m.cape] : 0);
+  }
+
+  // freie Umhänge eines Rangs (für Platz index: der eigene zählt als frei)
+  const capesFree = (tier, index = -1) =>
+    capesOwned(tier) - capesWorn(other(), tier) - capesWorn(members(), tier) + (members()[index]?.cape === tier && members()[index]?.hero ? 1 : 0);
+  function equipCape(index, tier) {
+    const m = members()[index];
+    if (!m || locked() || (tier != null && (!m.hero || capesFree(tier, index) <= 0))) return false;
+    m.cape = tier;
+    state.changed();
+    return true;
   }
   const teamPower = () => Math.round(members().reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus(bonus)));
   const heroIds = () => members().map((m) => m.hero).filter(Boolean);
 
   return {
-    name, team, clean, equip, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
+    name, team, clean, equip, equipCape, capesFree, equippedAt, candidates, autoEquip, memberPower, teamPower, heroIds,
     levelOf, capped, heroPower, gearPower, powerOf, material, levelCost, levelUp, usedElsewhere, locked,
   };
 }

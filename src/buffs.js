@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { render } from './art/core.js';
 import { goldIcon, luckIcon, gladiatorIcon } from './art/buffs.js';
 import * as sets from './sets.js';
+import * as tailor from './tailor.js';
 
 // Rausch-Effekte, die man mit etwas Glück beim Schlafen bekommt.
 
@@ -59,9 +60,12 @@ export function extend(minutes, now = Date.now()) {
   return true;
 }
 
+// Gemütliche Einrichtung erhöht die Chance (bis 25 %)
+export const sleepChance = () => SLEEP_BUFF_CHANCE + tailor.cozy() * tailor.COZY_STEP;
+
 // Würfelt beim Aufwachen: mit 10 % ein zufälliger der drei Rausche, sonst nichts.
 export function rollSleep(random = Math.random) {
-  if (random() >= SLEEP_BUFF_CHANCE) return null;
+  if (random() >= sleepChance()) return null;
   const ids = Object.keys(BUFFS);
   const id = ids[Math.floor(random() * ids.length)];
   grant(id);

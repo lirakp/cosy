@@ -255,6 +255,37 @@ Galerie steht bei jeder Schriftrolle, welchen Zauber sie lehrt.
 
 Werte in `src/magic.js`.
 
+## Nähtisch (Schneiderei)
+
+Im Haus steht neben dem Tisch am Fenster ein Nähkorb. Dort (`E`) wird aus Stoff
+und Seide der Bossarena genäht:
+
+- **Heldenumhänge:** je 3 Stoff + 1 Seide eines Rangs. Ein neuer Platz „Umhang“
+  bei jedem Helden in Arena und Dungeon gibt +3 · 6 · 10 · 16 · 28 · 48 Stärke
+  (D … SS). Beide Teams teilen sich den Vorrat, „Automatisch ausrüsten“ verteilt
+  die besten freien Umhänge.
+- **Kleidung mit Bonus** (erst nähen, dann im Kleiderschrank anziehen; der
+  Bonus wirkt, solange man sie trägt):
+
+| Kleidung | Material | Bonus |
+| --- | --- | --- |
+| Leinenkittel | 6 Stoff D | Münzen bis 6 Schritte entfernt einsammeln |
+| Reisemantel | 6 Stoff C, 1 Seide C | Expedition +6 % Gold |
+| Blütenschürze | 5 Stoff B, 2 Seide B | Beete wachsen 12 % schneller |
+| Seidenrobe | 4 Seide A | Mana lädt 15 % schneller |
+| Wellenmantel | 4 Stoff S, 3 Seide S | Fische beißen 25 % schneller, Sternschnuppen 15 % öfter |
+| Sternenseidengewand | 4 Seide SS | +10 % auf fast alles, Münzen bis 8 Schritte |
+
+- **Einrichtung:** Tischdecke, bunte Kissen, Webteppich, Wandbehang,
+  Wimpelgirlande, Seidenbaldachin und Seidenlampions (leuchten nachts) machen
+  das Haus sichtbar schöner. Jede bringt Gemütlichkeit (insgesamt 15). Jeder
+  Punkt erhöht die Chance auf einen Rausch beim Schlafen um 1 %, also von
+  10 % auf bis zu 25 %.
+- **Veredeln:** 4 Stoff → 1 Seide (gleicher Rang), 5 Stoff → 1 Stoff des
+  nächsten Rangs, 3 Seide → 1 Seide des nächsten Rangs.
+
+Werte in `src/tailor.js`, Kleidung in `src/sprites.js`.
+
 ## Wunschbrunnen
 
 - **Glückszähler:** Spätestens das 60. Stück ohne Rang A oder besser ist ein A,

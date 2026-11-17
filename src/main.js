@@ -331,6 +331,7 @@ function act() {
   if (near === 'kitchen') ui.openKitchen();
   if (near === 'door') leaveHouse();
   if (near === 'wardrobe') ui.openWardrobe();
+  if (near === 'sewing') ui.openTailor();
   if (near === 'bed') sleep();
   if (near === 'well') ui.openWell();
   if (near === 'dungeon') ui.openDungeon();
@@ -726,6 +727,7 @@ function frame(now) {
     : near === 'house' ? 'Haus betreten'
     : near === 'door' ? 'Hinausgehen'
     : near === 'wardrobe' ? 'Kleiderschrank'
+    : near === 'sewing' ? '✂ Nähtisch'
     : near === 'bed' ? (canSleep() ? 'Schlafen gehen' : 'Bett · schlafen ab dem Abend')
     : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
     : near === 'trader' ? '✦ Erzhändler'

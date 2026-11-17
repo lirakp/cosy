@@ -17,6 +17,7 @@ import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
+import * as tailor from './tailor.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -99,6 +100,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (view === 'trap') renderTrap();
     if (view === 'tower') renderTower();
     if (view === 'companions') renderCompanions();
+    if (view === 'tailor') renderTailor();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -241,12 +243,38 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       <span class="rank">${item.rank}</span>${levelBadge(pk, id)}</button>`;
   }
 
+  // Umhang-Platz (aus der Schneiderei)
+  function capeButton(pk, i, m) {
+    const sel = partySel[pk];
+    const on = sel && sel.i === i && sel.key === 'cape' ? ' sel' : '';
+    const lock = PARTY[pk]().locked() ? ' disabled' : '';
+    if (m.cape == null || !m.hero) return `<button class="tile empty-slot${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="cape"${lock}>Umhang</button>`;
+    return `<button class="tile r-${RARITIES[m.cape].id}${on}" data-act="slot" data-p="${pk}" data-i="${i}" data-k="cape" data-cape="${m.cape}" title="Umhang Rang ${RARITIES[m.cape].id}"${lock}><span class="rank">${RARITIES[m.cape].id}</span></button>`;
+  }
+
+  function capePickerHtml(pk, i) {
+    const P = PARTY[pk]();
+    const m = P.team()[i];
+    const tiles = RARITIES.map((r, t) => {
+      const free = P.capesFree(t, i);
+      if (!tailor.capes(t)) return '';
+      return `<button class="tile r-${r.id}${m.cape === t ? ' picked' : ''}" data-act="equip-cape" data-p="${pk}" data-v="${t}" data-cape="${t}" title="Umhang Rang ${r.id} · +${tailor.CAPE_POWER[t]} Stärke" ${free > 0 ? '' : 'disabled'}>
+        <span class="rank">${r.id}</span><span class="count">${free}</span></button>`;
+    }).join('');
+    return `<div class="chest picker">
+      <div class="line"><span>Umhang für Platz ${i + 1} wählen</span>
+        <span><button data-act="equip-cape" data-p="${pk}" data-v="" ${m.cape != null ? '' : 'disabled'}>Ablegen</button> <button data-act="slot-close" data-p="${pk}">Fertig</button></span></div>
+      <p class="muted">${m.hero ? `Umhänge näht man am Nähtisch im Haus aus Stoff und Seide. Stärke je Rang: ${tailor.CAPE_POWER.join(' · ')}. Beide Teams teilen sich den Vorrat.` : 'Erst einen Helden auf diesen Platz stellen.'}</p>
+      ${tiles ? `<div class="grid heroes">${tiles}</div>` : '<p class="muted">Du hast noch keinen Umhang genäht.</p>'}
+    </div>`;
+  }
+
   function membersHtml(pk) {
     const P = PARTY[pk]();
     const members = P.team().map((m, i) => `
       <div class="member">
         <div class="hero-slot">${slotButton(pk, i, 'hero', m.hero)}</div>
-        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}</div>
+        <div class="gear-slots">${arena.SLOTS.map((s) => slotButton(pk, i, s.cat, m.gear[s.cat])).join('')}${capeButton(pk, i, m)}</div>
         <span>Stärke <b class="gold-text">${fmt(P.memberPower(m))}</b></span>
       </div>`).join('');
     const actions = P.locked()
@@ -267,7 +295,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     </nav>`;
     const body = arenaTab === 'shop' ? shopHtml() : fightHtml();
     overlay.innerHTML = `<section class="panel arena">${head('Bossarena')}${tabs}${body}</section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     for (const el of overlay.querySelectorAll('[data-mat]')) {
       const [kind, tier] = el.dataset.mat.split(':');
       el.prepend(picture(arena.materialImage(kind, Number(tier))));
@@ -295,6 +323,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   function pickerHtml(pk) {
     const sel = partySel[pk];
     if (!sel) return '';
+    if (sel.key === 'cape') return capePickerHtml(pk, sel.i);
     const P = PARTY[pk]();
     const { i, key } = sel;
     const m = P.team()[i];
@@ -442,7 +471,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         c.className = 'sprite outfit-sprite';
         c.getContext('2d').drawImage(makePlayerSprites(o.id, state.character || {})[1].idle, 0, 0);
         el.append(c);
-        el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}`);
+        const locked = !tailor.sewn(o.id);
+        if (locked) el.classList.add('locked');
+        const bonusText = o.bonus ? companions.describeBonus({ bonus: o.bonus }) : '';
+        el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}${locked ? '<span class="muted">✂ am Nähtisch nähen</span>' : ''}${bonusText ? `<span class="gold-text">${bonusText}</span>` : ''}`);
         return el;
       })
     );
@@ -462,7 +494,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${b ? '<div class="frame"></div>' : ''}
         <p>${b
           ? `${b.text}<br>Hält ${buffs.BUFF_MINUTES} Minuten.`
-          : `Du hast tief und fest geschlafen. Diesmal ohne besonderen Traum –<br>mit ${percent(buffs.SLEEP_BUFF_CHANCE)} Glück wachst du mit einem Rausch auf.`}</p>
+          : `Du hast tief und fest geschlafen. Diesmal ohne besonderen Traum –<br>mit ${percent(buffs.sleepChance())} Glück wachst du mit einem Rausch auf.`}</p>
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     if (b) $('.frame', el).append(picture(buffs.icon(buffId)));
@@ -702,6 +734,65 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     onToggle(true);
   }
 
+  let tailorTab = 'umhang';
+  const matHtml = (cost) => cost.map((c) => `<span class="mat-cost${tailor.have(c.kind, c.tier) >= c.n ? '' : ' short'}" data-mat="${c.kind}:${c.tier}">${c.n}× ${arena.MATERIALS[c.kind].name} ${RARITIES[c.tier].id}</span>`).join(' ');
+  function renderTailor() {
+    const tabs = [['umhang', 'Heldenumhänge'], ['kleidung', 'Kleidung'], ['einrichtung', 'Einrichtung'], ['veredeln', 'Veredeln']]
+      .map(([id, name]) => `<button class="tab${tailorTab === id ? ' on' : ''}" data-act="tailor-tab" data-v="${id}">${name}</button>`).join('');
+    const stock = ['stoff', 'seide'].map((kind) => `<div class="stock"><b>${arena.MATERIALS[kind].name}</b>${RARITIES.map((r, t) =>
+      `<span class="r-${r.id}" data-mat="${kind}:${t}" title="${arena.MATERIALS[kind].name} Rang ${r.id}"><i class="evo">${r.id}</i> ${tailor.have(kind, t)}</span>`).join('')}</div>`).join('');
+    let body = '';
+    if (tailorTab === 'umhang') {
+      body = `<p class="muted">Umhänge geben einem Helden in Arena oder Dungeon zusätzliche Stärke. Anlegen im Team über den Platz „Umhang“.</p>
+        <div class="sew-list">${RARITIES.map((r, t) => `
+          <div class="sew r-${r.id}"><span class="sew-img" data-cape="${t}"></span>
+            <div><b>Umhang Rang ${r.id}</b><span>+${tailor.CAPE_POWER[t]} Stärke · im Vorrat: ${tailor.capes(t)}</span><span>${matHtml(tailor.capeCost(t))}</span></div>
+            <button data-act="sew-cape" data-v="${t}" ${tailor.affordable(tailor.capeCost(t)) ? '' : 'disabled'}>Nähen</button></div>`).join('')}</div>`;
+    } else if (tailorTab === 'kleidung') {
+      body = `<p class="muted">Genähte Kleidung trägst du über den Kleiderschrank. Solange du sie trägst, wirkt ihr Bonus.</p>
+        <div class="sew-list">${tailor.SEWN.map((o) => {
+          const done = tailor.sewn(o.id);
+          return `<div class="sew r-${RARITIES[o.sew.tier].id}"><span class="sew-img" data-outfit="${o.id}"></span>
+            <div><b>${o.name}</b><span class="gold-text">${companions.describeBonus({ bonus: o.bonus })}</span><span>${done ? (state.outfit === o.id ? 'genäht · angezogen' : 'genäht') : matHtml(tailor.sewCost(o))}</span></div>
+            ${done ? (state.outfit === o.id ? '<span class="tag">an</span>' : `<button data-act="outfit" data-id="${o.id}">Anziehen</button>`) : `<button data-act="sew-outfit" data-v="${o.id}" ${tailor.affordable(tailor.sewCost(o)) ? '' : 'disabled'}>Nähen</button>`}</div>`;
+        }).join('')}</div>`;
+    } else if (tailorTab === 'einrichtung') {
+      body = `<p class="muted">Gemütlichkeit <b class="gold-text">${tailor.cozy()} / ${tailor.MAX_COZY}</b> – jeder Punkt erhöht die Chance auf einen Rausch beim Schlafen um 1 % (jetzt ${percent(buffs.sleepChance())}).</p>
+        <div class="sew-list">${tailor.DECOR.map((d) => {
+          const done = tailor.placed(d.id);
+          const tierOf = Math.max(...d.cost.map((c) => c.tier));
+          return `<div class="sew r-${RARITIES[tierOf].id}"><span class="sew-img cozy">♥${d.cozy}</span>
+            <div><b>${d.name}</b><span>${d.text}</span><span>${done ? 'steht im Haus' : matHtml(d.cost)}</span></div>
+            ${done ? '<span class="tag">✓</span>' : `<button data-act="sew-decor" data-v="${d.id}" ${tailor.affordable(d.cost) ? '' : 'disabled'}>Nähen</button>`}</div>`;
+        }).join('')}</div>`;
+    } else {
+      body = `<p class="muted">Zu viel von einer Sorte? Hier wird umgewandelt.</p>
+        ${tailor.REFINE.map((r) => `<div class="refine"><b>${r.name}</b><span class="muted">${r.text}</span>
+          <div class="refine-row">${RARITIES.map((rk, t) => (t + r.up > 5 ? '' : `<button class="r-${rk.id}" data-act="refine" data-v="${r.id}" data-t="${t}" ${tailor.canRefine(r, t) ? '' : 'disabled'}>${rk.id}${r.up ? `→${RARITIES[t + 1].id}` : ''}</button>`)).join('')}</div></div>`).join('')}`;
+    }
+    overlay.innerHTML = `
+      <section class="panel tailorpanel">
+        ${head('Nähtisch')}
+        <p class="lead">Aus Stoff und Seide der Bossarena entstehen hier Umhänge, Kleidung und Einrichtung.</p>
+        <div class="stocks">${stock}</div>
+        <nav class="tabs">${tabs}</nav>
+        ${body}
+      </section>`;
+    for (const el of overlay.querySelectorAll('.stock [data-mat]')) {
+      const [kind, tier] = el.dataset.mat.split(':');
+      el.prepend(picture(arena.materialImage(kind, Number(tier))));
+    }
+    for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
+    for (const el of overlay.querySelectorAll('[data-outfit]')) {
+      const c = document.createElement('canvas');
+      c.width = 12;
+      c.height = 16;
+      c.className = 'sprite outfit-sprite';
+      c.getContext('2d').drawImage(makePlayerSprites(el.dataset.outfit, state.character || {})[1].idle, 0, 0);
+      el.append(c);
+    }
+  }
+
   function renderCompanions() {
     const act = companions.active();
     const cards = companions.COMPANIONS.map((c) => {
@@ -818,7 +909,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
     for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     updateMarket();
   }
 
@@ -924,7 +1015,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${helperHtml()}
       </section>`;
     for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     fillCrops();
   }
 
@@ -1181,7 +1272,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${minePicker()}
         <div class="mine-levels">${levels}</div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     fillOres();
   }
 
@@ -1260,7 +1351,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         <p class="muted">Ein zufälliges Sammelstück im Rang des Erzes.</p>
         <div class="levels">${surprise}</div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     fillOres();
     updateTrader();
   }
@@ -1332,7 +1423,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
           ${membersHtml('dungeon')}
         </section>`;
       $('#party').replaceChildren(...run.heroes.filter((id) => getItem(id)).map((id) => tile(getItem(id))));
-      for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+      for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
       updateDungeon();
       return;
     }
@@ -1371,7 +1462,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
           </div>
         </div>
       </section>`;
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
   }
 
   // läuft jede Sekunde mit, solange eine Erkundung angezeigt wird
@@ -1515,7 +1606,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         ${roster.length > SHOWN ? `<p class="muted">… und ${roster.length - SHOWN} weitere, schwächere Lebewesen.</p>` : ''}
       </section>`;
 
-    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite)));
+    for (const el of overlay.querySelectorAll('[data-sprite]')) el.prepend(sprite(getItem(el.dataset.sprite))); for (const el of overlay.querySelectorAll('[data-cape]')) el.prepend(picture(tailor.capeImage(Number(el.dataset.cape))));
     for (const el of overlay.querySelectorAll('[data-leader]')) el.prepend(picture(exp.leaderImage(exp.LEADERS.find((l) => l.id === el.dataset.leader))));
     updateChest();
   }
@@ -1672,10 +1763,16 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       show(view);
     }
     if (act === 'outfit') {
+      if (!tailor.sewn(btn.dataset.id)) {
+        audio.play('error');
+        toast('Diese Kleidung musst du erst am Nähtisch nähen.');
+        return;
+      }
       state.outfit = btn.dataset.id;
       onOutfit(btn.dataset.id);
       audio.play('levelUp');
-      renderWardrobe();
+      if (view === 'tailor') renderTailor();
+      else renderWardrobe();
     }
     if (act === 'quest-done') {
       const res = village.complete(talkTo);
@@ -1720,6 +1817,19 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       }
     }
     if (act === 'comp-pick') { companions.setActive(btn.dataset.v || null); audio.play('click'); renderCompanions(); }
+    if (act === 'tailor-tab') { tailorTab = btn.dataset.v; renderTailor(); }
+    if (act === 'sew-cape') { audio.play(tailor.sewCape(Number(btn.dataset.v)) ? 'build' : 'error'); renderTailor(); }
+    if (act === 'sew-outfit') {
+      if (tailor.sewOutfit(btn.dataset.v)) { audio.play('levelUp'); toast(`✂ ${OUTFITS.find((o) => o.id === btn.dataset.v).name} genäht – im Kleiderschrank oder gleich hier anziehen.`); }
+      else audio.play('error');
+      renderTailor();
+    }
+    if (act === 'sew-decor') {
+      if (tailor.buyDecor(btn.dataset.v)) { audio.play('build'); toast(`♥ ${tailor.decor(btn.dataset.v).name} schmückt jetzt dein Haus.`); }
+      else audio.play('error');
+      renderTailor();
+    }
+    if (act === 'refine') { audio.play(tailor.refine(btn.dataset.v, Number(btn.dataset.t)) ? 'coin' : 'error'); renderTailor(); }
     if (act === 'spell-school') { spellSchool = btn.dataset.v; renderTower(); }
     if (act === 'learn') { audio.play(magic.learn(btn.dataset.v) ? 'levelUp' : 'error'); renderTower(); }
     if (act === 'cast') {
@@ -1817,6 +1927,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       if (sel && !PARTY[pk]().equip(sel.i, sel.key, btn.dataset.id || null)) audio.play('error');
       rerenderParty(pk);
     }
+    if (act === 'equip-cape') {
+      const pk = btn.dataset.p;
+      const sel = partySel[pk];
+      if (sel && !PARTY[pk]().equipCape(sel.i, btn.dataset.v === '' ? null : Number(btn.dataset.v))) audio.play('error');
+      rerenderParty(pk);
+    }
     if (act === 'auto-equip') { PARTY[btn.dataset.p]().autoEquip(); partySel[btn.dataset.p] = null; rerenderParty(btn.dataset.p); }
     if (act === 'gear-up') { audio.play(PARTY[btn.dataset.p]().levelUp(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); rerenderParty(btn.dataset.p); }
     if (act === 'boss-random') { audio.play(arena.challengeRandom() ? 'start' : 'error'); renderArena(); }
@@ -1890,6 +2006,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     openTrap: () => show('trap'),
     openTower: () => show('tower'),
     openCompanions: () => show('companions'),
+    openTailor: () => show('tailor'),
     // neuer Begleiter: Pop-up
     // Geschenk vom Begleiter
     companionGift(res) {

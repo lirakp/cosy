@@ -67,6 +67,13 @@ export const OUTFITS = [
   { id: 'ritter', name: 'Ritterrüstung', hat: 'helm', framed: true, colors: { H: '#a8b0c0', h: '#d9574a', r: '#d9574a', c: '#a8b0c0', C: '#8890a0', p: '#7a8090', b: '#5a6070' } },
   { id: 'koch', name: 'Küchenchef', hat: 'chef', colors: { H: '#fdf6e3', h: '#fdf6e3', r: '#d9574a', c: '#fdf6e3', C: '#d8d0c0', p: '#5a5a6a', b: '#2a2140' } },
   { id: 'pirat', name: 'Piratin', hat: 'pirate', colors: { H: '#2a2140', h: '#1d1528', r: '#fdf6e3', c: '#b03a3a', C: '#8a2a2a', p: '#3a3a5a', b: '#3a2a20' } },
+  // Genähte Kleidung (Nähtisch im Haus): erst nähen, dann tragen – mit Bonus
+  { id: 'leinen', name: 'Leinenkittel', hat: 'beanie', sew: { tier: 0, stoff: 6 }, bonus: { coinReach: 6 }, colors: { H: '#d8c8a8', h: '#a8906a', r: '#c8a878', c: '#e8dcc0', C: '#c8b898', p: '#8a7a5a', b: '#5a4a30' } },
+  { id: 'reisemantel', name: 'Reisemantel', hat: 'hood', framed: true, sew: { tier: 1, stoff: 6, seide: 1 }, bonus: { expedition: 0.06 }, colors: { H: '#6a5a3a', r: '#c0904a', c: '#7a6a42', C: '#5a4a30', p: '#4a5a3a', b: '#3a2a20' } },
+  { id: 'bluetenschuerze', name: 'Blütenschürze', hat: 'flowers', sew: { tier: 2, stoff: 5, seide: 2 }, bonus: { garden: 0.12 }, colors: { H: '#c08050', f: '#ff8ab0', r: '#fdf6e3', c: '#f2c0d0', C: '#9ad08a', p: '#6a8ad0', b: '#6a4a30' } },
+  { id: 'seidenrobe', name: 'Seidenrobe', hat: 'wizard', sew: { tier: 3, seide: 4 }, bonus: { mana: 0.15 }, colors: { H: '#5a8ad8', h: '#ffd04a', r: '#ffd04a', c: '#5a8ad8', C: '#3a6ab8', p: '#3a4a90', b: '#2a2140' } },
+  { id: 'wellenmantel', name: 'Wellenmantel', hat: 'beanie', sew: { tier: 4, stoff: 4, seide: 3 }, bonus: { fishing: 0.25, stars: 0.15 }, colors: { H: '#3a8ab0', h: '#9be8e0', r: '#9be8e0', c: '#2f6a90', C: '#245070', p: '#2a3a5a', b: '#1d2838' } },
+  { id: 'sternenseide', name: 'Sternenseidengewand', hat: 'crown', sew: { tier: 5, seide: 4 }, bonus: { coinReach: 8, expedition: 0.1, garden: 0.1, mine: 0.1, mana: 0.1, fishing: 0.1 }, colors: { H: '#e8f0ff', h: '#ff8ad0', r: '#9be8e0', c: '#6a54c8', C: '#4a3aa0', p: '#2a2160', b: '#1d1538' } },
   { id: 'pyjama', name: 'Schlafanzug', hat: 'nightcap', colors: { H: '#6a8ad0', h: '#fdf6e3', f: '#ffd04a', r: '#a8c0f0', c: '#a8c0f0', C: '#8aa0d8', p: '#a8c0f0', b: '#d06a6a' } },
 ];
 
