@@ -20,8 +20,13 @@ Selbst bauen oder im Fenster testen:
 ```sh
 npm install
 npm start        # Spiel im Programmfenster starten
+npm test         # Spielregeln automatisch prüfen
 npm run dist     # Windows-Programme nach dist/ bauen
 ```
+
+Die Tests in `tests/rules.test.js` prüfen Chancen, Kosten, Grenzen und den
+Spielstand (z. B. dass Kopieren in der Schmiede nie Gewinn bringt). Sie laufen
+auch auf GitHub vor jedem Windows-Build; schlägt einer fehl, wird nicht gebaut.
 
 ## Im Browser starten
 
@@ -284,7 +289,7 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/sprites.js` | Spielfigur und Outfits als Text-Pixelraster |
 | `src/player.js` | Bewegung und Animation |
 | `src/input.js` | Tastatur und Touch |
-| `desktop/main.js` | Programmfenster für die Desktop-Version (Electron) |
+| `desktop/main.cjs` | Programmfenster für die Desktop-Version (Electron) |
 | `src/audio.js` | Musik und Soundeffekte (Web Audio) |
 | `src/interior.js` | Innenraum des Hauses |
 | `src/buffs.js` | Rausch-Effekte nach dem Schlafen |

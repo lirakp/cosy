@@ -4,9 +4,10 @@
   "description": "Ein gemütliches Pixel-Art-Sammelspiel",
   "author": "Cosy",
   "private": true,
-  "main": "desktop/main.js",
+  "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
+    "test": "node --test tests/*.test.js",
     "dist": "electron-builder --win --publish never"
   },
   "devDependencies": {
@@ -16,13 +17,28 @@
   "build": {
     "appId": "app.cosy.game",
     "productName": "Cosy",
-    "files": ["index.html", "style.css", "src/**/*", "desktop/**/*"],
-    "directories": { "buildResources": "build" },
+    "files": [
+      "index.html",
+      "style.css",
+      "src/**/*",
+      "desktop/**/*"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "build/icon.png"
     },
-    "nsis": { "artifactName": "Cosy-Setup-${version}.exe" },
-    "portable": { "artifactName": "Cosy-${version}-portable.exe" }
-  }
+    "nsis": {
+      "artifactName": "Cosy-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Cosy-${version}-portable.exe"
+    }
+  },
+  "type": "module"
 }
