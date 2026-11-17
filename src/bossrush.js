@@ -7,13 +7,13 @@ import { BOSS_POWER, BOSS_NAMES, bossInfo, MIN_CHANCE, MAX_CHANCE, WIN_CLOTH, SI
 import * as realm from './realm.js';
 
 // Bossrush: Bis zu 10 Helden (mit Ausrüstung) und Monster kämpfen nacheinander
-// gegen Bosse mit zufälligem Rang – alle FIGHT_SECONDS einer, auch offline –
+// gegen Bosse mit zufälligem Rang – alle FIGHT_SECONDS einer (5 s), auch offline –
 // bis sie verlieren. Die Beute (Gold, Stoff, Seide) sammelt sich und kommt bei
 // der Heimkehr in den Vorrat. Nach einer Niederlage kann man die Gruppe gegen
 // Gold wiederbeleben; der Preis steigt mit jedem besiegten Boss (höchstens 15.000).
 
 export const TEAM_SIZE = 10;
-export const FIGHT_SECONDS = 20;
+export const FIGHT_SECONDS = 5;
 export const MAX_FIGHTS_PER_TICK = 500; // nach langer Abwesenheit nicht endlos rechnen
 // Bosse werden mit jedem Sieg ein wenig zäher
 export const GROWTH = 0.06;

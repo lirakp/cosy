@@ -683,7 +683,7 @@ Kämpfer auf: Helden mit Ausrüstung und Umhang oder Monster ohne Ausrüstung.
 Beide werden wie in Arena und Dungeon gelevelt, Monster mit Monster-Duplikaten.
 Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 
-- Nach dem Start kämpft das Team **alle 20 Sekunden** gegen einen Boss mit
+- Nach dem Start kämpft das Team **alle 5 Sekunden** gegen einen Boss mit
   zufälligem Rang (Chancen wie am Brunnen). Das läuft auch offline weiter,
   bis es verliert.
 - Jeder Boss wird je bisherigem Sieg um 6 % stärker. Die Siegchance ist
