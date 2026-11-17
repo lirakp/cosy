@@ -222,8 +222,8 @@ Werte in `src/mine.js` und `src/trader.js`.
 
 ## Magie
 
-Der **Magierturm** (zwischen Garten und Brunnen, 1500 Gold, Ausbau 3000 · 7000 ·
-15000 · 35000 · 80000) sammelt Mana – nachts doppelt so schnell, offline zum
+Der **Magierturm** (zwischen Garten und Brunnen, 1500 Gold, Ausbau 1800 · 4200 ·
+9000 · 35000 · 80000) sammelt Mana – nachts doppelt so schnell, offline zum
 Tageswert. Vorrat und Nachladen je Rang: 30 · 45 · 60 · 80 · 100 · 130 Mana,
 1 · 1,3 · 1,6 · 2 · 2,5 · 3 pro Minute. Das **Zauberbuch** öffnet sich am Turm
 oder überall mit `Z`; das Mana steht oben links.
@@ -297,7 +297,7 @@ Werte in `src/tailor.js`, Kleidung in `src/sprites.js`.
 - **Brunnengeist:** Er schwebt über dem Brunnen, nachts deutlicher, und kommentiert
   jeden Wunsch. Ganz selten (je gezogenem Stück 0,4–1,25 %) erscheint er mit
   einem „!“ und schenkt einen Gratiswunsch mit garantiert Rang A, S oder SS.
-- **Ausbau** (1500 · 4000 · 10000 · 25000 · 60000 Gold), im Brunnen-Menü:
+- **Ausbau** (900 · 2400 · 6000 · 25000 · 60000 Gold), im Brunnen-Menü:
 
 | Rang | Rabatt | Gratis am Tag | Folgewunsch gratis | Geschenk des Geists (je Stück) | Aussehen |
 | --- | --- | --- | --- | --- | --- |
@@ -427,11 +427,16 @@ erst gebaut werden (250, 400, 600, 800, 1000 und 1500 Gold) und starten auf Rang
 
 | Ausbau auf | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- |
-| Expeditionslager | 1000 | 3000 | 8000 | 20000 | 50000 |
-| Dungeon-Tor | 800 | 2500 | 7000 | 18000 | 45000 |
-| Bossarena | 1200 | 3500 | 9000 | 22000 | 55000 |
-| Mine | 1500 | 4000 | 10000 | 25000 | 60000 |
-| Schmiede | 2000 | 5000 | 12000 | 30000 | 70000 |
+| Expeditionslager | 600 | 1800 | 4800 | 20000 | 50000 |
+| Dungeon-Tor | 480 | 1500 | 4200 | 18000 | 45000 |
+| Bossarena | 720 | 2100 | 5400 | 22000 | 55000 |
+| Mine | 900 | 2400 | 6000 | 25000 | 60000 |
+| Schmiede | 1200 | 3000 | 7200 | 30000 | 70000 |
+| Magierturm | 1800 | 4200 | 9000 | 35000 | 80000 |
+| Wunschbrunnen | 900 | 2400 | 6000 | 25000 | 60000 |
+
+Die ersten drei Ausbauten (auf C, B und A) sind bewusst günstig, damit es am
+Anfang zügig vorangeht.
 
 Jeder Ausbau ist auch zu sehen: Alle Anlagen tragen eine Fahne in der
 Rangfarbe (D grau, C grün, B blau, A lila, S gold, SS schimmernd in allen
