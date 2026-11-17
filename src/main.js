@@ -7,6 +7,7 @@ import { state } from './state.js';
 import { clamp, makeCanvas } from './utils.js';
 import { initInput, setBlocked, setTapHandler } from './input.js';
 import { createUI } from './ui.js';
+import { audio } from './audio.js';
 import { createBackground } from './background.js';
 import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
@@ -40,11 +41,39 @@ const pauseScreen = document.getElementById('pause');
 let paused = false;
 function setPaused(value) {
   if (value && ui.isOpen()) return;
+  if (value !== paused) audio.play(value ? 'pause' : 'resume');
+  audio.setDucked(value);
   paused = value;
   pauseScreen.hidden = !paused;
   setBlocked(paused || ui.isOpen());
   if (paused) document.getElementById('btn-resume').focus();
 }
+// Ton startet mit der ersten Eingabe (Vorgabe der Browser).
+addEventListener('pointerdown', () => audio.unlock(), true);
+addEventListener('keydown', () => audio.unlock(), true);
+
+// Ton an/aus (Knopf oder M) und Lautstärke im Pause-Fenster
+const soundButton = document.getElementById('btn-sound');
+const musicSlider = document.getElementById('vol-music');
+const sfxSlider = document.getElementById('vol-sfx');
+function showSound() {
+  const s = audio.settings;
+  soundButton.classList.toggle('muted', s.muted);
+  soundButton.setAttribute('aria-label', s.muted ? 'Ton einschalten' : 'Ton ausschalten');
+  soundButton.title = `${s.muted ? 'Ton aus' : 'Ton an'} (M)`;
+  musicSlider.value = Math.round(s.music * 100);
+  sfxSlider.value = Math.round(s.sfx * 100);
+}
+audio.onChange(showSound);
+showSound();
+soundButton.addEventListener('click', () => audio.toggleMute());
+musicSlider.addEventListener('input', () => audio.set('music', musicSlider.value / 100));
+sfxSlider.addEventListener('input', () => audio.set('sfx', sfxSlider.value / 100));
+sfxSlider.addEventListener('change', () => audio.play('coin'));
+addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM' && !e.repeat) audio.toggleMute();
+});
+
 document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
 document.getElementById('btn-resume').addEventListener('click', () => setPaused(false));
 addEventListener('keydown', (e) => {
@@ -92,12 +121,12 @@ let saveCountdown = 10;
 let dungeonWas = dungeon.status();
 function expeditionTick() {
   const dungeonNow = dungeon.status();
-  if (dungeonNow === 'done' && dungeonWas === 'running' && !document.hidden) ui.toast('Deine Helden sind aus dem Dungeon zurück!');
+  if (dungeonNow === 'done' && dungeonWas === 'running' && !document.hidden) ui.toast('Deine Helden sind aus dem Dungeon zurück!', true);
   dungeonWas = dungeonNow;
   ui.updateDungeon();
 
   const found = expedition.tick();
-  if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.');
+  if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
   ui.updateChest();
   if (--saveCountdown <= 0 || found) {
     saveCountdown = 10;
@@ -157,6 +186,7 @@ function frame(now) {
   camX += (target - camX) * Math.min(1, dt * 6);
 
   const ph = phase(dayTime);
+  audio.setNight(ph.night);
   background.drawSky(ctx, camX, time, ph);
 
   sctx.clearRect(0, 0, VIEW_W, VIEW_H);

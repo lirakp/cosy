@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `P` Pause ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `P` Pause · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Tag und Nacht
@@ -43,6 +43,15 @@ Tag, Abend, Nacht. Sonne und Mond ziehen über den Himmel, nachts erscheinen
 Sterne und Glühwürmchen, Fenster, Laterne und Fackeln leuchten. Die Tageszeit
 steht oben links, wird mit dem Spielstand gespeichert und bleibt in der Pause
 stehen. Farben und Übergänge stehen in `src/daycycle.js`.
+
+## Musik und Ton
+
+Musik und Effekte entstehen live mit der Web-Audio-Schnittstelle, ohne
+Audiodateien (`src/audio.js`). Die Musik ist ein ruhiger Loop in C-Dur, dessen
+Melodie immer wieder neu erfunden wird; nachts wird sie leiser und sparsamer,
+in der Pause gedämpft. Browser erlauben Ton erst nach der ersten Eingabe.
+Ton an/aus mit dem ♪-Knopf oder `M`, Lautstärke von Musik und Effekten im
+Pause-Fenster. Die Einstellungen werden im Browser gespeichert.
 
 ## Sammeln
 
@@ -164,4 +173,5 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/player.js` | Bewegung und Animation |
 | `src/input.js` | Tastatur und Touch |
 | `desktop/main.js` | Programmfenster für die Desktop-Version (Electron) |
+| `src/audio.js` | Musik und Soundeffekte (Web Audio) |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

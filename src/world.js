@@ -1,6 +1,7 @@
 import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X } from './config.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
+import { audio } from './audio.js';
 import { itemImage } from './items.js';
 import * as expedition from './expedition.js';
 import { state, COIN_VALUE } from './state.js';
@@ -422,6 +423,7 @@ export function createWorld() {
           pops.push({ x: coins[i].x, age: 0 });
           coins.splice(i, 1);
           state.addGold(COIN_VALUE);
+          audio.play('coin');
         }
       }
       for (const p of pops) p.age += dt;

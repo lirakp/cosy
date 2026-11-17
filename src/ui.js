@@ -4,6 +4,7 @@ import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
 import * as buildings from './buildings.js';
 import * as arena from './arena.js';
+import { audio } from './audio.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
 
@@ -57,6 +58,8 @@ export function createUI({ onToggle }) {
   const busy = () => !!view || !!$('.reveal');
 
   function show(next) {
+    if (next && !view) audio.play('open');
+    if (!next && view) audio.play('close');
     view = next;
     overlay.hidden = !view;
     if (view === 'well') renderWell();
@@ -120,6 +123,7 @@ export function createUI({ onToggle }) {
     const note = $('#well-note');
     if (state.gold < cost) {
       note.textContent = 'Nicht genug Gold. Sammle Münzen auf dem Weg oder verkaufe Duplikate in der Galerie.';
+      audio.play('error');
       return;
     }
     const items = Array.from({ length: n }, () => rollItem());
@@ -130,6 +134,7 @@ export function createUI({ onToggle }) {
       return { item, isNew };
     });
     state.pull(cost, items);
+    audio.play('pull');
     note.textContent = '';
     renderResults();
     // seltene Funde der Reihe nach groß zeigen, das seltenste zuletzt
@@ -146,6 +151,7 @@ export function createUI({ onToggle }) {
     if (next.result) return showResult(next.result);
     if (next.fight) return showFight(next.fight);
     const { item, isNew, source } = next;
+    audio.play('reveal', item.tier);
     const el = document.createElement('div');
     el.className = `reveal r-${item.rank}`;
     el.innerHTML = `
@@ -308,13 +314,15 @@ export function createUI({ onToggle }) {
 
   function fightBoss() {
     const result = arena.fight();
-    if (!result) return;
+    if (!result) return audio.play('error');
+    audio.play('fight');
     reveals.push({ fight: result });
     renderArena();
     nextReveal();
   }
 
   function showFight({ boss, win, odds, stoff, seide }) {
+    setTimeout(() => audio.play(win ? 'win' : 'lose'), 420);
     const el = document.createElement('div');
     el.className = `reveal result r-${boss.rank}${win ? '' : ' fail'}`;
     el.innerHTML = `
@@ -480,6 +488,7 @@ export function createUI({ onToggle }) {
 
   // Ergebnis-Pop-up: Erfolg oder Niederlage, Gold und alle gefundenen Stücke
   function showResult({ level, success, gold, items, odds }) {
+    audio.play(success ? 'win' : 'lose');
     const el = document.createElement('div');
     el.className = `reveal result r-${level.rank}${success ? '' : ' fail'}`;
     el.innerHTML = `
@@ -508,9 +517,11 @@ export function createUI({ onToggle }) {
     const result = exp.collect();
     if (!result) {
       toast(exp.live.team.length ? 'Die Truhe ist noch leer.' : 'Noch kein Team – ziehe Lebewesen am Brunnen.');
+      audio.play('error');
       return;
     }
     const finds = result.items.length;
+    audio.play('gold');
     toast(`+${fmt(result.gold)} Gold aus der Truhe${finds ? ` · ${finds} Fund${finds > 1 ? 'e' : ''}!` : ''}`);
     reveals.push(...result.items.map((i) => ({ ...i, source: 'EXPEDITIONSFUND' })));
     if (view === 'expedition') renderExpedition();
@@ -676,6 +687,7 @@ export function createUI({ onToggle }) {
 
   overlay.addEventListener('click', (e) => {
     const tileEl = e.target.closest('.tile');
+    if (tileEl && !tileEl.closest('[data-act]')) audio.click();
     if (tileEl && view === 'gallery') {
       selected = tileEl.dataset.id;
       renderGallery();
@@ -706,7 +718,9 @@ export function createUI({ onToggle }) {
     if (act === 'gallery') show('gallery');
     if (act === 'pull') pull(Number(btn.dataset.n));
     if (act === 'build') {
-      if (buildings.advance(btn.dataset.id)) {
+      if (!buildings.advance(btn.dataset.id)) audio.play('error');
+      else {
+        audio.play('build');
         const b = buildings.BUILDINGS[btn.dataset.id];
         toast(`${b.name}: Rang ${buildings.rank(btn.dataset.id)}`);
         exp.rebuilt();
@@ -722,9 +736,9 @@ export function createUI({ onToggle }) {
     if (act === 'slot-close') { arenaSel = null; renderArena(); }
     if (act === 'equip' && arenaSel) { arena.equip(arenaSel.i, arenaSel.key, btn.dataset.id || null); renderArena(); }
     if (act === 'auto-equip') { arena.autoEquip(); arenaSel = null; renderArena(); }
-    if (act === 'gear-up') { arena.levelUp(getItem(btn.dataset.id)); renderArena(); }
-    if (act === 'boss-random') { arena.challengeRandom(); renderArena(); }
-    if (act === 'boss') { arena.challenge(Number(btn.dataset.v)); renderArena(); }
+    if (act === 'gear-up') { audio.play(arena.levelUp(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); renderArena(); }
+    if (act === 'boss-random') { audio.play(arena.challengeRandom() ? 'start' : 'error'); renderArena(); }
+    if (act === 'boss') { audio.play(arena.challenge(Number(btn.dataset.v)) ? 'start' : 'error'); renderArena(); }
     if (act === 'fight') fightBoss();
     if (act === 'trade') {
       const got = arena.trade(btn.dataset.k, Number(btn.dataset.v));
@@ -737,20 +751,24 @@ export function createUI({ onToggle }) {
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'best') { pick.heroes = dungeon.heroes().slice(0, dungeon.MAX_HEROES).map((h) => h.id); renderDungeon(); }
-    if (act === 'dungeon-start') { dungeon.start(pick.level, pick.heroes); renderDungeon(); }
+    if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level, pick.heroes) ? 'start' : 'error'); renderDungeon(); }
     if (act === 'dungeon-abort') { dungeon.abort(); renderDungeon(); }
     if (act === 'dungeon-collect') collectDungeon();
     if (act === 'leader') { exp.setLeader(btn.dataset.id); renderExpedition(); }
-    if (act === 'leader-evolve') { exp.evolveLeader(); renderExpedition(); }
-    if (act === 'evolve') { exp.evolve(getItem(btn.dataset.id)); renderExpedition(); }
+    if (act === 'leader-evolve') { audio.play(exp.evolveLeader() ? 'levelUp' : 'error'); renderExpedition(); }
+    if (act === 'evolve') { audio.play(exp.evolve(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); renderExpedition(); }
     if (act === 'cat') { filter.cat = btn.dataset.v; renderGallery(); }
     if (act === 'rank') { filter.rank = btn.dataset.v; renderGallery(); }
-    if (act === 'sell') { state.sellDuplicates(btn.dataset.id); renderGallery(); }
-    if (act === 'sell-all') { state.sellAllDuplicates(); renderGallery(); }
+    if (act === 'sell') { if (state.sellDuplicates(btn.dataset.id)) audio.play('sell'); renderGallery(); }
+    if (act === 'sell-all') { if (state.sellAllDuplicates()) audio.play('sell'); renderGallery(); }
+    audio.click();
   });
 
   document.body.addEventListener('click', (e) => {
-    if (e.target.closest('[data-act="reveal-next"]')) nextReveal();
+    if (e.target.closest('[data-act="reveal-next"]')) {
+      audio.click();
+      nextReveal();
+    }
   });
 
   addEventListener('keydown', (e) => {
@@ -761,7 +779,10 @@ export function createUI({ onToggle }) {
 
   return {
     isOpen: busy,
-    toast,
+    toast(text, sound = false) {
+      toast(text);
+      if (sound) audio.play('notify');
+    },
     collectChest,
     updateChest,
     updateDungeon,
