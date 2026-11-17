@@ -62,7 +62,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   let filter = { cat: CATEGORIES[0].id, rank: 'D', world: 'normal' };
   let selected = null;
   let lastPull = [];
-  const pick = { level: 0 }; // gewählte Gefahrenstufe im Dungeon-Menü
+  const pick = { level: 0, type: 'blut' }; // gewählte Art und Gefahrenstufe im Dungeon-Menü
   let arenaTab = 'fight';
   const partySel = { arena: null, dungeon: null }; // angetippter Platz je Team: { i, key }
   const rerenderParty = (pk) => (pk === 'arena' ? renderArena() : renderDungeon());
@@ -1504,11 +1504,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const run = dungeon.run();
 
     if (run) {
-      const level = dungeon.LEVELS[run.level];
+      const level = dungeon.info(run.level, run.type);
       overlay.innerHTML = `
-        <section class="panel dungeon r-${level.rank}">
+        <section class="panel dungeon r-${level.rank} dtype-${level.type}">
           ${head('Dungeon')}
-          <p class="lead"><b class="evo">${level.rank}</b> · ${level.name} · Stärke beim Aufbruch ${fmt(run.power ?? dungeon.power())} · Erfolgschance ${percent(dungeon.chance(run.level, run.power ?? dungeon.power()))}</p>
+          <p class="lead">${dungeon.type(level.type).icon} <b class="evo">${level.rank}</b> · ${level.name} (${level.typeName}) · Stärke beim Aufbruch ${fmt(run.power ?? dungeon.power())} · Erfolgschance ${percent(dungeon.chance(run.level, run.power ?? dungeon.power(), level.type))}</p>
           <div class="party${status === 'running' ? ' away' : ''}" id="party"></div>
           <div class="chest">
             <div class="line"><span id="run-text"></span></div>
@@ -1529,23 +1529,35 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
 
     if (!dungeon.unlocked(pick.level)) pick.level = buildings.tier('dungeon');
     const power = dungeon.power();
-    const odds = dungeon.chance(pick.level, power);
-    const level = dungeon.LEVELS[pick.level];
+    const odds = dungeon.chance(pick.level, power, pick.type);
+    const level = dungeon.info(pick.level, pick.type);
+    const T = dungeon.type(pick.type);
     const heroes = dungeon.party.heroIds().length;
-    const levels = dungeon.LEVELS.map((l, i) => `
+    const catNames = Object.keys(T.weights).map((c) => CATEGORIES.find((x) => x.id === c).name).join(' und ');
+    const types = dungeon.TYPES.map((t) => `<button class="tab dtab-${t.id}${t.id === pick.type ? ' on' : ''}" data-act="dtype" data-v="${t.id}">${t.icon} ${t.name}</button>`).join('');
+    const levels = dungeon.LEVELS.map((_, i) => {
+      const l = dungeon.info(i, pick.type);
+      return `
       <button class="level r-${l.rank}${i === pick.level ? ' on' : ''}" data-act="level" data-v="${i}" ${dungeon.unlocked(i) ? '' : 'disabled'}>
         <b><i>${l.rank}</i>${l.name}</b>
-        <span>${duration(l.seconds)} · Stärke ${fmt(l.need)}</span>
+        <span>${duration(l.seconds)} · Stärke ${fmt(l.need)}${l.trap ? ` · Fallen −${Math.round(l.trap * 100)} %` : ''}</span>
         <span class="gold-text">~${fmt(l.gold)} Gold</span>
         <span>${l.standard ? `${l.standard}× D + ` : ''}${l.bonus}× ${l.minTier ? `ab ${dungeon.rankOf(l.minTier)}` : 'Zufall'}</span>
         ${dungeon.unlocked(i) ? '' : `<span class="lock">Tor-Rang ${l.rank} nötig</span>`}
-      </button>`).join('');
+      </button>`;
+    }).join('');
+    const seen = dungeon.memoriesSeen();
+    const chronicle = T.memories ? `<details class="chronicle"><summary>Chronik der Erinnerungen · ${seen.length} / ${dungeon.MEMORIES.length}</summary>
+        ${seen.length ? seen.map((id) => dungeon.memory(id)).filter(Boolean).map((m) => `<div class="memory"><b>${m.title}</b><p>${m.text}</p></div>`).join('') : '<p class="muted">Noch keine Erinnerung durchlebt.</p>'}</details>` : '';
 
     overlay.innerHTML = `
       <section class="panel dungeon">
         ${head('Dungeon')}
         <p class="lead">Rüste bis zu ${dungeon.MAX_HEROES} Helden aus und schicke sie los. Je länger der Dungeon, desto gefährlicher – und desto mehr Beute.</p>
         ${upgradeBar('dungeon')}
+        <nav class="tabs dtypes">${types}</nav>
+        <div class="dtype-info dtype-${T.id}"><b>${T.icon} ${T.name}</b><p>${T.text}</p><span class="muted">Beute: ${Math.round((T.weights[Object.keys(T.weights)[0]] + T.weights[Object.keys(T.weights)[1]]) * 100)} % ${catNames} · ${T.needMult > 1 ? `Stärke × ${String(T.needMult).replace('.', ',')}` : ''} · Gold × ${String(T.goldMult).replace('.', ',')}</span></div>
+        ${chronicle}
         <h4>Gefahrenstufe</h4>
         <div class="levels">${levels}</div>
         <h4>Team · Stärke ${fmt(power)}</h4>
@@ -1557,7 +1569,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           </div>
           <p class="muted">Gleiche Stärke-Rechnung wie in der Arena: Held plus Ausrüstung, jeweils nach Rang und Stufe. Scheitert die Erkundung, gibt es keine Beute.</p>
           <div class="line">
-            <button class="big" data-act="dungeon-start" ${heroes ? '' : 'disabled'}>Losschicken · ${duration(level.seconds)}</button>
+            <button class="big" data-act="dungeon-start" ${heroes ? '' : 'disabled'}>${T.icon} ${level.name} · ${duration(level.seconds)}</button>
           </div>
         </div>
       </section>`;
@@ -1589,19 +1601,20 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   }
 
   // Ergebnis-Pop-up: Erfolg oder Niederlage, Gold und alle gefundenen Stücke
-  function showResult({ level, success, gold, items, odds }) {
+  function showResult({ level, success, gold, items, odds, trapped, memory, newMemory }) {
     audio.play(success ? 'win' : 'lose');
     const el = document.createElement('div');
-    el.className = `reveal result r-${level.rank}${success ? '' : ' fail'}`;
+    el.className = `reveal result r-${level.rank}${success ? '' : ' fail'} dtype-${level.type || 'blut'}`;
     el.innerHTML = `
       <div class="rays"></div>
       <div class="card">
-        <div class="source">DUNGEON ${level.rank} · ${level.name.toUpperCase()}</div>
+        <div class="source">${(level.typeName || 'DUNGEON').toUpperCase()} ${level.rank} · ${level.name.toUpperCase()}</div>
         <div class="rank-big">${success ? 'GESCHAFFT!' : 'GESCHEITERT'}</div>
+        ${memory ? `<div class="memory scene"><span class="muted">${newMemory ? 'Eine neue Erinnerung' : 'Eine Erinnerung'} aus alten Zeiten …</span><b>${memory.title}</b><p>${memory.text}</p></div>` : ''}
         ${success
           ? `<div class="gold-won">+${fmt(gold)} Gold</div><div class="grid" id="loot"></div>
              <p>${items.length} Sammelstück${items.length > 1 ? 'e' : ''} gefunden</p>`
-          : `<p>Deine Helden mussten umkehren – diesmal ohne Beute.<br>Die Erfolgschance lag bei ${percent(odds)}.</p>`}
+          : `<p>${trapped ? 'Deine Helden sind in eine Falle getappt und mussten umkehren' : 'Deine Helden mussten umkehren'} – diesmal ohne Beute.<br>Die Erfolgschance lag bei ${percent(odds)}.</p>`}
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     $('#loot', el)?.replaceChildren(
@@ -2065,7 +2078,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     }
     if (act === 'collect') collectChest();
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
-    if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level) ? 'start' : 'error'); renderDungeon(); }
+    if (act === 'dtype') { pick.type = btn.dataset.v; renderDungeon(); }
+    if (act === 'dungeon-start') { audio.play(dungeon.start(pick.level, pick.type) ? 'start' : 'error'); renderDungeon(); }
     if (act === 'dungeon-abort') { dungeon.abort(); renderDungeon(); }
     if (act === 'dungeon-collect') collectDungeon();
     if (act === 'leader') { exp.setLeader(btn.dataset.id); renderExpedition(); }

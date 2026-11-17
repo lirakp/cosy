@@ -1193,3 +1193,46 @@ test('Begleiter der Dimensionen: nur dort unterwegs, mit neuen Bonus-Arten', () 
   state.companions.owned = [];
   state.companions.active = null;
 });
+
+// ---------------------------------------------------------------- Dungeon-Arten
+
+test('Dungeons: 3 Arten × 6 Ränge mit eigenen Namen, Blut ist schwerer und bringt höhere Ränge', () => {
+  const names = new Set();
+  for (const t of dungeon.TYPES) for (let i = 0; i < 6; i++) names.add(dungeon.info(i, t.id).name);
+  assert.equal(names.size, 18);
+  const blood = dungeon.info(3, 'blut');
+  assert.ok(blood.need > dungeon.LEVELS[3].need && blood.minTier === dungeon.LEVELS[3].minTier + 1);
+  assert.ok(dungeon.info(5, 'dornen').trap > dungeon.info(0, 'dornen').trap);
+  // Fallen kosten Erfolgschance
+  close(dungeon.chance(2, 1e9, 'dornen'), dungeon.MAX_CHANCE * (1 - dungeon.info(2, 'dornen').trap), 1e-9);
+});
+
+test('Dungeons: Beute folgt den Schwerpunkten, der Schleifendungeon zeigt Erinnerungen', () => {
+  state.buildings.dungeon = 5;
+  state.addItems([getGroup('helden', 'SS')[0], ...getGroup('waffen', 'SS').slice(0, 1)]);
+  dungeon.party.autoEquip();
+  const count = { blut: {}, dornen: {}, schleife: {} };
+  const random = Math.random;
+  Math.random = seeded(21);
+  try {
+    for (const t of Object.keys(count)) {
+      for (let i = 0; i < 60; i++) {
+        state.dungeon.run = null;
+        assert.ok(dungeon.start(1, t));
+        state.dungeon.run.end = Date.now() - 1;
+        state.dungeon.run.power = 1e9; // sicherer Erfolg (bis auf Fallen)
+        const res = dungeon.collect();
+        for (const { item } of res.items) count[t][item.cat] = (count[t][item.cat] || 0) + 1;
+        if (t === 'schleife') assert.ok(res.memory && dungeon.memory(res.memory.id));
+        else assert.equal(res.memory, null);
+      }
+    }
+  } finally {
+    Math.random = random;
+  }
+  const share = (t, cats) => cats.reduce((n, c) => n + (count[t][c] || 0), 0) / Object.values(count[t]).reduce((a, b) => a + b, 0);
+  assert.ok(share('blut', ['monster', 'ruestung']) > 0.6);
+  assert.ok(share('dornen', ['lebewesen', 'relikte']) > 0.6);
+  assert.ok(share('schleife', ['monster', 'artefakte']) > 0.7);
+  assert.equal(dungeon.memoriesSeen().length, dungeon.MEMORIES.length, 'nach 60 Durchläufen alle Erinnerungen gesehen');
+});

@@ -167,8 +167,9 @@ export function rollTier(minTier = 0, random = Math.random, lucky = false) {
   return RARITIES.length - 1;
 }
 
-export function rollItem({ tier = null, minTier = 0, random = Math.random, lucky = false, world = realm.current() } = {}) {
+// cat: feste Kategorie (sonst zufällig)
+export function rollItem({ tier = null, minTier = 0, random = Math.random, lucky = false, world = realm.current(), cat: catId = null } = {}) {
   if (tier === null) tier = rollTier(minTier, random, lucky);
-  const cat = CATEGORIES[Math.floor(random() * CATEGORIES.length)];
+  const cat = catId ? { id: catId } : CATEGORIES[Math.floor(random() * CATEGORIES.length)];
   return getGroup(cat.id, RARITIES[tier].id, world)[Math.floor(random() * PER_GROUP)];
 }

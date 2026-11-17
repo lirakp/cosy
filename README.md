@@ -627,6 +627,23 @@ begrenzt der Rang der jeweiligen Anlage (Arena bzw. Dungeon-Tor).
 
 Alle Werte stehen oben in `src/dungeon.js`.
 
+
+### Drei Arten von Dungeons (je 6 Ränge = 18 Dungeons)
+
+Im Dungeon-Menü wählt man oben die Art, darunter die Gefahrenstufe. Das Tor
+schaltet die Ränge wie gehabt frei.
+
+| Art | Gefahr | Gold | Beute |
+| --- | --- | --- | --- |
+| 🩸 **Blutdungeon** (Blutkeller … Abgrund der roten Ewigkeit) | Stärke × 1,4 | × 1,5 | +1 Bonus-Stück, Bonus-Stücke einen Rang höher, 80 % Monster und Rüstung |
+| 🌿 **Dornendungeon** (Dornenkeller … Labyrinth der tausend Dornen) | Stärke × 1,15, Fallen kosten 8–20 % Erfolgschance | × 1,2 | +2 Standard- und +1 Bonus-Stück, 80 % Lebewesen und Relikte |
+| ⌛ **Schleifendungeon** (Echo des Kellers … Schleife der Ewigkeit) | Stärke × 1,25 | × 1,3 | +1 Bonus-Stück, 90 % Monster und Artefakte |
+
+Im **Schleifendungeon** durchleben die Helden bei jeder Rückkehr eine
+Erinnerung an grausame alte Zeiten, etwa „Das Erntefest von Rabenfurt“, „Die
+Belagerung von Dornwall“ oder „Das letzte Lied der Elfen“. Die 12 Erinnerungen
+werden in der **Chronik** im Dungeon-Menü gesammelt; ungesehene kommen zuerst.
+Werte in `src/dungeon.js` (`TYPES`, `MEMORIES`).
 ## Bossarena
 
 Drei Helden treten gemeinsam an; jeder trägt Waffe, Rüstung, Relikt und

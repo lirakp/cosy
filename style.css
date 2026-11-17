@@ -920,3 +920,24 @@ body[data-display="fit"] .hint { display: none; }
 body[data-display="fill"] canvas { box-shadow: none; }
 body[data-display="fill"] { background: #0b0a1f; }
 #display-buttons button.on { box-shadow: 0 0 0 2px #ffd04a; }
+
+/* ---------------------------------------------------------------- Dungeon-Arten */
+
+.dtypes .tab { flex: 1; }
+.dtab-blut.on { box-shadow: 0 0 0 2px #e0404a; }
+.dtab-dornen.on { box-shadow: 0 0 0 2px #6fbf6a; }
+.dtab-schleife.on { box-shadow: 0 0 0 2px #b888f0; }
+.dtype-info { background: #1b1730; padding: 8px 12px; font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+.dtype-info p { margin: 0; }
+.dtype-info.dtype-blut { box-shadow: inset 4px 0 0 #e0404a; }
+.dtype-info.dtype-dornen { box-shadow: inset 4px 0 0 #6fbf6a; }
+.dtype-info.dtype-schleife { box-shadow: inset 4px 0 0 #b888f0; }
+.chronicle { background: #1b1730; padding: 6px 12px; font-size: 12px; }
+.chronicle summary { cursor: pointer; color: #b888f0; }
+.memory { margin: 6px 0; }
+.memory b { color: #e6daf0; }
+.memory p { margin: 2px 0 0; font-style: italic; color: #b9a6c9; }
+.memory.scene { background: rgba(20, 10, 30, 0.6); padding: 10px 12px; max-width: 420px; text-align: left; box-shadow: inset 3px 0 0 #b888f0; }
+.memory.scene span { display: block; font-size: 11px; }
+.reveal.dtype-blut .rank-big { color: #ff6a6a; }
+.reveal.dtype-schleife .rank-big { color: #c8a8ff; }
