@@ -910,3 +910,13 @@ table.stats td { border-top: 1px solid #3a3170; }
 .realm-card.realm-himmel b { color: #ffe070; }
 .realm-card .big, .portalpanel > .big { flex: none; padding: 10px 14px; }
 .companions .comp-world { grid-column: 1 / -1; margin: 10px 0 0; color: #ffd04a; }
+
+/* ---------------------------------------------------------------- Bildanpassung */
+
+body[data-display="fill"] main,
+body[data-display="fit"] main { gap: 0; }
+body[data-display="fill"] .hint,
+body[data-display="fit"] .hint { display: none; }
+body[data-display="fill"] canvas { box-shadow: none; }
+body[data-display="fill"] { background: #0b0a1f; }
+#display-buttons button.on { box-shadow: 0 0 0 2px #ffd04a; }

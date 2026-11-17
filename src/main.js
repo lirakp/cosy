@@ -38,15 +38,59 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-// Das Bild wird nur in ganzen Bildschirmpixeln vergrößert, damit jeder
-// Spielpixel gleich groß bleibt.
+// Bildanpassung (im Pause-Menü wählbar, wird im Browser gemerkt):
+//   fill  – randlos: füllt das ganze Fenster (bei 16:9 ohne Verzerrung)
+//   fit   – ganzes Bild im Seitenverhältnis, so groß wie möglich
+//   pixel – nur ganze Vielfache: jeder Spielpixel gleich groß (mit Rand)
+const DISPLAY_KEY = 'cosy-display';
+const DISPLAY_MODES = { fill: 'Randlos', fit: 'Seitenverhältnis', pixel: 'Pixelgenau' };
+let displayMode = (() => {
+  try {
+    return DISPLAY_MODES[localStorage.getItem(DISPLAY_KEY)] ? localStorage.getItem(DISPLAY_KEY) : 'fill';
+  } catch {
+    return 'fill';
+  }
+})();
 function resize() {
-  const dpr = window.devicePixelRatio || 1;
-  const fit = Math.min(innerWidth / VIEW_W, (innerHeight - 56) / VIEW_H);
-  const scale = Math.max(1, Math.floor(fit * dpr)) / dpr;
-  canvas.style.width = `${VIEW_W * scale}px`;
-  canvas.style.height = `${VIEW_H * scale}px`;
+  document.body.dataset.display = displayMode;
+  let w;
+  let h;
+  if (displayMode === 'fill') {
+    w = innerWidth;
+    h = innerHeight;
+  } else if (displayMode === 'fit') {
+    const s = Math.min(innerWidth / VIEW_W, innerHeight / VIEW_H);
+    w = VIEW_W * s;
+    h = VIEW_H * s;
+  } else {
+    const dpr = window.devicePixelRatio || 1;
+    const fit = Math.min(innerWidth / VIEW_W, (innerHeight - 56) / VIEW_H);
+    const scale = Math.max(1, Math.floor(fit * dpr)) / dpr;
+    w = VIEW_W * scale;
+    h = VIEW_H * scale;
+  }
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
 }
+function setDisplay(mode) {
+  displayMode = mode;
+  try {
+    localStorage.setItem(DISPLAY_KEY, mode);
+  } catch {
+    // nicht speicherbar – gilt dann nur bis zum Neuladen
+  }
+  resize();
+  showDisplay();
+}
+function showDisplay() {
+  const box = document.getElementById('display-buttons');
+  if (box) box.innerHTML = Object.entries(DISPLAY_MODES).map(([id, name]) => `<button data-display="${id}" class="${displayMode === id ? 'on' : ''}">${name}</button>`).join('');
+}
+document.getElementById('display-buttons')?.addEventListener('click', (e) => {
+  const id = e.target.closest('[data-display]')?.dataset.display;
+  if (id) setDisplay(id);
+});
+showDisplay();
 addEventListener('resize', resize);
 resize();
 
