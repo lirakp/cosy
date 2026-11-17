@@ -70,7 +70,8 @@ const fresh = () => ({
   pulls: 0,
   exp: newExpedition(),
   dungeon: { run: null, team: Array.from({ length: 5 }, member) },
-  buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1 },
+  buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1, well: 0 },
+  well: { pityA: 0, pityS: 0, freeNext: false, dailyDay: -1, dailyUsed: 0, spiritGift: false, spiritWishes: 0 },
   arena: newArena(),
   mine: newMine(),
   forge: { glut: 3, last: 0, made: 0 },
@@ -127,6 +128,7 @@ function normalize(saved) {
     stats: { ...base.stats, ...saved.stats },
     magic: { ...base.magic, ...saved.magic },
     companions: { ...base.companions, ...saved.companions },
+    well: { ...base.well, ...saved.well },
     garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
     village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market }, trap: { ...base.village.trap, ...saved.village?.trap } },
   };
@@ -327,6 +329,9 @@ export const state = {
   },
   set dayCount(n) {
     data.dayCount = n;
+  },
+  get well() {
+    return data.well;
   },
   get companions() {
     return data.companions;

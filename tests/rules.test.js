@@ -807,3 +807,72 @@ test('Begleiter: Geschenke bringen je nach Tier Gold, Saat, Fisch, Erz – selte
   state.companions.owned = [];
   state.companions.active = null;
 });
+
+// ---------------------------------------------------------------- Wunschbrunnen
+
+import * as well from '../src/well.js';
+
+const setGold = (g) => (g > state.gold ? state.addGold(g - state.gold) : state.spend(state.gold - g));
+const resetWell = () => Object.assign(state.well, { pityA: 0, pityS: 0, freeNext: false, dailyDay: state.dayCount, dailyUsed: 99, spiritGift: false });
+
+test('Brunnen: Glückszähler garantiert spätestens beim 60. Stück ein A und beim 300. ein S', () => {
+  resetWell();
+  state.buildings.well = 0;
+  setGold(1e9);
+  let sinceA = 0, sinceS = 0, maxA = 0, maxS = 0;
+  const random = () => 0.001; // immer Rang D, solange nichts erzwungen wird
+  for (let i = 0; i < 70; i++) {
+    for (const { item } of well.pull(10, random).results) {
+      sinceA = item.tier >= 3 ? 0 : sinceA + 1;
+      sinceS = item.tier >= 4 ? 0 : sinceS + 1;
+      maxA = Math.max(maxA, sinceA);
+      maxS = Math.max(maxS, sinceS);
+    }
+  }
+  assert.equal(maxA, well.PITY_A - 1, 'nie mehr als 59 Stücke ohne A');
+  assert.equal(maxS, well.PITY_S - 1, 'nie mehr als 299 Stücke ohne S');
+});
+
+test('Brunnen: Gratiswünsche am Tag, Gratis-Folgewunsch und Rabatt je Rang', () => {
+  resetWell();
+  state.well.dailyUsed = 0;
+  state.buildings.well = 0;
+  setGold(0);
+  assert.equal(well.dailyLeft(), 1);
+  const r = well.pull(1, () => 0.99);
+  assert.ok(!r.error && r.free === 'daily' && r.paid === 0);
+  assert.equal(well.dailyLeft(), 0);
+  assert.ok(well.pull(1, () => 0.99).error, 'danach kostet es');
+  setGold(1e6);
+  const g = well.pull(1, () => 0.01); // Glückswurf trifft
+  assert.ok(g.gotFreeNext && well.freeNext());
+  const before = state.gold;
+  assert.equal(well.pull(1, () => 0.99).free, 'next');
+  assert.equal(state.gold, before);
+  state.dayCount += 1;
+  assert.equal(well.dailyLeft(), 1, 'neuer Tag, neuer Gratiswunsch');
+  state.buildings.well = 5;
+  assert.equal(well.dailyLeft(), 3);
+  assert.ok(well.cost(10) < 585 * 0.85);
+  state.buildings.well = 0;
+});
+
+test('Brunnen: Geschenk des Brunnengeists ist selten und garantiert Rang A–SS', () => {
+  resetWell();
+  state.buildings.well = 0;
+  setGold(1e9);
+  const random = seeded(3);
+  let gifts = 0;
+  const n = 3000;
+  for (let i = 0; i < n; i++) {
+    const r = well.pull(10, random);
+    if (r.gotSpirit) {
+      gifts++;
+      const s = well.pull('spirit', random);
+      assert.equal(s.free, 'spirit');
+      assert.ok(s.results[0].item.tier >= 3);
+    }
+  }
+  close(gifts / n, 1 - (1 - well.SPIRIT_CHANCE[0]) ** 10, 0.012, 'je 10er-Zug');
+  assert.ok(well.pull('spirit').error, 'ohne Geschenk geht es nicht');
+});

@@ -671,6 +671,45 @@ const UPGRADES = {
     }
   },
 
+  // Der Brunnen selbst liegt im Boden-Bild; hier nur der Schmuck je Rang
+  well(ctx, x, t) {
+    const base = GROUND_Y + 4;
+    if (t >= 1) {
+      rankFlag(ctx, x - 17, base - 24, 24, t, -1);
+      for (const [dx, c] of [[13, '#ff8ab0'], [15, '#ffd04a'], [17, '#b888f0'], [-21, '#ff8ab0'], [-23, '#9be8e0']]) {
+        rect(ctx, x + dx, base - 3, 1, 3, PAL.leaf);
+        px(ctx, x + dx, base - 4, c);
+        px(ctx, x + dx - 1, base - 2, PAL.leafLight);
+      }
+    }
+    if (t >= 2) {
+      // Laterne an einem Pfahl (Licht in den Lichtern)
+      rect(ctx, x + 20, base - 16, 1, 16, PAL.woodDark);
+      rect(ctx, x + 18, base - 16, 3, 1, PAL.woodDark);
+      rect(ctx, x + 17, base - 15, 3, 4, PAL.ink);
+      rect(ctx, x + 18, base - 14, 1, 2, '#ffd04a');
+    }
+    if (t >= 3) {
+      // Goldkante am Dach und am Rand
+      for (let i = 0; i < 6; i++) px(ctx, x - 4 - i * 2, base - 28 + i, GOLD);
+      for (let i = 0; i < 6; i++) px(ctx, x + 3 + i * 2, base - 28 + i, GOLD);
+      rect(ctx, x - 12, base - 11, 24, 1, GOLD);
+      px(ctx, x, base - 29, GOLD);
+    }
+    if (t >= 4) {
+      crystals(ctx, x - 30, base);
+      crystals(ctx, x + 24, base);
+    }
+    if (t >= 5) {
+      // Regenbogen-Bogen über dem Dach
+      for (let i = 0; i <= 16; i++) {
+        const dx = i - 8;
+        const dy = Math.round((dx * dx) / 10);
+        RANK_COLORS.slice(1).forEach((col, k) => px(ctx, x + dx, base - 38 + dy - k, col));
+      }
+    }
+  },
+
   forge(ctx, x, t) {
     const base = GROUND_Y + 3;
     const left = x - 14;
@@ -710,7 +749,7 @@ const UPGRADES = {
 // Bild einer Anlage im angegebenen Rang (breite Leinwand, Mitte bei 56)
 const PROP_W = 112;
 // Grundbilder (Funktionsdeklarationen weiter oben, daher hier schon verfügbar)
-const BASE_DRAW = { camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge, tower: drawTower };
+const BASE_DRAW = { well: () => {}, camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge, tower: drawTower };
 const propCache = new Map();
 export function buildingProp(name, tier) {
   const key = `${name}-${tier}`;
@@ -900,6 +939,7 @@ export function createWorld(theme = {}) {
 
       drawTeam(ctx, cam, time);
 
+      drawBuilding(ctx, 'well', WELL_X, cam);
       drawBuilding(ctx, 'dungeon', DUNGEON_X, cam);
       drawBuilding(ctx, 'forge', FORGE_X, cam);
       drawBuilding(ctx, 'arena', ARENA_X, cam);

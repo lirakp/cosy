@@ -255,6 +255,30 @@ Galerie steht bei jeder Schriftrolle, welchen Zauber sie lehrt.
 
 Werte in `src/magic.js`.
 
+## Wunschbrunnen
+
+- **Glückszähler:** Spätestens das 60. Stück ohne Rang A oder besser ist ein A,
+  spätestens das 300. ohne S oder besser ein S. Beide Zähler stehen im Brunnen-Menü.
+- **Wunsch des Tages:** Gratis-Einzelwünsche pro Spieltag. Der Brunnen funkelt,
+  wenn einer bereit ist.
+- **Gratis-Folgewunsch:** Nach jedem Wunsch ist der nächste Einzelwunsch mit
+  etwas Glück gratis (5–12 % je Brunnen-Rang).
+- **Brunnengeist:** Er schwebt über dem Brunnen, nachts deutlicher, und kommentiert
+  jeden Wunsch. Ganz selten (je gezogenem Stück 0,4–1,25 %) erscheint er mit
+  einem „!“ und schenkt einen Gratiswunsch mit garantiert Rang A, S oder SS.
+- **Ausbau** (1500 · 4000 · 10000 · 25000 · 60000 Gold), im Brunnen-Menü:
+
+| Rang | Rabatt | Gratis am Tag | Folgewunsch gratis | Geschenk des Geists (je Stück) | Aussehen |
+| --- | --- | --- | --- | --- | --- |
+| D | – | 1 | 5 % | 0,4 % | – |
+| C | 4 % | 1 | 6 % | 0,5 % | Rangfahne, Blumen |
+| B | 8 % | 1 | 7 % | 0,6 % | Laterne |
+| A | 12 % | 2 | 8 % | 0,8 % | Goldkanten |
+| S | 16 % | 2 | 10 % | 1 % | Kristalle |
+| SS | 20 % | 3 | 12 % | 1,25 % | Regenbogen |
+
+Werte in `src/well.js`.
+
 ## Begleiter
 
 Auf dem Hof und im Dorf taucht ab und zu ein streunendes Tier mit einem Herz

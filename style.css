@@ -841,3 +841,21 @@ table.stats td { border-top: 1px solid #3a3170; }
 .treat { display: flex; align-items: center; gap: 2px; padding: 2px 6px 2px 2px; font-size: 11px; }
 .treat canvas { width: 16px; height: 16px; image-rendering: pixelated; }
 .treat.fav { box-shadow: 0 0 0 2px #e8577a; }
+
+/* ---------------------------------------------------------------- Brunnen */
+
+.spirit { display: flex; gap: 10px; align-items: center; background: #1b1730; padding: 8px 12px; box-shadow: 0 0 0 2px #4b6a8a; }
+.spirit p { margin: 0; font-style: italic; color: #c8f0ff; }
+.spirit.gift { box-shadow: 0 0 0 2px #ffd04a, 0 0 18px rgba(255, 208, 74, 0.35); }
+.spirit-img canvas { width: 36px; height: 36px; image-rendering: pixelated; display: block; }
+.spirit-wish { flex: none; width: 100%; padding: 10px 12px; background: linear-gradient(90deg, #b888f0, #ffc940, #ff6a9a); color: #1b1730; animation: spirit-pulse 1.6s ease-in-out infinite; }
+.spirit-wish small { color: #2a2140; }
+@keyframes spirit-pulse { 50% { filter: brightness(1.15); } }
+.actions .free { box-shadow: 0 0 0 3px #ffd04a; }
+.pity { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.pity .line { display: flex; justify-content: space-between; }
+.pity .bar { height: 6px; }
+.pity-a i { background: #b888f0; }
+.pity-s i { background: #ffc940; }
+.rank-a { color: #b888f0; }
+.rank-s { color: #ffc940; }

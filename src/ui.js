@@ -16,6 +16,7 @@ import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import * as companions from './companions.js';
+import * as well from './well.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -119,28 +120,44 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
 
   // ------------------------------------------------------------ Wunschbrunnen
 
+  let spiritLine = null; // letzter Spruch des Brunnengeists
   function renderWell() {
     const chances = tierChances(buffs.lucky());
     const rates = RARITIES.map(
       (r, t) => `<tr class="r-${r.id}"><td><b>${r.id}</b></td><td>${percent(chances[t])}</td><td>${fmt(r.sell)} Gold</td></tr>`
     ).join('');
+    const t = well.tier();
+    const free = well.freeSingle();
+    const pityA = 1 - well.untilA() / well.PITY_A;
+    const pityS = 1 - well.untilS() / well.PITY_S;
     overlay.innerHTML = `
       <section class="panel well">
         ${head('Wunschbrunnen')}
-        <p class="lead">Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.</p>
+        ${upgradeBar('well')}
+        <div class="spirit${well.spiritGift() ? ' gift' : ''}"><span class="spirit-img"></span><p>${spiritLine || well.say()}</p></div>
         ${buffs.lucky() ? '<p class="buff-note">✦ Glücksrausch aktiv: seltene Ränge um 10 % wahrscheinlicher.</p>' : ''}
+        ${well.spiritGift() ? '<button class="big spirit-wish" data-act="pull" data-n="spirit">✦ Geschenk des Brunnengeists<small>Gratiswunsch · garantiert Rang A, S oder SS</small></button>' : ''}
         <div class="actions">
-          <button class="big" data-act="pull" data-n="1">1× wünschen<small>${fmt(sets.pullCost(PULL_COST))} Gold</small></button>
-          <button class="big" data-act="pull" data-n="10">10× wünschen<small>${fmt(sets.pullCost(PULL_10_COST))} Gold</small></button>
+          <button class="big${free ? ' free' : ''}" data-act="pull" data-n="1">1× wünschen<small>${free ? (free === 'next' ? 'Gratis! (Glückswurf)' : 'Gratis! (Wunsch des Tages)') : `${fmt(well.cost(1))} Gold`}</small></button>
+          <button class="big" data-act="pull" data-n="10">10× wünschen<small>${fmt(well.cost(10))} Gold</small></button>
+        </div>
+        <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
+        <div class="pity">
+          <div class="line"><span>Glückszähler <b class="rank-a">A</b></span><span class="muted">spätestens in ${well.untilA()} Stücken</span></div>
+          <div class="bar pity-a"><i style="width:${Math.round(pityA * 100)}%"></i></div>
+          <div class="line"><span>Glückszähler <b class="rank-s">S</b></span><span class="muted">spätestens in ${well.untilS()} Stücken</span></div>
+          <div class="bar pity-s"><i style="width:${Math.round(pityS * 100)}%"></i></div>
         </div>
         <p class="note" id="well-note"></p>
         <div class="grid results" id="results"></div>
         <details>
           <summary>Chancen und Duplikat-Werte</summary>
           <table><tr><th>Rang</th><th>Chance</th><th>Duplikat</th></tr>${rates}</table>
+          <p class="muted">Ohne Rang A oder besser ist spätestens das ${well.PITY_A}. Stück ein A, ohne Rang S oder besser spätestens das ${well.PITY_S}. ein S. Der Brunnengeist verschenkt ab und zu einen Wunsch mit garantiert A–SS (je Stück ${percent(well.SPIRIT_CHANCE[t])}).</p>
         </details>
         <footer><button data-act="gallery">Zur Galerie</button></footer>
       </section>`;
+    $('.spirit-img', overlay).append(picture(well.ghostImage()));
     renderResults();
   }
 
@@ -153,28 +170,20 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   function pull(n) {
-    const cost = sets.pullCost(n === 10 ? PULL_10_COST : PULL_COST);
-    const note = $('#well-note');
-    if (state.gold < cost) {
-      note.textContent = 'Nicht genug Gold. Sammle Münzen auf dem Weg oder verkaufe Duplikate in der Galerie.';
+    const res = well.pull(n);
+    if (res.error) {
+      $('#well-note').textContent = res.error;
       audio.play('error');
       return;
     }
-    // Glückszauber: das erste Stück hat mindestens den Rang des Zaubers
-    const lucky = magic.useLuckyPull();
-    const items = Array.from({ length: n }, (_, i) => rollItem({ lucky: buffs.lucky(), minTier: lucky && i === 0 ? lucky : 0 }));
-    const seen = new Set();
-    lastPull = items.map((item) => {
-      const isNew = !state.count(item.id) && !seen.has(item.id);
-      seen.add(item.id);
-      return { item, isNew };
-    });
-    state.pull(cost, items);
-    audio.play('pull');
-    note.textContent = '';
-    renderResults();
+    lastPull = res.results;
+    spiritLine = well.say(res);
+    audio.play(res.free === 'spirit' ? 'wish' : 'pull');
+    renderWell();
+    if (res.gotSpirit) toast('✦ Der Brunnengeist erscheint und schenkt dir einen besonderen Wunsch!');
+    else if (res.gotFreeNext) toast('✦ Glück gehabt: Dein nächster Einzelwunsch ist gratis!');
     // seltene Funde der Reihe nach groß zeigen, das seltenste zuletzt
-    reveals.push(...lastPull.filter((p) => p.item.tier >= HIGHLIGHT_TIER).sort((a, b) => a.item.tier - b.item.tier));
+    reveals.push(...lastPull.filter((p) => p.item.tier >= HIGHLIGHT_TIER).sort((a, b) => a.item.tier - b.item.tier).map((p) => (res.free === 'spirit' ? { ...p, source: 'GESCHENK DES BRUNNENGEISTS' } : p)));
     nextReveal();
   }
 
@@ -1651,7 +1660,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     const act = btn.dataset.act;
     if (act === 'close') show(null);
     if (act === 'gallery') show('gallery');
-    if (act === 'pull') pull(Number(btn.dataset.n));
+    if (act === 'pull') pull(btn.dataset.n === 'spirit' ? 'spirit' : Number(btn.dataset.n));
     if (act === 'build') {
       if (!buildings.advance(btn.dataset.id)) audio.play('error');
       else {

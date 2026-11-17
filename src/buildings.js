@@ -40,6 +40,13 @@ export const BUILDINGS = {
     pitch: 'Ein Anbau am Haus: Hier kopierst du gezielt eigene Sammelstücke – für Gold, Erz aus der Mine und Schmiedeglut.',
     unlocks: 'Kopiert werden Stücke bis zum Rang der Schmiede. Jeder Ausbau vergrößert den Glutvorrat und lässt die Glut schneller nachladen.',
   },
+  well: {
+    name: 'Wunschbrunnen',
+    buy: 0,
+    upgrades: [1500, 4000, 10000, 25000, 60000],
+    pitch: 'Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.',
+    unlocks: 'Jeder Rang macht Wünsche günstiger (bis −20 %), erhöht die Chance auf einen Gratis-Folgewunsch und auf ein Geschenk des Brunnengeists. Ab Rang A zwei, bei SS drei Gratiswünsche am Tag.',
+  },
   tower: {
     name: 'Magierturm',
     buy: 1500,

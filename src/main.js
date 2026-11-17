@@ -7,6 +7,7 @@ import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import { createTitle } from './title.js';
 import * as companions from './companions.js';
+import * as well from './well.js';
 import * as care from './companioncare.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
@@ -578,6 +579,7 @@ function drawOutside(ph) {
   tint(ph.tint, ph.tintAlpha);
   ctx.drawImage(scene, 0, 0);
   world.drawLights(ctx, camX, time, ph.night);
+  well.drawSpirit(ctx, WELL_X - Math.round(camX), GROUND_Y + 4, time, ph.night);
   companions.drawGlow(ctx, Math.round(camX), WALK_Y, time, ph.night);
 }
 
@@ -727,7 +729,7 @@ function frame(now) {
     : near === 'bed' ? (canSleep() ? 'Schlafen gehen' : 'Bett · schlafen ab dem Abend')
     : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
     : near === 'trader' ? '✦ Erzhändler'
-    : near === 'well' ? '✦ Wunschbrunnen'
+    : near === 'well' ? (well.spiritGift() ? '✦ Wunschbrunnen · Der Geist hat ein Geschenk!' : well.freeSingle() ? '✦ Wunschbrunnen · Gratiswunsch!' : '✦ Wunschbrunnen')
     : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
     : near === 'forge' ? '⚒ Schmiede'
