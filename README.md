@@ -226,6 +226,18 @@ nicht verbraucht.
 
 Werte in `src/magic.js`.
 
+## Sternschnuppen
+
+Nachts (draußen auf dem Hof oder im Dorf, nicht in der Seesicht beim Angeln)
+zieht alle 20–60 Sekunden Spielzeit eine Sternschnuppe über den Himmel. Sie ist
+knapp 2 Sekunden zu sehen – wer sie rechtzeitig anklickt, darf sich etwas wünschen:
+
+- 5 %: ein Sammelstück ab Rang C (mit eigenem Pop-up)
+- mit Magierturm: 45 % der übrigen Wünsche bringen +12 Mana
+- sonst 40–120 Gold
+
+Gefangene Sternschnuppen zählen in der Statistik. Die Werte stehen in `src/stars.js`.
+
 ## Schmiede
 
 Der Anbau links am Haus kopiert gezielt ein Sammelstück, das man schon besitzt

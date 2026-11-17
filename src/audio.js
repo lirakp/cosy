@@ -371,6 +371,11 @@ const SFX = {
     [72, 76, 79, 83, 86, 91, 95].forEach((n, i) => tone(midi(n), t + i * 0.05, 0.25, { type: 'sine', gain: 0.05, release: 0.5 }));
     hiss(t, 0.6, { gain: 0.03, freq: 6000 });
   },
+  wish() {
+    const t = ctx.currentTime;
+    [84, 88, 91, 96, 100].forEach((n, i) => tone(midi(n), t + i * 0.06, 0.2, { type: 'sine', gain: 0.05, release: 0.6 }));
+    hiss(t, 0.4, { gain: 0.03, freq: 7000 });
+  },
   pause() {
     notes([76, 69], 0.08, { type: 'triangle', gain: 0.06, release: 0.2 });
   },

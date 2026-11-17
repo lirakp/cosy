@@ -613,3 +613,33 @@ test('Magie: Zeitsprung gibt Expedition 30 Minuten Ertrag', () => {
   assert.ok(magic.cast('zeitsprung'));
   close(expedition.live.gold - before, expedition.goldPerMinute() * 30, 2, 'Truhe');
 });
+
+// ---------------------------------------------------------------- Sternschnuppen
+
+import * as stars from '../src/stars.js';
+
+test('Sternschnuppen: erscheinen nur nachts, Wunsch bringt Gold, Mana oder selten ein Sammelstück', () => {
+  for (let i = 0; i < 200; i++) stars.update(1, false);
+  assert.equal(stars.current(), null, 'tagsüber keine');
+  for (let i = 0; i < 200 && !stars.current(); i++) stars.update(1, true);
+  assert.ok(stars.current(), 'nachts kommt eine');
+  const p = stars.position();
+  assert.ok(stars.tryCatch(p.x + 3, p.y - 2), 'Treffer mit etwas Spielraum');
+  assert.equal(stars.current(), null);
+
+  state.buildings.tower = 0;
+  const random = seeded(77);
+  const n = 20000;
+  let items = 0, mana = 0, gold = 0;
+  for (let i = 0; i < n; i++) {
+    state.magic.mana = 0;
+    const w = stars.wish(random);
+    if (w.item) { items++; assert.ok(w.item.tier >= 1); }
+    else if (w.mana) mana++;
+    else gold++;
+  }
+  close(items / n, stars.ITEM_CHANCE, 0.006, 'Sammelstück');
+  close(mana / n, (1 - stars.ITEM_CHANCE) * stars.MANA_CHANCE, 0.015, 'Mana');
+  assert.ok(gold > 0);
+  assert.equal(state.stats.items.sternschnuppe.n, items);
+});

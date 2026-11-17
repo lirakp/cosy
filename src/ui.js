@@ -933,6 +933,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     garten: 'Garten (Saatgut)',
     aufgaben: 'Aufgaben im Dorf',
     gartenhelfer: 'Gartenhelfer (Kasse)',
+    sternschnuppe: 'Sternschnuppen',
     markt: 'Markt im Dorf',
     angeln: 'Angeln (Flaschenpost)',
     sonstiges: 'Sonstiges',
@@ -1780,6 +1781,15 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     openFishBook: () => show('fishbook'),
     openTrap: () => show('trap'),
     openTower: () => show('tower'),
+    // Wunsch an eine Sternschnuppe
+    wished(res) {
+      if (res.item) {
+        toast('Eine Sternschnuppe! Dein Wunsch geht in Erfüllung …');
+        reveals.push({ item: res.item, isNew: res.isNew, source: 'STERNSCHNUPPE' });
+        if (!$('.reveal')) nextReveal();
+      } else if (res.mana) toast(`✦ Sternschnuppe: +${res.mana} Mana`);
+      else toast(`✦ Sternschnuppe: +${fmt(res.gold)} Gold`);
+    },
     updateTower,
     refreshGarden() {
       if (view === 'garden') renderGarden();

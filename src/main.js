@@ -5,6 +5,7 @@ import * as garden from './garden.js';
 import * as gardener from './gardener.js';
 import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
+import * as stars from './stars.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
 import * as mine from './mine.js';
@@ -350,6 +351,16 @@ addEventListener('keydown', (e) => {
 
 // Ein Klick direkt auf die Truhe leert sie.
 setTapHandler((x, y) => {
+  // Sternschnuppe anklicken: etwas wünschen
+  if (!paused && (place === 'outside' || place === 'village')) {
+    const res = stars.tryCatch(x, y);
+    if (res) {
+      audio.play('wish');
+      spellFx = 1.6;
+      ui.wished(res);
+      return true;
+    }
+  }
   // Klick auf den Wegweiser führt ins Dorf, im Dorf auf einen Bewohner spricht ihn an
   if (!paused && place === 'outside' && Math.abs(x - (VILLAGE_SIGN_X - Math.round(camX))) < 12 && y > GROUND_Y - 22 && y < GROUND_Y + 6) {
     enterVillage();
@@ -689,10 +700,15 @@ function frame(now) {
   audio.setNight(ph.night);
   village.setDayPhase(dayLabel(dayTime).name);
   lastNight = ph.night;
+  // Sternschnuppen nur nachts und unter freiem Himmel (nicht beim Angeln in der Seesicht)
+  const openSky = (place === 'outside' || place === 'village') && !villageScene.fishing();
+  stars.update(dt, openSky && ph.night > 0.6);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);
   else drawOutside(ph);
+
+  if ((place === 'outside' || place === 'village') && !villageScene.fishing()) stars.draw(ctx, time);
 
   // Funkeln um die Spielfigur nach einem Zauber
   if (spellFx > 0) {
