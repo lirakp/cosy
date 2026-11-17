@@ -6,6 +6,7 @@ import * as fishtrap from './fishtrap.js';
 import * as magic from './magic.js';
 import * as companions from './companions.js';
 import { state } from './state.js';
+import * as realm from './realm.js';
 
 // Das Dorf von außen: Häuser, Rathaus, Marktstand, Teich mit Steg.
 // Links wird geangelt, rechts geht es zurück zum Hof.
@@ -17,18 +18,22 @@ const POND_W = 98;
 const BOB = { x: 26, y: 165 };
 
 export function zoneAt(x) {
-  if (x < 72) return 'fishing';
-  if (x >= 76 && x <= 98) return 'fishbook';
-  if (x > 98 && x <= 112) return 'trap';
+  const home = !realm.inRealm();
+  // in den Dimensionen liegt am See das Minispiel des Dorfs
+  if (x < 72) return home ? 'fishing' : 'minigame';
+  if (home && x >= 76 && x <= 98) return 'fishbook';
+  if (home && x > 98 && x <= 112) return 'trap';
   if (x > VILLAGE_W - 34) return 'farm';
-  if (Math.abs(x - village.MARKET.x) < 14) return 'market';
-  for (const v of village.VILLAGERS) if (Math.abs(x - v.x) < 10) return `npc:${v.id}`;
+  if (Math.abs(x - village.marketNpc().x) < 14) return 'market';
+  for (const v of village.villagers()) if (Math.abs(x - v.x) < 10) return `npc:${v.id}`;
   return null;
 }
 
 // ---------------------------------------------------------------- statische Teile
 
 function house(ctx, x, w, wall, roof, roofDark, deco) {
+  // in den Dimensionen tragen alle Häuser die Farben der Welt
+  if (realm.inRealm()) [wall, roof, roofDark] = [PAL.wall, PAL.roof, PAL.roofDark];
   const base = GROUND_Y + 3;
   const wallH = 22;
   const top = base - wallH;
@@ -53,11 +58,16 @@ function house(ctx, x, w, wall, roof, roofDark, deco) {
   return { window: [x + w - 17, top + 7, 9, 7] };
 }
 
+// Farben des Sees: Wasser, in der Hölle Lava, im Himmel ein Loch in den Wolken
+const POND_COLORS = { normal: ['#4a7ab0', '#3a6aa0', '#8ab8e8'], hoelle: ['#ffb03a', '#e8501c', '#fff1b8'], himmel: ['#b6dafc', '#7ab8f8', '#ffffff'] };
+const pondColors = () => POND_COLORS[realm.current()] || POND_COLORS.normal;
+
 function drawPond(ctx) {
   const top = GROUND_Y + 1;
+  const [shallow, deep] = pondColors();
   for (let y = top; y < VIEW_H; y++) {
     const edge = POND_W - 6 + Math.round(Math.sin(y / 3) * 2);
-    rect(ctx, 0, y, edge, 1, y < top + 3 ? '#4a7ab0' : '#3a6aa0');
+    rect(ctx, 0, y, edge, 1, y < top + 3 ? shallow : deep);
     rect(ctx, edge, y, 2, 1, PAL.grassDark);
   }
   // Schilf und Seerosen
@@ -74,6 +84,20 @@ function drawPond(ctx) {
   rect(ctx, 44, WALK_Y - 1, POND_W - 40, 1, PAL.woodLight);
   for (let x = 46; x < POND_W + 2; x += 6) rect(ctx, x, WALK_Y - 1, 1, 4, PAL.woodDark);
   for (const x of [46, 70]) rect(ctx, x, WALK_Y + 3, 2, 10, PAL.woodDark);
+}
+
+// In den Dimensionen: Schild zum Minispiel (Amboss bzw. Stern)
+function drawForgeSign(ctx, x) {
+  rect(ctx, x, WALK_Y - 22, 2, 22, PAL.woodDark);
+  rect(ctx, x - 7, WALK_Y - 26, 16, 9, PAL.woodLight);
+  rect(ctx, x - 7, WALK_Y - 26, 16, 1, PAL.wood);
+  if (realm.current() === 'hoelle') {
+    rect(ctx, x - 4, WALK_Y - 22, 10, 2, '#3a3438');
+    rect(ctx, x - 1, WALK_Y - 20, 4, 2, '#3a3438');
+  } else {
+    rect(ctx, x - 1, WALK_Y - 24, 3, 5, '#ffd04a');
+    rect(ctx, x - 3, WALK_Y - 22, 7, 1, '#ffd04a');
+  }
 }
 
 // Pult mit dem Angelbuch am Ende des Stegs
@@ -155,7 +179,8 @@ function makeVillage() {
   WINDOWS.length = 0; // beim Neuzeichnen (Landschaftswechsel) nicht doppelt sammeln
   const { canvas, ctx } = makeGround();
   drawPond(ctx);
-  drawBookStand(ctx, 86);
+  if (!realm.inRealm()) drawBookStand(ctx, 86);
+  else drawForgeSign(ctx, 86);
   // Bäckerei mit Brezel-Schild
   WINDOWS.push(house(ctx, 128, 46, '#e8c9a0', PAL.roof, PAL.roofDark, (c, x, top) => {
     rect(c, x + 18, top - 4, 1, 4, PAL.woodDark);
@@ -373,22 +398,24 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
     draw(ctx, camX, time) {
       const cam = Math.round(camX);
       ctx.drawImage(ground, -cam, 0);
-      // Wasser glitzert
+      // Wasser glitzert (Lava blubbert, Wolken schimmern)
       for (let i = 0; i < 6; i++) {
         const x = Math.floor((i * 17 + time * 6) % (POND_W - 14)) + 4 - cam;
         const y = GROUND_Y + 6 + ((i * 7) % 26);
-        rect(ctx, x, y, 3, 1, '#8ab8e8');
+        rect(ctx, x, y, 3, 1, pondColors()[2]);
       }
       // Bewohner und Marktfrau
-      for (const v of village.VILLAGERS) {
+      for (const v of village.villagers()) {
         const bob = Math.floor(time * 1.5 + v.x) % 2;
         ctx.drawImage(village.villagerImage(v.id), v.x - 8 - cam, WALK_Y - 16 + bob);
       }
-      ctx.drawImage(village.villagerImage('hilde'), village.MARKET.x - 8 - cam, WALK_Y - 25);
+      ctx.drawImage(village.villagerImage(village.marketNpc().id), village.marketNpc().x - 8 - cam, WALK_Y - 25);
 
       // Fischreuse: Pfosten am Ufer, Seil zum Korb im Wasser
       const tx = 106 - cam;
-      if (fishtrap.built()) {
+      if (realm.inRealm()) {
+        // keine Reuse in den Dimensionen
+      } else if (fishtrap.built()) {
         rect(ctx, tx, GROUND_Y - 10, 2, 16, PAL.woodDark);
         rect(ctx, tx - 1, GROUND_Y - 11, 4, 2, PAL.wood);
         const bob = Math.round(Math.sin(time * 2) * 1);
@@ -552,11 +579,13 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         glow(ctx, x - 3 - cam, GROUND_Y - 13, 10 + Math.round(night * 6), 0.12 + 0.25 * night);
       }
       // Reuse voll: Zeichen über dem Pfosten
-      if (fishtrap.full()) mark(ctx, '!', 107 - cam, WALK_Y - 34 + Math.round(Math.sin(time * 3) * 1.5), PAL.coin);
+      if (realm.inRealm()) {
+        // keine Reuse
+      } else if (fishtrap.full()) mark(ctx, '!', 107 - cam, WALK_Y - 34 + Math.round(Math.sin(time * 3) * 1.5), PAL.coin);
       else if (fishtrap.stored()) ctx.drawImage(village.fishImage(Object.keys(state.village.trap.stored)[0]), 99 - cam, WALK_Y - 36, 16, 16);
 
       // Aufgaben-Zeichen über den Köpfen
-      for (const v of village.VILLAGERS) {
+      for (const v of village.villagers()) {
         const q = village.quest(v.id);
         if (!q) continue;
         const ready = village.canComplete(q);

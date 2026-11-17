@@ -322,6 +322,61 @@ Zauber-Schriftrollen gibt es nur in der Heimat.
   (Lager, Dungeon, Arena, Mine, Schmiede, Turm, Brunnen), öffnet das Portal auch
   die andere Dimension. Am Portal wählt man dann das Ziel.
 
+### Dörfer der Dimensionen
+
+Das Schild links führt in jeder Dimension in ein eigenes Dorf im Stil der Welt.
+Die Bewohner haben Hörner bzw. Heiligenschein, die Häuser die Farben der Welt.
+Statt eines Sees liegt dort ein Lavasee bzw. ein Wolkenloch.
+
+| | Bewohner | Händler |
+| --- | --- | --- |
+| Hölle | Köchin Kohla, Schmied Brandolf, Aschefürst Asmund, Gärtnerin Flamma, Seelensammler Grimm | Händlerin Zunder |
+| Himmel | Bäckerin Aurelia, Sternenhüter Cirrus, Ratsältester Lumen, Gärtnerin Celeste, Windreiter Zephyr | Händler Nimbus |
+
+**Aufgaben** wollen Pflanzen der Dimension, Erz, Sammelstück-Duplikate der
+Dimension oder Glutsteine/Sternensplitter. Sie zahlen dreimal so viel Gold, und
+Sammelstücke gibt es ab Rang B.
+
+**Minispiele** (statt Angeln, links am See):
+
+- **Höllenschmiede am Lavasee:** 8 Schläge. Ein Zeiger saust über eine Leiste
+  und wird mit jedem Schlag schneller. `E` im gelben Feld = perfekt (3 Punkte),
+  im roten = gut (1 Punkt).
+- **Sternenfang über den Wolken:** 25 Sekunden lang mit ← → den Wolkenkorb
+  bewegen. Stern +1, goldener Stern +5, Gewitterwolke −3 und kurz betäubt.
+
+Jeder Punkt bringt einen Glutstein bzw. Sternensplitter und 15 Gold (in der
+Dimension doppelt). Ab 18 bzw. 30 Punkten gibt es ein Sammelstück der Dimension
+ab Rang B, ab 24 bzw. 50 Punkten mindestens Rang A. Rekorde werden gespeichert.
+Glutsteine und Sternensplitter lassen sich am Markt für je 25 Gold verkaufen.
+
+### Begleiter der Dimensionen
+
+Je Dimension gibt es 6 eigene Begleiter (Rang B bis SS). Sie streunen nur dort
+umher und bringen neue Bonus-Arten mit:
+
+| Hölle | Rang | Bonus |
+| --- | --- | --- |
+| Glutsalamander | B | Dungeon +20 % Gold |
+| Aschefledermaus | B | Minispiele +25 % Ertrag |
+| Höllenhund | A | Arena und Dungeon +12 % Stärke |
+| Feuerimp | A | +5 % Chance auf Gratis-Folgewunsch |
+| Lavaschnecke | S | Mine +40 % Erz, Dungeon +20 % Gold |
+| Nachtmahr | SS | +15 % Stärke, Dungeon +30 % Gold, Expedition +20 % |
+
+| Himmel | Rang | Bonus |
+| --- | --- | --- |
+| Wolkenschaf | B | Aufgaben +30 % Gold |
+| Sternenspatz | B | Minispiele +25 % Ertrag |
+| Engelskatze | A | +5 % Chance auf Gratis-Folgewunsch |
+| Pegasusfohlen | A | Arena und Dungeon +12 % Stärke |
+| Glückskranich | S | Sternschnuppen +50 %, Gratiswunsch +5 %, Aufgaben +20 % |
+| Himmelsdrache | SS | von allem etwas, Aufgaben +30 %, Minispiele +30 % |
+
+Ihre Lieblingsleckerlis sind die Pflanzen der Dimension. Als Geschenke bringen
+sie unter anderem Glutsteine bzw. Sternensplitter. Im Begleiter-Menü stehen sie
+unter einer eigenen Überschrift. Mitnehmen kann man sie überallhin.
+
 Logik in `src/realm.js`, `src/dimension.js` und `state.switchWorld()`, Stücke in `src/items.js`,
 Stil in `src/art/core.js`, Landschaften in `src/themes.js`.
 

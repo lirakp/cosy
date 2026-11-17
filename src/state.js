@@ -65,6 +65,7 @@ const newVillage = () => ({
   trap: { level: -1, stored: {}, last: 0, frac: 0 }, // Fischreuse
   seeds: {}, // Saatpäckchen auf Vorrat
   market: { stock: [], wants: [], refreshAt: 0 },
+  shards: {}, // Glutsteine und Sternensplitter aus den Minispielen der Dimensionen
 });
 
 const fresh = () => ({

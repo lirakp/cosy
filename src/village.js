@@ -5,6 +5,9 @@ import * as mine from './mine.js';
 import * as garden from './garden.js';
 import { render } from './art/core.js';
 import { VILLAGER_ART, fishDraw, bottleDraw } from './art/village.js';
+import { M, ramp } from './art/core.js';
+import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Das Dorf: Bewohner mit Aufgaben, ein Marktstand und Angeln am Teich.
 
@@ -18,7 +21,68 @@ export const VILLAGERS = [
   { id: 'jonas', name: 'Abenteurer Jonas', x: 548, likes: ['item', 'ore', 'ore'], hello: 'Ich plane eine große Reise – hilfst du mir?' },
 ];
 export const MARKET = { id: 'hilde', name: 'Marktfrau Hilde', x: 392 };
-export const villager = (id) => VILLAGERS.find((v) => v.id === id);
+
+// Dörfer der Dimensionen: eigene Bewohner (im Stil ihrer Welt) mit eigenen Wünschen.
+// shard: Glutsteine bzw. Sternensplitter aus dem Minispiel des Dorfs.
+export const REALM_VILLAGERS = {
+  hoelle: [
+    { id: 'kohla', art: 'greta', name: 'Köchin Kohla', x: 150, likes: ['crop', 'crop', 'shard'], hello: 'Ohne Feuerchili schmeckt hier unten nichts.' },
+    { id: 'brandolf', art: 'ole', name: 'Schmied Brandolf', x: 236, likes: ['shard', 'shard', 'ore'], hello: 'Die Esse am Lavasee braucht Glutsteine – jede Menge.' },
+    { id: 'asmund', art: 'anton', name: 'Aschefürst Asmund', x: 318, likes: ['item', 'ore', 'shard'], hello: 'Willkommen in meiner bescheidenen Glut-Gemeinde.' },
+    { id: 'flamma', art: 'lotte', name: 'Gärtnerin Flamma', x: 470, likes: ['crop', 'crop', 'item'], hello: 'Aschenknollen mögen es heiß. So wie ich.' },
+    { id: 'grimm', art: 'jonas', name: 'Seelensammler Grimm', x: 548, likes: ['item', 'shard', 'ore'], hello: 'Ich suche Schätze aus den tiefsten Gruben.' },
+  ],
+  himmel: [
+    { id: 'aurelia', art: 'greta', name: 'Bäckerin Aurelia', x: 150, likes: ['crop', 'crop', 'shard'], hello: 'Wolkenbrot gelingt nur mit Sonnenweizen!' },
+    { id: 'cirrus', art: 'ole', name: 'Sternenhüter Cirrus', x: 236, likes: ['shard', 'shard', 'ore'], hello: 'Fängst du mir ein paar Sternensplitter?' },
+    { id: 'lumen', art: 'anton', name: 'Ratsältester Lumen', x: 318, likes: ['item', 'ore', 'shard'], hello: 'Friede sei mit dir, Reisende Seele.' },
+    { id: 'celeste', art: 'lotte', name: 'Gärtnerin Celeste', x: 470, likes: ['crop', 'crop', 'item'], hello: 'Engelsäpfel brauchen viel Licht und Geduld.' },
+    { id: 'zephyr', art: 'jonas', name: 'Windreiter Zephyr', x: 548, likes: ['item', 'shard', 'ore'], hello: 'Hinter den Wolken liegt noch so viel zu entdecken!' },
+  ],
+};
+export const REALM_MARKET = {
+  hoelle: { id: 'zunder', art: 'hilde', name: 'Händlerin Zunder', x: 392 },
+  himmel: { id: 'nimbus', art: 'hilde', name: 'Händler Nimbus', x: 392 },
+};
+// Bewohner und Händler des Dorfs, in dem man gerade ist
+export const villagers = () => REALM_VILLAGERS[realm.current()] || VILLAGERS;
+export const marketNpc = () => REALM_MARKET[realm.current()] || MARKET;
+const ALL_NPCS = [...VILLAGERS, MARKET, ...Object.values(REALM_VILLAGERS).flat(), ...Object.values(REALM_MARKET)];
+export const villager = (id) => ALL_NPCS.find((v) => v.id === id);
+const worldOf = (id) => Object.entries(REALM_VILLAGERS).find(([, list]) => list.some((v) => v.id === id))?.[0] || 'normal';
+
+// ---------------------------------------------------------------- Funde aus dem Minispiel
+
+export const SHARDS = {
+  hoelle: { name: 'Glutstein', plural: 'Glutsteine', price: 25 },
+  himmel: { name: 'Sternensplitter', plural: 'Sternensplitter', price: 25 },
+};
+export const shards = (w = realm.current()) => v().shards?.[w] || 0;
+export function addShards(w, n) {
+  v().shards = { ...v().shards, [w]: shards(w) + n };
+  state.changed();
+}
+export function sellShards(w = realm.current(), n = shards(w)) {
+  if (!SHARDS[w] || n <= 0 || shards(w) < n) return 0;
+  v().shards[w] -= n;
+  state.addGold(n * SHARDS[w].price, 'markt');
+  return n * SHARDS[w].price;
+}
+export const shardImage = (w) => cached(`shard-${w}`, () => render(shardDraw(w), 9500 + w.length, 3));
+function shardDraw(w) {
+  return (g) => {
+    if (w === 'hoelle') {
+      g.rows(4, [2, 3, 4, 4, 5, 5, 4, 3, 2], M.main);
+      g.pts(M.glow, [[7, 7], [8, 8], [6, 9], [9, 10], [7, 11]]);
+      return { [M.main]: ramp(10, 40, 22) };
+    }
+    g.pts(M.main, [[7, 2], [8, 2], [7, 3], [8, 3]]);
+    g.rows(4, [1, 2, 6, 4, 3, 4, 5], M.main);
+    g.rows(11, [2, 1], M.main);
+    g.pts(M.white, [[7, 6], [8, 7]]);
+    return { [M.main]: ramp(48, 95, 66) };
+  };
+}
 
 // Schwierigkeit: Gewicht, Belohnung und Wartezeit bis zur nächsten Aufgabe
 export const DIFFICULTY = {
@@ -42,8 +106,17 @@ function pickDifficulty(r) {
 }
 
 // Erzeugt eine machbare Aufgabe: Erz nur aus offenen Minen-Ebenen.
+// Dorf einer Dimension: andere Zutaten, Glutsteine/Sternensplitter statt Fisch, höhere Belohnungen
+const REALM_CROP_POOLS = {
+  hoelle: [['feuerchili'], ['feuerchili', 'aschenknolle'], ['aschenknolle', 'lavamelone']],
+  himmel: [['wolkenbeere'], ['wolkenbeere', 'sonnenweizen'], ['sonnenweizen', 'engelsapfel']],
+};
+export const REALM_REWARD = 3; // Gold ×3, Sammelstücke ab Rang B
+
 export function makeQuest(villagerId, r = Math.random) {
   const npc = villager(villagerId);
+  const world = worldOf(villagerId);
+  if (world !== 'normal') return makeRealmQuest(npc, world, r);
   const diff = pickDifficulty(r);
   const level = Object.keys(DIFFICULTY).indexOf(diff); // 0, 1, 2
   const depth = mine.depth();
@@ -68,6 +141,30 @@ export function makeQuest(villagerId, r = Math.random) {
   return { villager: villagerId, difficulty: diff, need, reward };
 }
 
+function makeRealmQuest(npc, world, r) {
+  const diff = pickDifficulty(r);
+  const level = Object.keys(DIFFICULTY).indexOf(diff);
+  const depth = mine.depth();
+  let types = npc.likes.filter((t) => t !== 'ore' || depth >= 0);
+  if (!types.length) types = ['crop', 'shard'];
+  const type = pick(r, types);
+  let need;
+  if (type === 'ore') {
+    const tier = Math.min(depth, [2, 3, 4][level]);
+    need = { type, tier, n: between(r, [[3, 5], [6, 10], [10, 16]][level]) };
+  } else if (type === 'crop') {
+    const id = pick(r, REALM_CROP_POOLS[world][level]);
+    need = { type, id, n: between(r, [[3, 5], [2, 4], [1, 2]][level]) };
+  } else if (type === 'shard') {
+    need = { type, world, n: between(r, [[4, 8], [10, 16], [20, 32]][level]) };
+  } else {
+    need = { type: 'item', world, cat: pick(r, CATEGORIES).id, tier: pick(r, [[2], [2, 3], [3]][level]), n: 1 };
+  }
+  const d = DIFFICULTY[diff];
+  const reward = { gold: between(r, d.gold) * REALM_REWARD, item: r() < Math.max(0.3, d.itemChance) ? Math.min(4, d.minTier + 2) : null, world };
+  return { villager: npc.id, difficulty: diff, need, reward };
+}
+
 export function quest(id, now = Date.now()) {
   const x = v();
   if (!x.quests[id] && (x.next[id] || 0) <= now) {
@@ -82,8 +179,9 @@ export function haveFor(need) {
   if (need.type === 'ore') return mine.ore(need.tier);
   if (need.type === 'crop') return garden.have(need.id);
   if (need.type === 'fish') return tierCount(need.tier);
+  if (need.type === 'shard') return shards(need.world);
   // Sammelstück: nur Duplikate zählen – das letzte Exemplar bleibt immer
-  return getGroup(need.cat, RARITIES[need.tier].id).reduce((n, i) => n + state.duplicates(i.id), 0);
+  return getGroup(need.cat, RARITIES[need.tier].id, need.world || 'normal').reduce((n, i) => n + state.duplicates(i.id), 0);
 }
 export const canComplete = (q) => !!q && haveFor(q.need) >= q.need.n;
 
@@ -91,7 +189,8 @@ export function describeNeed(need) {
   if (need.type === 'ore') return `${need.n}× ${mine.LEVELS[need.tier].ore}`;
   if (need.type === 'crop') return `${need.n}× ${garden.crop(need.id).name}`;
   if (need.type === 'fish') return `${need.n}× Fisch vom Rang ${RARITIES[need.tier].id}`;
-  return `${need.n}× ${CATEGORIES.find((c) => c.id === need.cat).name}-Duplikat, Rang ${RARITIES[need.tier].id}`;
+  if (need.type === 'shard') return `${need.n}× ${SHARDS[need.world].plural}`;
+  return `${need.n}× ${CATEGORIES.find((c) => c.id === need.cat).name}-Duplikat, Rang ${RARITIES[need.tier].id}${need.world && need.world !== 'normal' ? ` (${realm.WORLDS[need.world].name})` : ''}`;
 }
 
 function takeNeed(need) {
@@ -106,9 +205,10 @@ function takeNeed(need) {
       left -= take;
     }
   }
+  if (need.type === 'shard') v().shards[need.world] -= need.n;
   if (need.type === 'item') {
     let left = need.n;
-    for (const item of getGroup(need.cat, RARITIES[need.tier].id)) {
+    for (const item of getGroup(need.cat, RARITIES[need.tier].id, need.world || 'normal')) {
       while (left > 0 && state.duplicates(item.id) > 0) {
         state.useDuplicate(item.id);
         left--;
@@ -128,9 +228,9 @@ export function complete(id) {
   const q = v().quests[id];
   if (!canComplete(q)) return null;
   takeNeed(q.need);
-  const reward = { gold: q.reward.gold, item: null, isNew: false };
+  const reward = { gold: Math.round(q.reward.gold * (1 + companions.bonus('questGold'))), item: null, isNew: false };
   if (q.reward.item !== null) {
-    reward.item = rollItem({ minTier: q.reward.item });
+    reward.item = rollItem({ minTier: q.reward.item, world: q.reward.world || 'normal' });
     reward.isNew = !state.count(reward.item.id);
     state.addItems([reward.item], 'aufgaben');
   }
@@ -343,7 +443,12 @@ const cached = (key, make) => {
   if (!cache.has(key)) cache.set(key, make());
   return cache.get(key);
 };
-export const villagerImage = (id) => cached(`v-${id}`, () => render(VILLAGER_ART[id], 9100 + id.length * 31, 1));
+// Bewohner der Dimensionen: gleiche Gestalten, aber im Stil ihrer Welt (Hörner bzw. Heiligenschein)
+export const villagerImage = (id) => cached(`v-${id}`, () => {
+  const npc = villager(id);
+  const w = worldOf(id) !== 'normal' ? worldOf(id) : Object.entries(REALM_MARKET).find(([, m]) => m.id === id)?.[0] || 'normal';
+  return render(VILLAGER_ART[npc?.art || id], 9100 + id.length * 31, w === 'normal' ? 1 : 3, w);
+});
 export const fishImage = (id) => {
   const f = fishSpec(id) || FISH[0];
   return cached(`f-${f.id}`, () => render(fishDraw(f), 9300 + FISH.indexOf(f) * 13, f.tier));

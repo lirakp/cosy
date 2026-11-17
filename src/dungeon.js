@@ -5,6 +5,7 @@ import * as buffs from './buffs.js';
 import { createParty, emptyMember } from './party.js';
 import * as magic from './magic.js';
 import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Dungeon: Bis zu fünf ausgerüstete Helden ziehen für eine feste Zeit los. Die
 // Dauer ist zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber
@@ -90,7 +91,7 @@ export function collect() {
   d().run = null;
 
   if (result.success) {
-    result.gold = Math.round(level.gold * (0.8 + Math.random() * 0.4) * realm.goldFactor());
+    result.gold = Math.round(level.gold * (0.8 + Math.random() * 0.4) * realm.goldFactor() * (1 + companions.bonus('dungeonGold')));
     const found = [];
     for (let i = 0; i < level.standard; i++) found.push(rollItem({ tier: 0 }));
     for (let i = 0; i < level.bonus; i++) found.push(rollItem({ minTier: level.minTier }));

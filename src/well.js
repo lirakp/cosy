@@ -5,6 +5,7 @@ import * as buffs from './buffs.js';
 import * as sets from './sets.js';
 import * as magic from './magic.js';
 import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Wunschbrunnen: Glückszähler (Pity), tägliche Gratiswünsche, ein zufälliger
 // Gratis-Folgezug und der Brunnengeist, der selten einen Wunsch mit
@@ -120,7 +121,7 @@ export function pull(mode, r = Math.random, { dupes = false } = {}) {
   }
   // Glück beim Wünschen: der nächste Einzelwunsch ist gratis …
   let gotFreeNext = false;
-  if (mode !== 'spirit' && !w().freeNext && r() < FREE_NEXT[tier()]) {
+  if (mode !== 'spirit' && !w().freeNext && r() < FREE_NEXT[tier()] + companions.bonus('luckWish')) {
     w().freeNext = true;
     gotFreeNext = true;
   }

@@ -1114,3 +1114,82 @@ test('Dimensionen: eigene Pflanzen, Gerichte, Zauber und Kleidung', () => {
   state.arena.mats.seide[2] = 2;
   assert.equal(tailor.sewOutfit(sky.id), false, 'Himmelskleidung nur im Himmel');
 });
+
+// ---------------------------------------------------------------- Dörfer und Begleiter der Dimensionen
+
+import * as minigame from '../src/minigame.js';
+
+test('Dimensionsdörfer: eigene Bewohner mit eigenen Aufgaben und höheren Belohnungen', () => {
+  state.realm.type = 'hoelle';
+  state.buildings.portal = 0;
+  assert.equal(village.villagers()[0].id, 'greta');
+  state.switchWorld('hoelle');
+  const list = village.villagers();
+  assert.deepEqual(list.map((v) => v.id), ['kohla', 'brandolf', 'asmund', 'flamma', 'grimm']);
+  assert.equal(village.marketNpc().name, 'Händlerin Zunder');
+  const random = seeded(12);
+  for (let i = 0; i < 300; i++) {
+    const q = village.makeQuest(list[i % list.length].id, random);
+    assert.notEqual(q.need.type, 'fish', 'kein Angeln in der Hölle');
+    if (q.need.type === 'crop') assert.ok(['feuerchili', 'aschenknolle', 'lavamelone'].includes(q.need.id));
+    if (q.need.type === 'item') assert.equal(q.need.world, 'hoelle');
+    if (q.reward.item !== null) assert.ok(q.reward.item >= 2, 'Belohnung ab Rang B');
+    assert.ok(q.reward.gold >= village.DIFFICULTY.leicht.gold[0] * village.REALM_REWARD);
+  }
+  // Glutsteine-Aufgabe abgeben
+  state.village.quests.brandolf = { villager: 'brandolf', difficulty: 'leicht', need: { type: 'shard', world: 'hoelle', n: 5 }, reward: { gold: 300, item: null, world: 'hoelle' } };
+  assert.equal(village.canComplete(state.village.quests.brandolf), false);
+  village.addShards('hoelle', 6);
+  const gold = state.gold;
+  assert.ok(village.complete('brandolf'));
+  assert.equal(village.shards('hoelle'), 1);
+  assert.equal(state.gold - gold, 300);
+});
+
+test('Minispiele: Punkte werden zu Glutsteinen/Sternensplittern, Gold und mit Glück einem Sammelstück', () => {
+  const low = minigame.reward('hoelle', 5);
+  assert.equal(low.shards, 5);
+  assert.equal(low.gold, 5 * minigame.GOLD_PER_POINT);
+  assert.equal(low.item, null);
+  const high = minigame.reward('himmel', 60);
+  assert.ok(high.item && high.item.world === 'himmel' && high.item.tier >= 3);
+  state.realm.type = 'himmel';
+  state.buildings.portal = 0;
+  state.switchWorld('himmel');
+  const gold = state.gold;
+  const res = minigame.applyReward(high);
+  assert.equal(village.shards('himmel'), 60);
+  assert.equal(state.gold - gold, high.gold * 2, 'Gold zählt in der Dimension doppelt');
+  assert.ok(res.record);
+  // Schmiede: lauter perfekte Schläge = Höchstpunktzahl
+  assert.equal(minigame.FORGE.strikes * minigame.FORGE.points.perfekt, minigame.ITEM_AT.hoelle[1]);
+});
+
+test('Begleiter der Dimensionen: nur dort unterwegs, mit neuen Bonus-Arten', () => {
+  const realmComps = companions.COMPANIONS.filter((c) => c.world);
+  assert.equal(realmComps.filter((c) => c.world === 'hoelle').length, 6);
+  assert.equal(realmComps.filter((c) => c.world === 'himmel').length, 6);
+  for (const c of realmComps) {
+    assert.ok(c.tier >= 2, 'ab Rang B');
+    assert.ok(c.rows.every((r) => r.length === c.rows[0].length), `${c.name}: Zeilen`);
+    assert.ok([...c.rows.join('')].every((ch) => ch === '.' || c.colors[ch]), `${c.name}: Farben`);
+    for (const k of Object.keys(c.bonus)) assert.ok(companions.BONUS_TEXT[k], `${c.name}: ${k}`);
+  }
+  state.companions.owned = [];
+  const random = seeded(3);
+  for (let i = 0; i < 200; i++) assert.ok(!companions.rollStray(true, random).world, 'in der Heimat nur Heimat-Tiere');
+  state.realm.type = 'hoelle';
+  state.buildings.portal = 0;
+  state.switchWorld('hoelle');
+  for (let i = 0; i < 200; i++) assert.equal(companions.rollStray(true, random).world, 'hoelle');
+  // Höllenhund: +12 % Stärke (dazu +15 % der Hölle)
+  companions.befriend('hoellenhund');
+  companions.setActive('hoellenhund');
+  close(companions.bonus('power'), 0.12 + 0.15, 1e-9);
+  // Feuerimp: mehr Gratis-Folgewünsche
+  companions.befriend('feuerimp');
+  companions.setActive('feuerimp');
+  assert.equal(companions.bonus('luckWish'), 0.05);
+  state.companions.owned = [];
+  state.companions.active = null;
+});

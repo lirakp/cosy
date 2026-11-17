@@ -3,7 +3,7 @@ import { state } from './state.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
 import * as sets from './sets.js';
 import { CAPE_POWER } from './tailor.js';
-import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Gemeinsame Team-Logik für Bossarena und Dungeon: Helden mit vier
 // Ausrüstungsplätzen, Stufen D … SS und die Regel, dass ein Held oder ein
@@ -140,7 +140,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
     state.changed();
     return true;
   }
-  const teamPower = () => Math.round(members().reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus(bonus)) * (1 + realm.bonus('power')));
+  const teamPower = () => Math.round(members().reduce((sum, m) => sum + memberPower(m), 0) * (1 + sets.bonus(bonus)) * (1 + companions.bonus('power')));
   const heroIds = () => members().map((m) => m.hero).filter(Boolean);
 
   return {

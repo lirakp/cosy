@@ -909,3 +909,4 @@ table.stats td { border-top: 1px solid #3a3170; }
 .realm-card.realm-himmel { box-shadow: 0 0 0 2px #ffe070; }
 .realm-card.realm-himmel b { color: #ffe070; }
 .realm-card .big, .portalpanel > .big { flex: none; padding: 10px 14px; }
+.companions .comp-world { grid-column: 1 / -1; margin: 10px 0 0; color: #ffd04a; }

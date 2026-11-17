@@ -20,6 +20,7 @@ import * as magic from './magic.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
 import * as tailor from './tailor.js';
+import * as minigameNs from './minigame.js';
 import * as care from './companioncare.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
@@ -209,6 +210,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (next.catch) return showCatch(next.catch);
     if (next.companion) return showCompanion(next.companion);
     if (next.realm) return showRealm(next.realm);
+    if (next.minigame) return showMinigame(next.minigame);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -545,6 +547,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <p class="muted">Gefangen wird nach denselben Chancen wie beim Angeln; offline beißen Arten aller Tageszeiten. Fänge zählen fürs Angelbuch.</p>
       </section>`;
     for (const el of overlay.querySelectorAll('[data-fish-img]')) el.prepend(picture(village.fishImage(el.dataset.fishImg)));
+    for (const el of overlay.querySelectorAll('[data-shard-img]')) el.prepend(picture(village.shardImage(el.dataset.shardImg)));
   }
 
   // ------------------------------------------------------------ Magierturm und Zauberbuch
@@ -661,7 +664,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (need.type === 'ore') return mine.oreImage(need.tier);
     if (need.type === 'crop') return garden.cropImage(need.id);
     if (need.type === 'fish') return village.tierFishImage(need.tier);
-    return itemImage(getGroup(need.cat, RARITIES[need.tier].id)[0]);
+    if (need.type === 'shard') return village.shardImage(need.world);
+    return itemImage(getGroup(need.cat, RARITIES[need.tier].id, need.world || 'normal')[0]);
   }
 
   function renderVillager() {
@@ -720,6 +724,27 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   }
 
   // Fang: kleine Fische als Hinweis, große als Pop-up, Flaschenpost als Sammelstück
+  function showMinigame(res) {
+    const s = village.SHARDS[res.type];
+    const el = document.createElement('div');
+    el.className = `reveal realm-${res.type}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">${res.type === 'hoelle' ? 'HÖLLENSCHMIEDE' : 'STERNENFANG'}</div>
+        <div class="rank-big">${res.points} PUNKTE</div>
+        <div class="frame"></div>
+        <p>+${res.shards} ${s.plural} · +${fmt(res.gold * realm.goldFactor())} Gold${res.item ? ' · dazu ein Sammelstück!' : ''}</p>
+        <p class="muted">${res.record ? '✦ Neuer Rekord!' : `Rekord: ${state.village.best?.[res.type] || 0} Punkte`} · Sammelstück ab ${minigameNs.ITEM_AT[res.type][0]} Punkten (ab ${minigameNs.ITEM_AT[res.type][1]} mindestens Rang A)</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(village.shardImage(res.type)));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', res.item ? 3 : 1);
+    onToggle(true);
+  }
+
   function showRealm(type) {
     const w = realm.WORLDS[type];
     const el = document.createElement('div');
@@ -860,7 +885,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
 
   function renderCompanions() {
     const act = companions.active();
-    const cards = companions.COMPANIONS.map((c) => {
+    // Heimat-Begleiter und die der Dimensionen, die man schon betreten hat (nach Welt gruppiert)
+    const shownComps = companions.COMPANIONS.filter((c) => !c.world || dimension.known().includes(c.world));
+    let lastWorld = 'normal';
+    const cards = shownComps.map((c) => {
+      const heading = companions.worldOf(c) !== lastWorld ? `<h4 class="comp-world">${realm.WORLDS[(lastWorld = companions.worldOf(c))].name}</h4>` : '';
       const rank = companions.rankOf(c);
       const have = companions.owned(c.id);
       const on = act?.id === c.id;
@@ -873,7 +902,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${max ? '' : `<div class="bar friend-bar"><i style="width:${Math.round(companions.progress(c.id) * 100)}%"></i></div>`}
         <span class="muted">Liebling: ${garden.crop(c.fav).name} (zählt doppelt) · Geschenke: ${c.gifts.map((k) => care.GIFT_TEXT[k]).join(', ')}</span>
         ${max ? '' : treats ? `<div class="treats">${treats}</div>` : '<span class="muted">Keine Leckerlis – ernte etwas im Garten.</span>'}` : '';
-      return `<div class="companion r-${rank}${have ? '' : ' missing'}${on ? ' on' : ''}">
+      return `${heading}<div class="companion r-${rank}${have ? '' : ' missing'}${on ? ' on' : ''}">
         <div class="line"><span class="comp-img" data-comp="${c.id}"></span>
           <div><b>${have ? c.name : '???'}</b><span class="evo">Rang ${rank}</span></div></div>
         <p>${have ? c.text : c.night ? 'Zeigt sich nur nachts …' : 'Streift irgendwo durchs Tal …'}</p>
@@ -886,7 +915,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       <section class="panel compspanel">
         ${head('Begleiter')}
         <p class="muted">Auf dem Hof und im Dorf taucht ab und zu ein Tier mit einem Herz über dem Kopf auf. Geh hin und freunde dich an (<kbd>E</kbd>) – aber beeil dich, lange bleibt es nicht. Seltene Begleiter sind selten unterwegs, manche nur nachts. Einer kann dich begleiten, gibt dir seinen Bonus und bringt ab und zu ein Geschenk mit. Leckerlis aus dem Garten stärken die Freundschaft: bis Stufe 5 wird der Bonus doppelt so groß und Geschenke kommen öfter.</p>
-        <div class="line"><span>Gefunden: <b>${companions.ownedCount()} / ${companions.COMPANIONS.length}</b>${act ? ` · Dabei: <b>${act.name}</b>` : ''}</span>
+        <div class="line"><span>Gefunden: <b>${companions.ownedCount()} / ${shownComps.length}</b>${act ? ` · Dabei: <b>${act.name}</b>` : ''}</span>
           ${act ? '<button data-act="comp-pick" data-v="">Allein gehen</button>' : ''}</div>
         <div class="companions">${cards}</div>
       </section>`;
@@ -942,7 +971,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <div class="seed" data-fish-img="${f.id}"><b>${f.name} <span class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</span></b><span>Vorrat: ${village.fishCount(f.id)}</span>
           <span class="gold-text">${fmt(f.price)} Gold je Stück</span>
           <button data-act="sell-fish" data-v="${f.id}">Alle verkaufen</button></div>`).join('') || '<p class="muted">Noch keine Fische im Vorrat – ab zum Steg!</p>';
-      body = `<h4>Ernte</h4><div class="seeds">${crops}</div><h4>Fische</h4><div class="seeds">${fish}</div>
+      const shardRows = Object.entries(village.SHARDS).filter(([w]) => village.shards(w)).map(([w, s]) => `
+        <div class="seed" data-shard-img="${w}"><b>${s.plural}</b><span>Vorrat: ${village.shards(w)}</span>
+          <span class="gold-text">${s.price} Gold je Stück</span>
+          <button data-act="sell-shards" data-v="${w}">Alle verkaufen</button></div>`).join('');
+      body = `<h4>Ernte</h4><div class="seeds">${crops}</div><h4>Fische</h4><div class="seeds">${fish}</div>${shardRows ? `<h4>Funde aus den Dimensionen</h4><div class="seeds">${shardRows}</div>` : ''}
         <p class="muted">Tipp: Aufgaben der Dorfbewohner zahlen für Ernte und Fische meist deutlich mehr.</p>`;
     }
     if (marketTab === 'sammel') {
@@ -967,7 +1000,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     }
     overlay.innerHTML = `
       <section class="panel marketpanel">
-        ${head(village.MARKET.name)}
+        ${head(village.marketNpc().name)}
         <p class="lead">„Frisch vom Feld, frisch aus dem Teich – und dazu allerlei Schätze!“</p>
         <nav class="tabs">${tabs}</nav>
         ${body}
@@ -1183,6 +1216,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     aufgaben: 'Aufgaben im Dorf',
     gartenhelfer: 'Gartenhelfer (Kasse)',
     sternschnuppe: 'Sternschnuppen',
+    minispiel: 'Minispiele der Dimensionen',
     begleiter: 'Geschenke der Begleiter',
     magie: 'Zauber',
     markt: 'Markt im Dorf',
@@ -1869,6 +1903,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'market-tab') { marketTab = btn.dataset.v; renderMarket(); }
     if (act === 'buy-seed') { audio.play(village.buySeeds(btn.dataset.v, Number(btn.dataset.n)) ? 'coin' : 'error'); renderMarket(); }
     if (act === 'sell-crop') { if (village.sellCrops(btn.dataset.v)) audio.play('sell'); renderMarket(); }
+    if (act === 'sell-shards') { if (village.sellShards(btn.dataset.v)) audio.play('sell'); renderMarket(); }
     if (act === 'sell-fish') { if (village.sellFish(btn.dataset.v)) audio.play('sell'); renderMarket(); }
     if (act === 'market-buy') {
       const got = village.buyStock(Number(btn.dataset.v));
@@ -2108,6 +2143,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       }
       const what = res.kind === 'gold' ? `${fmt(res.n)} Gold` : res.kind === 'mana' ? `${res.n} Mana` : `${res.n}× ${res.what}${res.kind === 'seeds' ? ' (Saat)' : ''}`;
       toast(`🎁 ${res.c.name} bringt dir ein Geschenk: ${what}`);
+    },
+    // Ergebnis eines Minispiels
+    minigameDone(res) {
+      reveals.push({ minigame: res });
+      if (res.item) reveals.push({ item: res.item, isNew: res.isNew, source: res.type === 'hoelle' ? 'AUS DER HÖLLENSCHMIEDE' : 'VOM STERNENFANG' });
+      if (!$('.reveal')) nextReveal();
     },
     foundCompanion(c) {
       reveals.push({ companion: c });

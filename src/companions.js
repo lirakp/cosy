@@ -23,6 +23,12 @@ export const BONUS_TEXT = {
   mana: (v) => `Mana lädt ${pct(v)} schneller`,
   fishing: (v) => `Fische beißen ${pct(v)} schneller`,
   stars: (v) => `Sternschnuppen kommen ${pct(v)} öfter`,
+  // neue Bonus-Arten der Begleiter aus den Dimensionen
+  power: (v) => `Arena und Dungeon +${pct(v)} Stärke`,
+  dungeonGold: (v) => `Dungeon +${pct(v)} Gold`,
+  luckWish: (v) => `+${pct(v)} Chance auf einen Gratis-Folgewunsch`,
+  questGold: (v) => `Aufgaben im Dorf +${pct(v)} Gold`,
+  minigame: (v) => `Minispiele der Dörfer +${pct(v)} Ertrag`,
 };
 const pct = (v) => `${Math.round(v * 100)} %`;
 
@@ -115,6 +121,80 @@ export const COMPANIONS = [
     text: 'Ein Rehkitz aus Sternenlicht. Man sieht es nur in klaren Nächten – ein bisschen von allem wird besser.',
     colors: { s: '#9be8e0', S: '#4fa8b0', w: WHITE, e: EYE, a: '#ffd04a' },
     rows: ['.......a.a', '.......aa.', '.......ss.', '......ssse', '.s.wsswss.', '.sswsssws.', '..ssssss..', '..s.s..s.s'],
+  },  // ------------------------------------------------ Begleiter der Hölle (nur dort unterwegs)
+  {
+    id: 'glutsalamander', world: 'hoelle', fav: 'feuerchili', gifts: ['gold', 'shards'], name: 'Glutsalamander', tier: 2, bonus: { dungeonGold: 0.2 },
+    text: 'Huscht über heiße Steine und findet in jedem Dungeon noch ein paar Münzen.',
+    colors: { r: '#d9402a', y: '#ffd04a', e: EYE },
+    rows: ['.......rr.', '......rrer', 'r..rrrrrr.', '.rrrryrrr.', '..r.r..r.r'],
+  },
+  {
+    id: 'aschefledermaus', world: 'hoelle', fav: 'aschenknolle', gifts: ['shards', 'ore'], name: 'Aschefledermaus', tier: 2, fly: true, bonus: { minigame: 0.25 },
+    text: 'Flattert um die Esse und zeigt dir, wann das Eisen glüht.',
+    colors: { b: '#3a2a34', e: '#ff6a2a' },
+    rows: ['b.......b', 'bb.bbb.bb', 'bbbebebbb', '.bbbbbbb.', '..b...b..'],
+  },
+  {
+    id: 'hoellenhund', world: 'hoelle', fav: 'feuerchili', gifts: ['gold', 'item'], name: 'Höllenhund', tier: 3, glow: '#ff5a2a', bonus: { power: 0.12 },
+    text: 'Ein treuer Wächter mit glühenden Augen. Wer ihn sieht, kämpft mutiger.',
+    colors: { d: '#3a2228', D: '#1a0c10', e: '#ff3a1a', n: EYE, t: '#ff8a3a' },
+    rows: ['......DD..', '......dddD', 'D.....dedn', 'D..dddddd.', '.dddddddt.', '..dddddd..', '..d.d..d.d'],
+  },
+  {
+    id: 'feuerimp', world: 'hoelle', fav: 'lavamelone', gifts: ['shards', 'item'], name: 'Feuerimp', tier: 3, fly: true, glow: '#ff8a3a', bonus: { luckWish: 0.05 },
+    text: 'Ein frecher Kobold, der dem Brunnen ab und zu einen Gratiswunsch abschwatzt.',
+    colors: { h: '#ffd04a', r: '#c0301c', e: '#ffd04a', w: '#ff8a3a' },
+    rows: ['.h....h.', '.hrrrrh.', '.rerrer.', '.rrwwrr.', 'w.rrrr.w', '..r..r..'],
+  },
+  {
+    id: 'lavaschnecke', world: 'hoelle', fav: 'aschenknolle', gifts: ['ore', 'shards'], name: 'Lavaschnecke', tier: 4, glow: '#ff8a3a', bonus: { mine: 0.4, dungeonGold: 0.2 },
+    text: 'Langsam, aber ihre Schleimspur schmilzt Erz aus jedem Fels.',
+    colors: { o: '#3a1418', y: '#ff8a3a', s: '#c0441c', e: EYE },
+    rows: ['.......e.e', '...ooo..ss', '..oyyyo.ss', '.oyooyosss', 'sssssssss.'],
+  },
+  {
+    id: 'nachtmahr', world: 'hoelle', fav: 'lavamelone', gifts: ['gold', 'ore', 'shards', 'item'], name: 'Nachtmahr', tier: 5, glow: '#ff5a2a', bonus: { power: 0.15, dungeonGold: 0.3, expedition: 0.2 },
+    text: 'Ein Ross aus Schatten mit brennender Mähne – Herrscher über die Glutfelder.',
+    colors: { w: '#2a1a20', m: '#ff6a2a', h: '#ff3a1a', e: '#ffd04a' },
+    rows: ['........h.', '.......mh.', '.......ww.', 'm.....mwew', 'mm.wwwwww.', '.mwwwwww..', '..wwwwww..', '..w.w..w.w'],
+  },
+  // ------------------------------------------------ Begleiter des Himmels
+  {
+    id: 'wolkenschaf', world: 'himmel', fav: 'wolkenbeere', gifts: ['gold', 'seeds'], name: 'Wolkenschaf', tier: 2, bonus: { questGold: 0.3 },
+    text: 'So flauschig, dass jeder Dorfbewohner ein bisschen mehr zahlt.',
+    colors: { w: '#ffffff', h: '#c8b8a0', e: EYE },
+    rows: ['..wwww..h', '.wwwwwwhe', 'wwwwwwwhh', '.wwwwwww.', '..h.h.h.h'],
+  },
+  {
+    id: 'sternenspatz', world: 'himmel', fav: 'sonnenweizen', gifts: ['shards', 'mana'], name: 'Sternenspatz', tier: 2, fly: true, bonus: { minigame: 0.25 },
+    text: 'Zwitschert dir zu, wo der nächste Stern herunterfällt.',
+    colors: { y: '#9be8ff', e: EYE, o: '#ffd04a' },
+    rows: ['...yy..', '..yyey.', '.yyyyyo', 'yyyyy..', '.y..y..'],
+  },
+  {
+    id: 'engelskatze', world: 'himmel', fav: 'wolkenbeere', gifts: ['shards', 'item'], name: 'Engelskatze', tier: 3, glow: '#ffe070', bonus: { luckWish: 0.05 },
+    text: 'Schnurrt so lieb, dass der Brunnen ihr gern einen Wunsch schenkt.',
+    colors: { k: '#fdf6e3', K: '#ffe070', e: EYE, p: '#f2a0b0' },
+    rows: ['.......K.K', '.......kkk', 'K......kek', 'K..kKkkkkp', '.kkkkkkkk.', '..kkKkkk..', '..k.k.k.k.'],
+  },
+  {
+    id: 'pegasus', world: 'himmel', fav: 'engelsapfel', gifts: ['gold', 'item'], name: 'Pegasusfohlen', tier: 3, bonus: { power: 0.12 },
+    text: 'Ein geflügeltes Fohlen. Mit ihm im Rücken fühlt sich jeder Held stärker.',
+    colors: { w: '#f4f6ff', m: '#9be8ff', h: '#d8e6fc', e: EYE },
+    rows: ['........h.', '.......mh.', '.......ww.', 'm.....mwew', 'mm.wwwwww.', '.mwwwwww..', '..wwwwww..', '..w.w..w.w'],
+  },
+  {
+    id: 'glueckskranich', world: 'himmel', fav: 'sonnenweizen', gifts: ['mana', 'shards', 'item'], name: 'Glückskranich', tier: 4, fly: true, glow: '#ffe070', bonus: { stars: 0.5, luckWish: 0.05, questGold: 0.2 },
+    text: 'Wer einen Glückskranich sieht, hat einen Wunsch frei – heißt es.',
+    colors: { w: '#ffffff', k: '#2a2140', r: '#e8577a', e: EYE },
+    rows: ['.......kr', '......kke', '......k..', '.wwwwwk..', 'wwwwwww..', '...k.k...'],
+  },
+  {
+    id: 'himmelsdrache', world: 'himmel', fav: 'engelsapfel', gifts: ['gold', 'mana', 'shards', 'seeds', 'item'], name: 'Himmelsdrache', tier: 5, fly: true, glow: '#ffffff',
+    bonus: { coinReach: 14, expedition: 0.15, garden: 0.15, mine: 0.15, mana: 0.15, questGold: 0.3, minigame: 0.3 },
+    text: 'Ein Drache aus Licht und Wolken – Hüter der Sieben Himmel.',
+    colors: { d: '#fdf6e3', D: '#ffe070', w: '#9be8ff', e: EYE, y: '#ffd04a' },
+    rows: ['....ww....', '...wwww.D.', '..wwwwwdd.', '.....ddded', 'D.dddddyd.', '.Ddddddy..', '...d..d...'],
   },
 ];
 export const companion = (id) => COMPANIONS.find((c) => c.id === id);
@@ -206,8 +286,11 @@ let wait = FIRST_WAIT;
 let stray = null; // { id, x, t, dir, walk }
 
 // Wählt ein noch nicht gefundenes Tier nach Rang-Wahrscheinlichkeit
+// Begleiter einer Welt (Heimat oder Dimension)
+export const worldOf = (c) => c.world || 'normal';
 export function rollStray(night, r = Math.random) {
-  const open = COMPANIONS.filter((c) => !owned(c.id) && (!c.night || night));
+  // unterwegs trifft man nur Tiere der Welt, in der man gerade ist
+  const open = COMPANIONS.filter((c) => worldOf(c) === realm.current() && !owned(c.id) && (!c.night || night));
   if (!open.length) return null;
   const tier = rollTier(0, r);
   // gibt es auf dem Rang nichts mehr, nimm das nächstniedrigere (sonst irgendeines)

@@ -27,7 +27,7 @@ export function feed(id, cropId) {
 // Der aktive Begleiter bringt ab und zu etwas mit (Spielzeit, wie die Streuner).
 export const GIFT_MINUTES = [4, 8];
 export const GIFT_ITEM_CHANCE = 0.03; // + 1 % je Stufe
-export const GIFT_TEXT = { gold: 'Gold', seeds: 'Saatgut', crops: 'Ernte', fish: 'Fische', ore: 'Erz', mana: 'Mana', item: 'Sammelstücke' };
+export const GIFT_TEXT = { shards: 'Glutsteine/Sternensplitter', gold: 'Gold', seeds: 'Saatgut', crops: 'Ernte', fish: 'Fische', ore: 'Erz', mana: 'Mana', item: 'Sammelstücke' };
 let giftWait = 60 * (GIFT_MINUTES[0] + Math.random() * (GIFT_MINUTES[1] - GIFT_MINUTES[0]));
 
 const pick = (list, r) => list[Math.floor(r() * list.length)];
@@ -65,6 +65,12 @@ export function gift(c = active(), r = Math.random) {
     res.n = 1 + lvl;
     res.what = `Erz Rang ${RARITIES[t].id}`;
     state.mine.ore[t] += res.n;
+  } else if (kind === 'shards') {
+    // Glutsteine bzw. Sternensplitter für die Dörfer der Dimensionen
+    const w = c.world || 'hoelle';
+    res.n = 2 + lvl;
+    res.what = village.SHARDS[w].plural;
+    village.addShards(w, res.n);
   } else if (kind === 'mana') {
     res.n = 8 + 4 * lvl;
     state.magic.mana = Math.min(magic.maxMana(), state.magic.mana + res.n);

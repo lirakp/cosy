@@ -25,7 +25,8 @@ import { phase, label as dayLabel } from './daycycle.js';
 import * as expedition from './expedition.js';
 import { state } from './state.js';
 import { clamp, makeCanvas } from './utils.js';
-import { initInput, setBlocked, setTapHandler } from './input.js';
+import { initInput, setBlocked, setTapHandler, axis } from './input.js';
+import { createMinigame } from './minigame.js';
 import { createUI } from './ui.js';
 import { audio } from './audio.js';
 import { createBackground } from './background.js';
@@ -63,6 +64,11 @@ const ui = createUI({
   },
 });
 let spellFx = 0; // Funkeln um die Figur nach einem Zauber
+// Minispiel im Dorf einer Dimension (statt Angeln)
+const minigame = createMinigame({
+  onEnd: (res) => ui.minigameDone(res),
+  onSfx: (name) => audio.play(name),
+});
 let lastNight = 0;
 const actionButton = document.getElementById('btn-action');
 const actionLabel = actionButton.querySelector('span');
@@ -357,6 +363,7 @@ function act() {
   if (near === 'village') enterVillage();
   if (near === 'farm') leaveVillage();
   if (near === 'fishing') fishAction();
+  if (near === 'minigame') minigame.active() ? minigame.press() : (audio.play('start'), minigame.start(realm.current()));
   if (near === 'market') ui.openMarket();
   if (near === 'fishbook') ui.openFishBook();
   if (near === 'trap') ui.openTrap();
@@ -426,12 +433,12 @@ setTapHandler((x, y) => {
   }
   if (!paused && place === 'village' && y > GROUND_Y - 24 && y < GROUND_Y + 12) {
     const wx = x + Math.round(camX);
-    const npc = village.VILLAGERS.find((v) => Math.abs(v.x - wx) < 9);
+    const npc = village.villagers().find((v) => Math.abs(v.x - wx) < 9);
     if (npc) {
       ui.talk(npc.id);
       return true;
     }
-    if (Math.abs(village.MARKET.x - wx) < 16) {
+    if (Math.abs(village.marketNpc().x - wx) < 16) {
       ui.openMarket();
       return true;
     }
@@ -665,6 +672,10 @@ function npcLabel(id) {
 // Das Dorf liegt draußen: gleicher Himmel und gleiche Tageszeit wie auf dem Hof
 function drawVillage(ph) {
   // beim Angeln: Sicht auf den See
+  if (minigame.active()) {
+    minigame.draw(ctx, time);
+    return;
+  }
   if (villageScene.fishing()) {
     background.drawSky(ctx, 0, time, ph);
     sctx.clearRect(0, 0, VIEW_W, VIEW_H);
@@ -722,7 +733,9 @@ function frame(now) {
   state.day = dayTime;
 
   if (!paused) {
-    player.update(dt);
+    // im Minispiel steht die Figur still; die Pfeiltasten steuern den Korb
+    if (minigame.active()) minigame.update(dt, axis());
+    else player.update(dt);
     background.update(dt);
     companions.update(dt, { where: place, night: lastNight > 0.5, playerX: player.x, bounds: player.bounds });
     companions.followUpdate(dt, player);
@@ -740,7 +753,8 @@ function frame(now) {
   }
 
   near =
-    (place === 'outside' || place === 'village') && !villageScene.fishing() && companions.nearStray(player.x) ? 'stray'
+    minigame.active() ? 'minigame'
+    : (place === 'outside' || place === 'village') && !villageScene.fishing() && companions.nearStray(player.x) ? 'stray'
     : place === 'house' ? zoneAt(player.x)
     : place === 'mine' ? mineZoneAt(player.x)
     : place === 'village' ? villageZoneAt(player.x)
@@ -763,6 +777,7 @@ function frame(now) {
     : near === 'village' ? '← Ins Dorf'
     : near === 'farm' ? 'Zurück zum Hof →'
     : near === 'fishing' ? fishLabel()
+    : near === 'minigame' ? (minigame.active() ? (minigame.type() === 'hoelle' ? '🔨 Zuschlagen!' : '← → Korb bewegen') : realm.current() === 'hoelle' ? '🔨 Höllenschmiede am Lavasee' : '★ Sternenfang über den Wolken')
     : near === 'market' ? 'Marktstand'
     : near === 'fishbook' ? 'Angelbuch'
     : near === 'trap' ? (fishtrap.built() ? `Fischreuse · ${fishtrap.stored()}/${fishtrap.capacity()}${fishtrap.full() ? ' voll!' : ''}` : `Fischreuse bauen · ${fishtrap.BUY} Gold`)
@@ -800,14 +815,14 @@ function frame(now) {
   village.setDayPhase(dayLabel(dayTime).name);
   lastNight = ph.night;
   // Sternschnuppen nur nachts und unter freiem Himmel (nicht beim Angeln in der Seesicht)
-  const openSky = (place === 'outside' || place === 'village') && !villageScene.fishing();
+  const openSky = (place === 'outside' || place === 'village') && !villageScene.fishing() && !minigame.active();
   stars.update(dt, ph.night > 0.6, openSky);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);
   else drawOutside(ph);
 
-  if ((place === 'outside' || place === 'village') && !villageScene.fishing()) stars.draw(ctx, time);
+  if ((place === 'outside' || place === 'village') && !villageScene.fishing() && !minigame.active()) stars.draw(ctx, time);
 
   // Funkeln um die Spielfigur nach einem Zauber
   if (spellFx > 0) {
