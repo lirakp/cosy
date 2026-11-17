@@ -212,7 +212,7 @@ function leaveHouse() {
     place = 'outside';
     player.x = HOUSE_X;
     player.bounds = [10, WORLD_W - 10];
-    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    camX = Math.round(clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W));
   });
 }
 
@@ -247,7 +247,7 @@ function travelRealm(target) {
     player.x = PORTAL_X + 18;
     player.facing = 1;
     player.bounds = [10, WORLD_W - 10];
-    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    camX = Math.round(clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W));
   });
   setTimeout(() => (first ? ui.realmArrived(target) : ui.toast(target !== 'normal' ? `◈ ${realm.WORLDS[target].name}` : '◈ Zurück in der Heimat')), 320);
 }
@@ -261,7 +261,7 @@ function enterVillage() {
     player.x = VILLAGE_SPAWN;
     player.facing = -1;
     player.bounds = VILLAGE_BOUNDS;
-    camX = clamp(player.x - VIEW_W / 2, 0, VILLAGE_W - VIEW_W);
+    camX = Math.round(clamp(player.x - VIEW_W / 2, 0, VILLAGE_W - VIEW_W));
   });
 }
 
@@ -273,7 +273,7 @@ function leaveVillage() {
     player.x = VILLAGE_SIGN_X + 16;
     player.facing = 1;
     player.bounds = [10, WORLD_W - 10];
-    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+    camX = Math.round(clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W));
   });
 }
 
@@ -307,7 +307,7 @@ function travel(level) {
       place = 'outside';
       player.x = MINE_X - 2;
       player.bounds = [10, WORLD_W - 10];
-      camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+      camX = Math.round(clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W));
     });
     return;
   }
@@ -595,7 +595,7 @@ const mineScene = createMineScene({
   },
 });
 
-let camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+let camX = Math.round(clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W));
 let time = 0;
 let dayTime = state.day;
 
@@ -712,14 +712,67 @@ function drawMine() {
   companions.drawGlow(ctx, 0, WALK_Y, time, 1);
 }
 
-function frame(now) {
-  const dt = paused ? 0 : Math.min((now - last) / 1000, 0.05);
-  last = now;
+// Feste Spieltakte: Die Spiellogik läuft immer in Schritten von 1/60 Sekunde –
+// unabhängig davon, ob der Bildschirm 60, 75, 120 oder 144 Hz hat. Die Figur
+// läuft genau 1 Spielpixel pro Takt; die Kamera bewegt sich nur in ganzen
+// Pixeln. So gibt es kein ungleichmäßiges „Springen“ beim Laufen mehr.
+const STEP = 1 / 60;
+const MAX_STEPS = 5; // nach einem Hänger nicht ewig nachholen
+let acc = 0;
+
+function tick(dt) {
   time += dt;
   dayTime += dt / DAY_LENGTH;
   if (dayTime >= 1) {
     dayTime -= 1;
     state.dayCount += 1; // neuer Spieltag (für die Jahreszeiten)
+  }
+  // im Minispiel steht die Figur still; die Pfeiltasten steuern den Korb
+  if (minigame.active()) minigame.update(dt, axis());
+  else player.update(dt);
+  background.update(dt);
+  companions.update(dt, { where: place, night: lastNight > 0.5, playerX: player.x, bounds: player.bounds });
+  companions.followUpdate(dt, player);
+  const present = care.giftTick(dt);
+  if (present) {
+    audio.play('pick');
+    ui.companionGift(present);
+  }
+  if (place === 'outside') world.update(dt, player);
+  if (place === 'mine') mineScene.update(dt, mineLevel, time);
+  if (place === 'village') {
+    villageScene.update(dt);
+    if (player.moving) villageScene.cancelFishing();
+  }
+  // Kamera folgt der Figur in ganzen Pixeln (im Haus steht sie still)
+  if (place === 'outside' || place === 'village') {
+    const width = place === 'village' ? VILLAGE_W : WORLD_W;
+    const target = Math.round(clamp(player.x - VIEW_W / 2, 0, width - VIEW_W));
+    const d = target - camX;
+    if (d) camX += Math.sign(d) * Math.min(Math.abs(d), Math.max(1, Math.round(Math.abs(d) / 8)));
+  }
+  const ph = phase(dayTime);
+  stars.update(dt, ph.night > 0.6, (place === 'outside' || place === 'village') && !villageScene.fishing() && !minigame.active());
+  if (spellFx > 0) spellFx -= dt;
+}
+
+function frame(now) {
+  const elapsed = Math.min((now - last) / 1000, 0.25);
+  last = now;
+  if (paused) acc = 0;
+  else {
+    // Bildschirm-Takte schwanken minimal (16,6 / 16,8 ms …). Liegt die Zeit nahe an
+    // einem ganzen Vielfachen eines Spieltakts, zählt genau dieses – sonst gäbe es
+    // abwechselnd Bilder mit 0 und 2 Takten (sichtbares Ruckeln).
+    const n = Math.round(elapsed / STEP);
+    acc += n >= 1 && Math.abs(elapsed - n * STEP) < 0.002 ? n * STEP : elapsed;
+    let steps = 0;
+    while (acc >= STEP && steps < MAX_STEPS) {
+      tick(STEP);
+      acc -= STEP;
+      steps++;
+    }
+    if (steps === MAX_STEPS) acc = 0;
   }
   // Landschaft wechseln, wenn gewählt oder die Jahreszeit umspringt
   const wanted = wantedTheme();
@@ -731,26 +784,6 @@ function frame(now) {
     if (auto) ui.toast(`Die Jahreszeit wechselt: ${themes.theme(themeId).name}`);
   }
   state.day = dayTime;
-
-  if (!paused) {
-    // im Minispiel steht die Figur still; die Pfeiltasten steuern den Korb
-    if (minigame.active()) minigame.update(dt, axis());
-    else player.update(dt);
-    background.update(dt);
-    companions.update(dt, { where: place, night: lastNight > 0.5, playerX: player.x, bounds: player.bounds });
-    companions.followUpdate(dt, player);
-    const present = care.giftTick(dt);
-    if (present) {
-      audio.play('pick');
-      ui.companionGift(present);
-    }
-    if (place === 'outside') world.update(dt, player);
-    if (place === 'mine') mineScene.update(dt, mineLevel, time);
-    if (place === 'village') {
-      villageScene.update(dt);
-      if (player.moving) villageScene.cancelFishing();
-    }
-  }
 
   near =
     minigame.active() ? 'minigame'
@@ -803,20 +836,10 @@ function frame(now) {
     : `Truhe leeren · ${expedition.live.gold.toLocaleString('de-DE')} Gold${expedition.live.loot ? ' ✦' : ''}`;
   if (actionLabel.textContent !== label) actionLabel.textContent = label;
 
-  // Kamera folgt der Figur sanft (im Haus steht sie still)
-  if (place === 'outside' || place === 'village') {
-    const width = place === 'village' ? VILLAGE_W : WORLD_W;
-    const target = clamp(player.x - VIEW_W / 2, 0, width - VIEW_W);
-    camX += (target - camX) * Math.min(1, dt * 6);
-  }
-
   const ph = phase(dayTime);
   audio.setNight(ph.night);
   village.setDayPhase(dayLabel(dayTime).name);
   lastNight = ph.night;
-  // Sternschnuppen nur nachts und unter freiem Himmel (nicht beim Angeln in der Seesicht)
-  const openSky = (place === 'outside' || place === 'village') && !villageScene.fishing() && !minigame.active();
-  stars.update(dt, ph.night > 0.6, openSky);
   if (place === 'house') drawInside(ph);
   else if (place === 'mine') drawMine();
   else if (place === 'village') drawVillage(ph);
@@ -826,7 +849,6 @@ function frame(now) {
 
   // Funkeln um die Spielfigur nach einem Zauber
   if (spellFx > 0) {
-    spellFx -= dt || 0.016;
     const cx = place === 'outside' || place === 'village' ? Math.round(player.x - camX) : Math.round(player.x);
     for (let k = 0; k < 14; k++) {
       const a = time * 3 + k * 0.45;
@@ -843,3 +865,6 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// Nur zum Messen (Adresse mit ?debug): Kamera und Figur von außen lesbar
+if (new URLSearchParams(location.search).has('debug')) window.__cosy = { cam: () => camX, x: () => player.x };

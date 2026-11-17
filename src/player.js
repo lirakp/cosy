@@ -4,7 +4,7 @@ import { axis } from './input.js';
 import { makePlayerSprites } from './sprites.js';
 import { state } from './state.js';
 
-const SPEED = 52; // Pixel pro Sekunde – gemütliches Schlendern
+const SPEED = 60; // Pixel pro Sekunde = genau 1 Spielpixel pro Spieltakt (1/60 s) – gleichmäßiges Schlendern
 
 export function createPlayer() {
   let sprites = makePlayerSprites(state.outfit, state.character || {});
