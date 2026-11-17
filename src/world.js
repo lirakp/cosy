@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X, TOWER_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP, VILLAGE_SIGN_X, TOWER_X, PORTAL_X } from './config.js';
+import * as realm from './realm.js';
 import * as magic from './magic.js';
 import * as garden from './garden.js';
 import * as gardener from './gardener.js';
@@ -305,6 +306,29 @@ function drawVillageSign(ctx, x) {
 }
 
 // Magierturm: schmaler Steinturm mit Sternendach und Kristallkugel
+// Dimensionsportal: ein Steinbogen mit Runen; der Wirbel darin wird in den Lichtern gemalt
+function drawPortal(ctx, x) {
+  const base = GROUND_Y + 4;
+  // Sockel
+  rect(ctx, x - 16, base - 3, 32, 3, PAL.stone);
+  rect(ctx, x - 16, base - 3, 32, 1, PAL.stoneLight);
+  // zwei Säulen und ein runder Bogen
+  for (const sx of [x - 15, x + 10]) {
+    rect(ctx, sx, base - 30, 5, 27, PAL.stone);
+    rect(ctx, sx, base - 30, 1, 27, PAL.stoneLight);
+    for (let y = base - 27; y < base - 4; y += 6) px(ctx, sx + 2, y, PAL.magic);
+  }
+  for (let a = 0; a <= 20; a++) {
+    const ang = Math.PI * (a / 20);
+    const bx = Math.round(x - 0.5 + Math.cos(ang) * 13);
+    const by = Math.round(base - 30 - Math.sin(ang) * 10);
+    rect(ctx, bx - 2, by - 1, 4, 3, PAL.stone);
+    px(ctx, bx - 2, by - 1, PAL.stoneLight);
+  }
+  rect(ctx, x - 2, base - 43, 4, 4, PAL.magic);
+  px(ctx, x - 1, base - 42, '#ffffff');
+}
+
 function drawTower(ctx, x) {
   const base = GROUND_Y + 3;
   const w = 16;
@@ -424,7 +448,7 @@ function makeGround() {
   const [c, ctx] = makeCanvas(WORLD_W, VIEW_H);
   const r = rng(42);
   drawGround(ctx, r);
-  for (const x of [22, 134, 482, 612, 664, 778, 836, 952]) drawTree(ctx, x, r);
+  for (const x of [22, 134, 482, 664, 778, 836, 952]) drawTree(ctx, x, r);
   for (const x of [300, 634]) drawBush(ctx, x, r);
   drawFence(ctx, COTTAGE_X + 58, COTTAGE_X + 58 + 84);
   drawCottage(ctx, COTTAGE_X);
@@ -671,6 +695,8 @@ const UPGRADES = {
     }
   },
 
+  portal() {},
+
   // Der Brunnen selbst liegt im Boden-Bild; hier nur der Schmuck je Rang
   well(ctx, x, t) {
     const base = GROUND_Y + 4;
@@ -749,7 +775,7 @@ const UPGRADES = {
 // Bild einer Anlage im angegebenen Rang (breite Leinwand, Mitte bei 56)
 const PROP_W = 112;
 // Grundbilder (Funktionsdeklarationen weiter oben, daher hier schon verfügbar)
-const BASE_DRAW = { well: () => {}, camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge, tower: drawTower };
+const BASE_DRAW = { well: () => {}, portal: drawPortal, camp: drawTent, dungeon: drawDungeonGate, arena: drawArena, mine: drawMineEntrance, forge: drawForge, tower: drawTower };
 const propCache = new Map();
 export function buildingProp(name, tier) {
   const key = `${name}-${tier}`;
@@ -774,6 +800,9 @@ const WEATHER = {
   snow: { n: 60, fall: 14, drift: 6, sway: 3, colors: ['#ffffff', '#f4f8ff', '#dce6f2'], size: [1, 1, 2] },
   leaves: { n: 18, fall: 9, drift: 10, sway: 6, colors: ['#d0702a', '#f0a040', '#9a4028', '#e8c050'], size: [2, 2, 2] },
   petals: { n: 26, fall: 7, drift: 8, sway: 5, colors: ['#f8c0d8', '#f2a0b0', '#fff0f6'], size: [1, 2, 1] },
+  // Portalwelten: aufsteigende Funken (Hölle) und sanft fallende Federn (Himmel)
+  embers: { n: 40, fall: -12, drift: 4, sway: 4, colors: ['#ff8a3a', '#ffd04a', '#ff5a2a', '#ffb070'], size: [1, 1, 2] },
+  feathers: { n: 16, fall: 5, drift: 6, sway: 8, colors: ['#ffffff', '#fff6e6', '#ffe8f0'], size: [2, 2, 1] },
 };
 
 function drawWeather(ctx, kind, time) {
@@ -784,7 +813,8 @@ function drawWeather(ctx, kind, time) {
     const u = seed - Math.floor(seed);
     const speed = 0.6 + u * 0.8;
     const x = ((i * 61.7 + time * w.drift * speed) % (VIEW_W + 20)) - 10 + Math.sin(time * 1.3 + i) * w.sway;
-    const y = ((u * VIEW_H + time * w.fall * speed) % (VIEW_H + 10)) - 5;
+    const span = VIEW_H + 10;
+    const y = ((((u * VIEW_H + time * w.fall * speed) % span) + span) % span) - 5;
     const size = w.size[i % w.size.length];
     ctx.fillStyle = w.colors[i % w.colors.length];
     // Laub dreht sich: abwechselnd breit und schmal
@@ -794,6 +824,7 @@ function drawWeather(ctx, kind, time) {
 }
 
 export function createWorld(theme = {}) {
+  propCache.clear(); // Anlagen in den Farben der Landschaft neu malen
   const ground = makeGround();
   const site = prop(drawSite);
   // gebaute Anlage im aktuellen Rang, sonst Bauplatz
@@ -945,6 +976,7 @@ export function createWorld(theme = {}) {
       drawBuilding(ctx, 'arena', ARENA_X, cam);
       drawBuilding(ctx, 'mine', MINE_X, cam);
       drawBuilding(ctx, 'tower', TOWER_X, cam);
+      drawBuilding(ctx, 'portal', PORTAL_X, cam);
 
       // Gartenbeete vor dem Zaun
       const now = Date.now();
@@ -1018,6 +1050,28 @@ export function createWorld(theme = {}) {
       const cam = Math.round(camX);
       const flicker = Math.sin(time * 9) > 0.4 ? 1 : 0;
       const lamp = 0.3 + 0.7 * night;
+
+      // Wirbel im Dimensionsportal: Farbe der Welt dahinter (Heimat: Grün und Blau)
+      if (buildings.owned('portal')) {
+        const px0 = PORTAL_X - cam;
+        const py = GROUND_Y + 4 - 18;
+        const target = realm.inRealm() ? 'normal' : state.realm.type;
+        const cols = target === 'hoelle' ? ['#ff5a2a', '#ffb03a', '#c0201c'] : target === 'himmel' ? ['#ffe070', '#ffffff', '#9be8ff'] : target === 'normal' ? ['#6fbf6a', '#5aa0e0', '#9be8e0'] : ['#b888f0', '#9be8e0', '#ffffff'];
+        ctx.fillStyle = cols[0];
+        ctx.globalAlpha = 0.55;
+        for (let y = -12; y <= 13; y++) {
+          const half = Math.round(Math.sqrt(Math.max(0, 1 - (y / 13) ** 2)) * 9);
+          ctx.fillRect(px0 - half, py + y, half * 2, 1);
+        }
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 26; i++) {
+          const a = time * 2.2 + i * 0.7;
+          const rad = (i % 9) + 1 + Math.sin(time + i) * 0.5;
+          ctx.fillStyle = cols[i % cols.length];
+          ctx.fillRect(Math.round(px0 + Math.cos(a) * rad * 0.9), Math.round(py + Math.sin(a) * rad * 1.3), 1, 1);
+        }
+        glow(ctx, px0, py, 18 + flicker, 0.35, cols[0]);
+      }
 
       // erleuchtete Fensterscheiben und Laternenglas
       if (night > 0.05) {

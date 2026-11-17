@@ -48,6 +48,13 @@ export const BUILDINGS = {
     pitch: 'Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.',
     unlocks: 'Jeder Rang macht Wünsche günstiger (bis −20 %), erhöht die Chance auf einen Gratis-Folgewunsch und auf ein Geschenk des Brunnengeists. Ab Rang A zwei, bei SS drei Gratiswünsche am Tag.',
   },
+  portal: {
+    name: 'Dimensionsportal',
+    buy: 10000,
+    upgrades: [],
+    pitch: 'Ein Tor in eine zweite Welt – Hölle oder Himmel, das entscheidet das Schicksal beim ersten Durchschreiten. Dort baust du alles noch einmal auf und sammelst 2100 neue Stücke.',
+    unlocks: 'Gold, Sammlung, Begleiter und Haus teilen sich beide Welten.',
+  },
   tower: {
     name: 'Magierturm',
     buy: 1500,
@@ -68,7 +75,7 @@ export const rank = (id) => (owned(id) ? RARITIES[tier(id)].id : null);
 export function nextCost(id) {
   const t = tier(id);
   if (t < 0) return BUILDINGS[id].buy;
-  return t < MAX_TIER ? BUILDINGS[id].upgrades[t] : null;
+  return t < MAX_TIER && t < BUILDINGS[id].upgrades.length ? BUILDINGS[id].upgrades[t] : null;
 }
 
 export function advance(id) {

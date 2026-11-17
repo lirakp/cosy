@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES, rollItem, rollTier } from './items.js';
+import { RARITIES, rollItem, rollTier, worldItems } from './items.js';
 import { state, PULL_COST, PULL_10_COST, DUPE_EXTRA } from './state.js';
 import * as buildings from './buildings.js';
 import * as buffs from './buffs.js';
@@ -29,11 +29,11 @@ export const cost = (n, dupes = false) => sets.pullCost(Math.round((n === 10 ? P
 // Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
 // aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).
 // Er zählt nicht für den Glückszähler.
-export const canDupe = () => ITEMS.some((i) => state.count(i.id));
+export const canDupe = () => worldItems().some((i) => state.count(i.id));
 function rollDupe(minTier, r) {
   const t0 = rollTier(minTier, r, buffs.lucky());
   for (let t = t0; t >= 0; t--) {
-    const pool = ITEMS.filter((i) => i.tier === t && state.count(i.id));
+    const pool = worldItems().filter((i) => i.tier === t && state.count(i.id));
     if (pool.length) return { item: pool[Math.floor(r() * pool.length)], forced: false };
   }
   return null;

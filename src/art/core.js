@@ -138,6 +138,59 @@ function palette(r, tier) {
   return mats;
 }
 
+// Portalwelten: eigene Farbwelten. Hölle – Glut, Asche, Obsidian;
+// Himmel – Weiß, Gold und zarte Pastelltöne.
+const HELL_HUES = [0, 8, 16, 26, 345, 330, 280];
+const HEAVEN_HUES = [45, 50, 200, 210, 190, 300, 160];
+const HELL_METAL = [[15, 18, 22], [10, 12, 26], [0, 30, 30], [270, 25, 28], [20, 85, 50], [350, 80, 55]];
+const HEAVEN_METAL = [[45, 20, 70], [210, 12, 78], [200, 30, 82], [50, 60, 72], [44, 90, 62], [190, 70, 85]];
+
+function realmPalette(r, tier, world) {
+  const hell = world === 'hoelle';
+  const hues = hell ? HELL_HUES : HEAVEN_HUES;
+  const h1 = r.pick(hues) + (r() - 0.5) * 12;
+  const h2 = r.pick(hues) + (r() - 0.5) * 12;
+  const h3 = hell ? 30 + r() * 25 : 40 + r() * 15; // Glut / Gold
+  const sat = hell ? SAT[tier] + 15 : SAT[tier] * 0.7 + 10;
+  const mats = [];
+  mats[M.main] = ramp(h1, sat, hell ? LIG[tier] - 12 : LIG[tier] + 20);
+  mats[M.second] = ramp(h2, sat * 0.8, hell ? 22 + tier * 2 : LIG[tier] + 30);
+  mats[M.accent] = ramp(h3, 95, hell ? 52 : 60);
+  mats[M.metal] = ramp(...(hell ? HELL_METAL : HEAVEN_METAL)[tier]);
+  mats[M.wood] = hell ? ramp(10, 20, 16) : ramp(40, 40, 70);
+  mats[M.glow] = flat(hell ? css(25 + r() * 20, 100, 60) : css(50, 100, 85));
+  mats[M.ink] = flat(INK);
+  mats[M.white] = flat(hell ? '#ffd0a0' : WHITE);
+  mats[M.skin] = hell ? ramp(355, 50, 45) : ramp(30, 45, 82);
+  mats[M.hair] = hell ? ramp(0, 10, 14) : ramp(48, 70, 70);
+  return mats;
+}
+
+// Kennzeichen der Portalwelt auf dem Motiv: Hörner (Hölle) oder Heiligenschein (Himmel)
+function realmMark(g, world) {
+  let top = N;
+  for (let y = 0; y < N && top === N; y++) for (let x = 0; x < N; x++) if (g.get(x, y)) top = y;
+  if (top >= N) return;
+  let left = N, right = -1;
+  for (let x = 0; x < N; x++) if (g.get(x, top) || g.get(x, top + 1)) { left = Math.min(left, x); right = Math.max(right, x); }
+  const cx = Math.round((left + right) / 2);
+  if (world === 'hoelle') {
+    // zwei kleine Hörner auf der Oberkante
+    if (top < 2) return;
+    const l = Math.max(1, left + 1);
+    const rr = Math.min(N - 2, right - 1);
+    g.set(l, top - 1, M.accent);
+    g.set(l - 1, top - 2, M.accent);
+    g.set(rr, top - 1, M.accent);
+    g.set(rr + 1, top - 2, M.accent);
+  } else if (top >= 3) {
+    // schwebender Heiligenschein
+    for (let x = cx - 1; x <= cx + 1; x++) g.set(x, top - 3, M.glow);
+    g.set(cx - 2, top - 2, M.glow);
+    g.set(cx + 2, top - 2, M.glow);
+  }
+}
+
 function color(mat, shade, shift) {
   if (mat.flat) return mat.flat;
   if (shade < 0) return css(mat.h - 10 + shift, mat.s * 0.9, mat.l + 17);
@@ -149,11 +202,15 @@ const SPARKLES = [0, 0, 0, 1, 3, 5];
 
 // Malt ein Motiv. `draw(grid, zufall, edel)` füllt das Raster und darf
 // einzelne Materialien überschreiben (Rückgabewert).
-export function render(draw, seed, tier) {
+export function render(draw, seed, tier, world = 'normal') {
   const r = rand(seed);
   const g = new Grid();
-  const mats = palette(r, tier);
-  Object.assign(mats, draw(g, r, tier / 5) || {});
+  const realm = world === 'hoelle' || world === 'himmel';
+  const mats = realm ? realmPalette(r, tier, world) : palette(r, tier);
+  const own = draw(g, r, tier / 5) || {};
+  // eigene Farben der Motive gelten nur in der Heimat – sonst behält die Welt ihren Stil
+  Object.assign(mats, realm ? {} : own);
+  if (realm) realmMark(g, world);
 
   const [canvas, ctx] = makeCanvas(N, N);
   const taken = new Uint8Array(N * N);
@@ -175,13 +232,15 @@ export function render(draw, seed, tier) {
       const shade = lit && !dark ? -1 : dark && !lit ? 1 : 0;
       // SS-Stücke schimmern in Regenbogenfarben
       const prism = tier === 5 && m !== M.wood && m !== M.skin && m !== M.hair;
-      ctx.fillStyle = color(mats[m], shade, prism ? (x + y) * 11 : 0);
+      // in den Portalwelten bleibt der Schimmer in den Farben der Welt (Glut bzw. Gold und Pastell)
+      const wave = !realm ? (x + y) * 11 : world === 'hoelle' ? (((x + y) * 7) % 50) - 25 : (((x + y) * 9) % 80) - 40;
+      ctx.fillStyle = color(mats[m], shade, prism ? wave : 0);
       ctx.fillRect(x, y, 1, 1);
     }
   }
 
-  // Glitzer in freien Ecken für die hohen Ränge
-  ctx.fillStyle = WHITE;
+  // Glitzer in freien Ecken für die hohen Ränge (Hölle: Funken, Himmel: Gold)
+  ctx.fillStyle = world === 'hoelle' ? '#ff9a3a' : world === 'himmel' ? '#ffe9a0' : WHITE;
   const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && !taken[y * N + x];
   for (let i = 0, tries = 0; i < SPARKLES[tier] && tries < 200; tries++) {
     const x = r.i(0, N - 1);

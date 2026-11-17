@@ -1,4 +1,5 @@
-import { ITEMS, RARITIES, getGroup, rollTier, rollItem, CATEGORIES, PER_GROUP } from './items.js';
+import { RARITIES, getGroup, getItem, rollTier, rollItem, CATEGORIES, PER_GROUP } from './items.js';
+import * as realm from './realm.js';
 import { state } from './state.js';
 import * as mine from './mine.js';
 import { render } from './art/core.js';
@@ -26,7 +27,7 @@ function pickItem(tier) {
   // möglichst etwas, das noch fehlt
   for (let i = 0; i < 12; i++) {
     const cat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-    const item = getGroup(cat.id, RARITIES[tier].id)[Math.floor(Math.random() * PER_GROUP)];
+    const item = getGroup(cat.id, RARITIES[tier].id, realm.current())[Math.floor(Math.random() * PER_GROUP)];
     if (!state.count(item.id) || i === 11) return item;
   }
   return rollItem({ tier });
@@ -74,7 +75,7 @@ export function buyOffer(index) {
   const o = t().offers[index];
   if (!o || o.sold || !present() || !mine.spendOre(o.tier, o.price)) return null;
   o.sold = true;
-  const item = ITEMS.find((i) => i.id === o.id);
+  const item = getItem(o.id);
   const isNew = !state.count(item.id);
   state.addItems([item], 'erzhaendler');
   return { item, isNew };

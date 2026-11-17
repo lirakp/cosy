@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES, getItem, rollItem } from './items.js';
+import { RARITIES, getItem, rollItem, worldPool } from './items.js';
 import { state } from './state.js';
 import { render } from './art/core.js';
 import { LEADER_ART } from './art/leaders.js';
@@ -39,7 +39,8 @@ export const LEADERS = [
   { id: 'yuna', name: 'Fährtenleserin Yuna', role: 'Mehr Funde', gold: 0.4, loot: 1.6, seed: 2342 },
 ];
 
-const CREATURES = ITEMS.filter((item) => item.cat === 'lebewesen');
+// Lebewesen der Welt, in der man gerade ist (Heimat bzw. Portalwelt)
+const creatures = () => worldPool('lebewesen', (item) => item.cat === 'lebewesen');
 const e = () => state.exp;
 
 // ---------------------------------------------------------------- Lebewesen
@@ -55,12 +56,12 @@ export const rateOf = (item, tier = evoOf(item.id)) => BASE_RATE[item.tier] * EV
 // Alle eigenen Lebewesen, die stärksten zuerst.
 export function roster() {
   // der Gartenhelfer bleibt zu Hause
-  return CREATURES.filter((item) => state.count(item.id) && item.id !== state.garden.helper?.creature).sort((a, b) => rateOf(b) - rateOf(a) || b.tier - a.tier);
+  return creatures().filter((item) => state.count(item.id) && item.id !== state.garden.helper?.creature).sort((a, b) => rateOf(b) - rateOf(a) || b.tier - a.tier);
 }
 export const team = () => (buildings.owned('camp') ? roster().slice(0, TEAM_SIZE) : []);
 
 // Wert aller Lebewesen-Duplikate – das Material für Entwicklungen.
-export const material = () => dupValue(CREATURES);
+export const material = () => dupValue(creatures());
 
 export const evolveCost = (item) => (rawEvo(item.id) < MAX_TIER && rawEvo(item.id) < campTier() ? EVO_COST[rawEvo(item.id)] : null);
 
@@ -68,7 +69,7 @@ export function evolve(item) {
   const cost = evolveCost(item);
   if (cost === null || !state.count(item.id)) return false;
 
-  if (!payWithDuplicates(CREATURES, cost)) return false;
+  if (!payWithDuplicates(creatures(), cost)) return false;
   e().evo[item.id] = rawEvo(item.id) + 1;
   refresh();
   state.changed();

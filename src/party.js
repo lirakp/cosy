@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES, getItem } from './items.js';
+import { RARITIES, getItem, worldPool } from './items.js';
 import { state } from './state.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
 import * as sets from './sets.js';
@@ -23,8 +23,9 @@ export const GEAR_POWER = [4, 7, 12, 20, 35, 60];
 export const LEVEL_MULT = [1, 1.3, 1.7, 2.2, 3, 4];
 export const LEVEL_COST = [30, 80, 200, 600, 2000];
 
-const GEAR = ITEMS.filter((item) => SLOTS.some((s) => s.cat === item.cat));
-const HEROES = ITEMS.filter((item) => item.cat === 'helden');
+// Helden und Ausrüstung der aktuellen Welt
+const gearPool = () => worldPool('gear', (item) => SLOTS.some((s) => s.cat === item.cat));
+const heroPool = () => worldPool('helden', (item) => item.cat === 'helden');
 
 export const emptyMember = () => ({ hero: null, gear: { waffen: null, ruestung: null, relikte: null, artefakte: null }, cape: null });
 
@@ -46,7 +47,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
   const heroPower = (item, level = levelOf(item.id)) => Math.round(HERO_POWER[item.tier] * LEVEL_MULT[level]);
   const gearPower = (item, level = levelOf(item.id)) => Math.round(GEAR_POWER[item.tier] * LEVEL_MULT[level]);
   const powerOf = (item, level) => (item.cat === 'helden' ? heroPower(item, level) : gearPower(item, level));
-  const pool = (item) => (item?.cat === 'helden' ? HEROES : GEAR);
+  const pool = (item) => (item?.cat === 'helden' ? heroPool() : gearPool());
   const material = (item) => dupValue(pool(item));
   const levelCost = (item) => (rawLevel(item.id) < MAX_TIER && rawLevel(item.id) < tier() ? LEVEL_COST[rawLevel(item.id)] : null);
 
@@ -93,7 +94,7 @@ export function createParty({ name, members, tier, other, locked = () => false, 
 
   // Eigene Stücke einer Art, die stärksten zuerst. all: auch die im anderen Team.
   const candidates = (key, all = false) =>
-    (key === 'hero' ? HEROES : GEAR.filter((i) => i.cat === key))
+    (key === 'hero' ? heroPool() : gearPool().filter((i) => i.cat === key))
       .filter((i) => state.count(i.id) && (all || !usedElsewhere(i.id)))
       .sort((x, y) => powerOf(y) - powerOf(x) || y.tier - x.tier);
 

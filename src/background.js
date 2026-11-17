@@ -62,10 +62,10 @@ function makeCloud(r, colors) {
   return imgs;
 }
 
-function makeClouds() {
+function makeClouds(colors = CLOUDS) {
   const r = rng(21);
   const list = Array.from({ length: 6 }, (_, i) => ({
-    imgs: makeCloud(r, CLOUDS),
+    imgs: makeCloud(r, colors),
     w: 0,
     x: r() * (VIEW_W + 80),
     y: 22 + Math.floor(r() * 60),
@@ -175,11 +175,11 @@ function makeSun() {
 }
 
 export function createBackground(theme = {}) {
-  const skies = Object.fromEntries(Object.entries(SKIES).map(([k, stops]) => [k, makeSky(stops)]));
+  const skies = Object.fromEntries(Object.entries({ ...SKIES, ...theme.skies }).map(([k, stops]) => [k, makeSky(stops)]));
   const moon = makeMoon();
   const sun = makeSun();
   const stars = makeStars();
-  const clouds = makeClouds();
+  const clouds = makeClouds(theme.clouds || CLOUDS);
   const layers = [
     ...(theme.terrain === 'sea'
       ? [makeSea(0.12, 124, 3)]

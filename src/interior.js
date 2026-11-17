@@ -1,7 +1,7 @@
 import { VIEW_W, VIEW_H, WALK_Y } from './config.js';
 import { PAL } from './palette.js';
 import { makeCanvas, rect, px, circle, dither } from './utils.js';
-import { ITEMS, itemImage } from './items.js';
+import { ALL_ITEMS, itemImage } from './items.js';
 import { state } from './state.js';
 
 // Das Innere des Häuschens: ein einziges Zimmer, so breit wie der Bildschirm.
@@ -340,7 +340,7 @@ export function createInterior() {
 
   // Die drei seltensten eigenen Sammelstücke stehen auf dem Kaminsims.
   function shelfItems() {
-    const owned = ITEMS.filter((i) => state.count(i.id));
+    const owned = ALL_ITEMS.filter((i) => state.count(i.id));
     const key = `${owned.length}:${state.pulls}`;
     if (key !== shelfKey) {
       shelfKey = key;

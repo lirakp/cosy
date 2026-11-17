@@ -55,5 +55,9 @@ export const VILLAGE_SIGN_X = 36;
 export const VILLAGE_SIGN_RANGE = 11;
 
 // Magierturm zwischen Garten und Brunnen
+// Dimensionsportal zwischen Lager und Arena
+export const PORTAL_X = 626;
+export const PORTAL_RANGE = 14;
+
 export const TOWER_X = 366;
 export const TOWER_RANGE = 11;

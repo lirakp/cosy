@@ -888,3 +888,15 @@ table.stats td { border-top: 1px solid #3a3170; }
 .dupe-toggle input { margin-top: 2px; accent-color: #9be8e0; }
 .dupe-toggle b { color: #9be8e0; }
 .actions .dupe { box-shadow: 0 0 0 3px #9be8e0; }
+
+/* ---------------------------------------------------------------- Portalwelt */
+
+.reveal.realm-hoelle .rank-big { color: #ff6a2a; text-shadow: 0 0 18px #ff3a1a; }
+.reveal.realm-hoelle .rays { background: repeating-conic-gradient(from 0deg, rgba(255, 90, 40, 0.28) 0 10deg, transparent 10deg 20deg); }
+.reveal.realm-himmel .rank-big { color: #ffe070; text-shadow: 0 0 18px #ffffff; }
+.reveal.realm-himmel .rays { background: repeating-conic-gradient(from 0deg, rgba(255, 240, 180, 0.32) 0 10deg, transparent 10deg 20deg); }
+.reveal[class*="realm-"] .card { max-width: 440px; }
+.hell-text { color: #ff6a2a; }
+.heaven-text { color: #ffe070; }
+.tabs.worlds .world-hoelle.on { box-shadow: 0 0 0 2px #ff6a2a; }
+.tabs.worlds .world-himmel.on { box-shadow: 0 0 0 2px #ffe070; }

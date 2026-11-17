@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, WALK_Y, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE, TOWER_X, TOWER_RANGE } from './config.js';
+import { PORTAL_X, PORTAL_RANGE, VIEW_W, VIEW_H, WORLD_W, WALK_Y, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE, VILLAGE_SIGN_X, VILLAGE_SIGN_RANGE, TOWER_X, TOWER_RANGE } from './config.js';
 import * as village from './village.js';
 import { createVillageScene, zoneAt as villageZoneAt, VILLAGE_W, VILLAGE_BOUNDS, VILLAGE_SPAWN } from './villagescene.js';
 import * as garden from './garden.js';
@@ -8,6 +8,7 @@ import * as magic from './magic.js';
 import { createTitle } from './title.js';
 import * as companions from './companions.js';
 import * as well from './well.js';
+import * as realm from './realm.js';
 import * as care from './companioncare.js';
 import * as stars from './stars.js';
 import * as forge from './forge.js';
@@ -207,6 +208,34 @@ function leaveHouse() {
   });
 }
 
+// ---------------------------------------------------------------- Dimensionsportal
+
+function travelRealm() {
+  if (sleeping || !buildings.owned('portal') || !state.realm.type) return;
+  const first = !state.realm.visited && !state.realm.inside;
+  audio.play('wish');
+  fadeThrough(() => {
+    // Erträge bis jetzt gutschreiben – die verlassene Welt läuft „offline“ weiter
+    expedition.tick();
+    mine.tick();
+    state.switchWorld();
+    if (first) {
+      state.realm.visited = true;
+      state.changed();
+    }
+    expedition.tick();
+    mine.tick();
+    themeId = wantedTheme();
+    buildScenes();
+    place = 'outside';
+    player.x = PORTAL_X + 18;
+    player.facing = 1;
+    player.bounds = [10, WORLD_W - 10];
+    camX = clamp(player.x - VIEW_W / 2, 0, WORLD_W - VIEW_W);
+  });
+  setTimeout(() => (first ? ui.realmArrived(state.realm.type) : ui.toast(state.realm.inside ? `◈ ${realm.WORLDS[state.realm.type].name}` : '◈ Zurück in der Heimat')), 320);
+}
+
 // ---------------------------------------------------------------- Dorf
 
 function enterVillage() {
@@ -314,6 +343,7 @@ function act() {
       ui.foundCompanion(c);
     }
   }
+  if (near === 'portal') buildings.owned('portal') ? travelRealm() : ui.openPortal();
   if (near === 'village') enterVillage();
   if (near === 'farm') leaveVillage();
   if (near === 'fishing') fishAction();
@@ -484,7 +514,9 @@ addEventListener('pagehide', () => state.save());
 
 // Landschaft: Hintergrund, Hof und Dorf werden in ihren Farben gezeichnet und
 // beim Wechsel neu aufgebaut.
-let themeId = themes.resolve(state.theme, state.dayCount);
+// Hinter dem Portal gilt immer die Landschaft der Portalwelt
+const wantedTheme = () => (state.realm.inside ? state.realm.type : themes.resolve(state.theme, state.dayCount));
+let themeId = wantedTheme();
 let background;
 let world;
 let villageScene;
@@ -669,7 +701,7 @@ function frame(now) {
     state.dayCount += 1; // neuer Spieltag (für die Jahreszeiten)
   }
   // Landschaft wechseln, wenn gewählt oder die Jahreszeit umspringt
-  const wanted = themes.resolve(state.theme, state.dayCount);
+  const wanted = wantedTheme();
   if (wanted !== themeId) {
     const auto = state.theme === themes.AUTO;
     themeId = wanted;
@@ -712,6 +744,7 @@ function frame(now) {
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
     : Math.abs(player.x - ARENA_X) < ARENA_RANGE ? 'arena'
     : Math.abs(player.x - MINE_X) < MINE_RANGE ? 'mine'
+    : Math.abs(player.x - PORTAL_X) < PORTAL_RANGE ? 'portal'
     : trader.present() && Math.abs(player.x - TRADER_X) < TRADER_RANGE ? 'trader'
     : null;
   actionButton.hidden = !near || paused || sleeping || ui.isOpen();
@@ -732,7 +765,8 @@ function frame(now) {
     : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
     : near === 'trader' ? '✦ Erzhändler'
     : near === 'well' ? (well.spiritGift() ? '✦ Wunschbrunnen · Der Geist hat ein Geschenk!' : well.freeSingle() ? '✦ Wunschbrunnen · Gratiswunsch!' : '✦ Wunschbrunnen')
-    : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
+    : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy.toLocaleString('de-DE')} Gold`
+    : near === 'portal' ? (realm.inRealm() ? '◈ Durch das Portal zurück in die Heimat' : `◈ Durch das Portal${state.realm.visited ? ` · ${realm.WORLDS[state.realm.type].name}` : ' · ins Ungewisse'}`)
     : near === 'arena' ? 'Bossarena'
     : near === 'forge' ? '⚒ Schmiede'
     : near === 'tower' ? '✦ Magierturm'
@@ -778,7 +812,7 @@ function frame(now) {
   }
 
   const dl = dayLabel(dayTime);
-  const text = `${dl.icon} ${dl.name}`;
+  const text = `${dl.icon} ${dl.name}${realm.inRealm() ? ` · ${realm.WORLDS[realm.current()].name}` : ''}`;
   if (text !== dayText) dayEl.textContent = dayText = text;
 
   requestAnimationFrame(frame);

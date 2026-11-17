@@ -255,6 +255,43 @@ Galerie steht bei jeder Schriftrolle, welchen Zauber sie lehrt.
 
 Werte in `src/magic.js`.
 
+## Dimensionsportal (Hölle oder Himmel)
+
+Zwischen Expeditionslager und Bossarena lässt sich für **10.000 Gold** ein
+Dimensionsportal bauen. Beim Bau entscheidet der Zufall, wohin es führt: in die
+**Hölle** oder in den **Himmel**. Das bleibt dann für immer so; verraten wird es
+erst beim ersten Durchschreiten (`E` vor dem Portal).
+
+Die Portalwelt ist genauso aufgebaut wie die Heimat: Haus, Garten, Brunnen,
+Bauplätze für Lager, Dungeon, Arena, Mine, Schmiede und Turm, Schild zum Dorf und
+das Portal für den Rückweg. Sie sieht aber anders aus:
+
+- **Hölle:** glühender Himmel, Asche, dunkler Fels und aufsteigende Funken.
+- **Himmel:** goldenes Licht, Wolkenboden und fallende Federn.
+
+**Eigener Stand je Welt:** Gebäude, Expedition, Dungeon, Arena (mit Stoff und
+Seide), Mine, Schmiede, Brunnen (mit Glückszähler) und Garten. Die verlassene Welt
+sammelt währenddessen weiter, wie offline.
+
+**Für beide Welten gemeinsam:** Gold, Sammlung, Begleiter, Haus mit Nähtisch,
+Dorf, Magie und Statistik.
+
+**2100 neue Sammelstücke je Portalwelt** (7 Kategorien × 6 Ränge × 50):
+
+- **Hölle:** Glut-, Asche- und Obsidianfarben, kleine Hörner, Funken statt
+  Glitzer, Namen wie „Waldläufer der Neun Kreise“.
+- **Himmel:** Weiß, Gold und Pastell, Heiligenschein, goldener Glitzer, Namen wie
+  „Katze vom Wolkenrand“.
+
+In der Portalwelt bringen Brunnen, Expedition, Dungeon, Händler, Sternschnuppen
+und Geschenke nur Stücke dieser Welt. Auch die Teams (Expedition, Arena, Dungeon,
+Mine, Gartenhelfer) und das Leveln nutzen nur deren Stücke. Man baut dort also
+wirklich neu auf. Die Galerie hat oben einen Reiter je Welt. Sammel-Sets und
+Zauber-Schriftrollen gibt es nur in der Heimat.
+
+Logik in `src/realm.js` und `state.switchWorld()`, Stücke in `src/items.js`,
+Stil in `src/art/core.js`, Landschaften in `src/themes.js`.
+
 ## Nähtisch (Schneiderei)
 
 Im Haus steht neben dem Tisch am Fenster ein Nähkorb. Dort (`E`) wird aus Stoff

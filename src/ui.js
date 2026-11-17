@@ -1,4 +1,5 @@
-import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem } from './items.js';
+import { ITEMS, RARITIES, CATEGORIES, HIGHLIGHT_TIER, PER_GROUP, getGroup, getItem, itemImage, rollItem, worldItems, worldPool } from './items.js';
+import * as realm from './realm.js';
 import { state, DUPE_EXTRA } from './state.js';
 import * as exp from './expedition.js';
 import * as dungeon from './dungeon.js';
@@ -56,7 +57,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   const toastEl = $('#toast');
   let view = null; // 'well' | 'gallery' | 'expedition'
   let toastTimer = 0;
-  let filter = { cat: CATEGORIES[0].id, rank: 'D' };
+  let filter = { cat: CATEGORIES[0].id, rank: 'D', world: 'normal' };
   let selected = null;
   let lastPull = [];
   const pick = { level: 0 }; // gewählte Gefahrenstufe im Dungeon-Menü
@@ -101,6 +102,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (view === 'tower') renderTower();
     if (view === 'companions') renderCompanions();
     if (view === 'tailor') renderTailor();
+    if (view === 'portal') renderPortal();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -205,6 +207,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (next.questDone) return showQuestDone(next.questDone);
     if (next.catch) return showCatch(next.catch);
     if (next.companion) return showCompanion(next.companion);
+    if (next.realm) return showRealm(next.realm);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -713,6 +716,49 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   // Fang: kleine Fische als Hinweis, große als Pop-up, Flaschenpost als Sammelstück
+  function showRealm(type) {
+    const w = realm.WORLDS[type];
+    const el = document.createElement('div');
+    el.className = `reveal realm-${type}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">DAS PORTAL ÖFFNET SICH …</div>
+        <div class="rank-big">${w.name.toUpperCase()}</div>
+        <p>${w.intro}</p>
+        <p class="muted">Diese Welt bleibt deine Portalwelt. Hier baust du alles neu auf – Brunnen, Lager, Mine, Arena und mehr. Am Brunnen und unterwegs findest du nur Stücke ${type === 'hoelle' ? 'der Hölle' : 'des Himmels'}, und nur die helfen dir hier. Gold, Sammlung und Begleiter nimmst du mit. Durch das Portal geht es jederzeit zurück.</p>
+        <button data-act="reveal-next">Los geht's</button>
+      </div>`;
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', 5);
+    onToggle(true);
+  }
+
+  function renderPortal() {
+    const b = buildings.BUILDINGS.portal;
+    if (!buildings.owned('portal')) {
+      overlay.innerHTML = `
+        <section class="panel portalpanel">
+          ${head('Dimensionsportal')}
+          <p class="lead">${b.pitch}</p>
+          <div class="chest">
+            <p>Wohin das Portal führt, verrät es erst beim ersten Durchschreiten: in die <b class="hell-text">Hölle</b> oder in den <b class="heaven-text">Himmel</b>. Das Schicksal entscheidet einmal – danach bleibt es so.</p>
+            <p class="muted">${b.unlocks} In der Portalwelt haben Gebäude, Expedition, Mine, Arena, Dungeon, Schmiede, Brunnen und Garten einen eigenen Stand; deine Heimat sammelt währenddessen weiter.</p>
+            <div class="line"><button class="big" data-act="build" data-id="portal" ${state.gold >= b.buy ? '' : 'disabled'}>Portal bauen<small>${fmt(b.buy)} Gold</small></button></div>
+          </div>
+        </section>`;
+      return;
+    }
+    const name = state.realm.visited ? realm.WORLDS[state.realm.type].name : '???';
+    overlay.innerHTML = `
+      <section class="panel portalpanel">
+        ${head('Dimensionsportal')}
+        <p class="lead">${realm.inRealm() ? 'Das Portal führt zurück in deine Heimat.' : `Hinter dem Portal liegt: <b>${name}</b>.`}</p>
+        <p class="muted">Stell dich vor das Portal und drücke <kbd>E</kbd>, um hindurchzugehen.</p>
+      </section>`;
+  }
+
   function showCompanion(c) {
     const rank = companions.rankOf(c);
     const el = document.createElement('div');
@@ -940,7 +986,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     const c = gardener.creature();
     const h = gardener.info();
     if (!c || helperPick) {
-      const list = ITEMS.filter((i) => i.cat === 'lebewesen' && state.count(i.id)).sort((a, b) => b.tier - a.tier).slice(0, 44);
+      const list = worldPool('lebewesen', (i) => i.cat === 'lebewesen').filter((i) => state.count(i.id)).sort((a, b) => b.tier - a.tier).slice(0, 44);
       return `<div class="chest helper">
         <div class="line"><b>Gartenhelfer</b>${c ? '<button data-act="helper-close">Abbrechen</button>' : ''}</div>
         <p class="muted">Ein Lebewesen kann sich um die Beete kümmern: ernten, neu pflanzen und – wenn du es erlaubst – Ernte am Markt verkaufen, um Saat zu kaufen. Es zieht dann nicht mehr mit auf Expedition.</p>
@@ -1180,7 +1226,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
         <div class="grid" id="forge-grid"></div>
       </section>`;
     $('#forge-grid').replaceChildren(
-      ...getGroup(forgeSel.cat, forgeSel.rank).map((item) => {
+      ...getGroup(forgeSel.cat, forgeSel.rank, realm.current()).map((item) => {
         const n = state.count(item.id);
         const el = tile(item, { hidden: !n, badge: n > 1 ? `<span class="count">×${n}</span>` : '' });
         el.dataset.act = 'forge-pick';
@@ -1665,12 +1711,22 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
   }
 
   function renderGallery() {
+    if (filter.world !== 'normal' && filter.world !== state.realm.type) filter.world = 'normal';
+    const W = filter.world;
+    const all = worldItems(W);
+    // Welten: Heimat und – sobald das Portal steht – die Portalwelt
+    const worlds = state.realm.type
+      ? `<nav class="tabs worlds">${['normal', state.realm.type].map((w) => {
+          const have = state.collected(worldItems(w));
+          return `<button class="tab world-${w}${W === w ? ' on' : ''}" data-act="gal-world" data-v="${w}">${w === 'normal' ? 'Heimat' : state.realm.visited ? realm.WORLDS[w].name : '??? (Portalwelt)'}<small>${have}/${worldItems(w).length}</small></button>`;
+        }).join('')}</nav>`
+      : '';
     const cats = CATEGORIES.map((c) => {
-      const mine = state.collected(ITEMS.filter((i) => i.cat === c.id));
+      const mine = state.collected(all.filter((i) => i.cat === c.id));
       return `<button class="tab${c.id === filter.cat ? ' on' : ''}" data-act="cat" data-v="${c.id}">${c.name}<small>${mine}/${PER_GROUP * RARITIES.length}</small></button>`;
     }).join('');
     const ranks = RARITIES.map((r) => {
-      const have = state.collected(getGroup(filter.cat, r.id));
+      const have = state.collected(getGroup(filter.cat, r.id, W));
       return `<button class="tab r-${r.id}${r.id === filter.rank ? ' on' : ''}" data-act="rank" data-v="${r.id}"><b>${r.id}</b><small>${have >= PER_GROUP ? '✓ Set' : `${have}/${PER_GROUP}`}</small></button>`;
     }).join('');
     const dupes = state.duplicateValue();
@@ -1678,10 +1734,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     overlay.innerHTML = `
       <section class="panel gallery">
         ${head('Galerie')}
-        <p class="lead">${fmt(state.collected())} von ${fmt(ITEMS.length)} Sammelstücken entdeckt</p>
+        ${worlds}
+        <p class="lead">${fmt(state.collected(all))} von ${fmt(all.length)} Sammelstücken ${W === 'normal' ? 'der Heimat' : `aus ${W === 'hoelle' ? 'der Hölle' : 'dem Himmel'}`} entdeckt</p>
         <nav class="tabs">${cats}</nav>
         <nav class="tabs ranks">${ranks}</nav>
-        ${setPanel()}
+        ${W === 'normal' ? setPanel() : ''}
         <div class="grid" id="gallery-grid"></div>
         <div class="detail" id="detail"></div>
         <footer>
@@ -1690,7 +1747,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
       </section>`;
 
     $('#gallery-grid').replaceChildren(
-      ...getGroup(filter.cat, filter.rank).map((item) => {
+      ...getGroup(filter.cat, filter.rank, W).map((item) => {
         const n = state.count(item.id);
         const el = tile(item, { hidden: !n, badge: n > 1 ? `<span class="count">×${n}</span>` : '' });
         if (item.id === selected) el.classList.add('sel');
@@ -1704,7 +1761,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     const box = $('#detail');
     const item = selected && getItem(selected);
     if (!box) return;
-    if (!item || item.cat !== filter.cat || item.rank !== filter.rank) {
+    if (!item || item.cat !== filter.cat || item.rank !== filter.rank || item.world !== filter.world) {
       box.innerHTML = '<p class="muted">Tippe ein Stück an, um es genauer anzusehen.</p>';
       return;
     }
@@ -1741,7 +1798,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     }
     if (tileEl && view === 'well') {
       const item = getItem(tileEl.dataset.id);
-      filter = { cat: item.cat, rank: item.rank };
+      filter = { cat: item.cat, rank: item.rank, world: item.world };
       selected = item.id;
       show('gallery');
       return;
@@ -1756,11 +1813,15 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (act === 'gallery') show('gallery');
     if (act === 'pull') pull(btn.dataset.n === 'spirit' ? 'spirit' : Number(btn.dataset.n));
     if (act === 'build') {
+      // Das Schicksal entscheidet beim Bau, welche Welt hinter dem Portal liegt
+      if (btn.dataset.id === 'portal' && !buildings.owned('portal') && state.gold >= buildings.BUILDINGS.portal.buy && !state.realm.type) {
+        state.realm.type = realm.REALMS[Math.floor(Math.random() * realm.REALMS.length)];
+      }
       if (!buildings.advance(btn.dataset.id)) audio.play('error');
       else {
         audio.play('build');
         const b = buildings.BUILDINGS[btn.dataset.id];
-        toast(`${b.name}: Rang ${buildings.rank(btn.dataset.id)}`);
+        toast(b.upgrades.length ? `${b.name}: Rang ${buildings.rank(btn.dataset.id)}` : `${b.name} gebaut! Stell dich davor und drücke E.`);
         exp.rebuilt();
       }
       show(view);
@@ -1958,6 +2019,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     if (act === 'leader-evolve') { audio.play(exp.evolveLeader() ? 'levelUp' : 'error'); renderExpedition(); }
     if (act === 'evolve') { audio.play(exp.evolve(getItem(btn.dataset.id)) ? 'levelUp' : 'error'); renderExpedition(); }
     if (act === 'cat') { filter.cat = btn.dataset.v; renderGallery(); }
+    if (act === 'gal-world') { filter.world = btn.dataset.v; renderGallery(); }
     if (act === 'rank') { filter.rank = btn.dataset.v; renderGallery(); }
     if (act === 'sell') { if (state.sellDuplicates(btn.dataset.id)) audio.play('sell'); renderGallery(); }
     if (act === 'sell-all') { if (state.sellAllDuplicates()) audio.play('sell'); renderGallery(); }
@@ -2011,6 +2073,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast }) {
     openTower: () => show('tower'),
     openCompanions: () => show('companions'),
     openTailor: () => show('tailor'),
+    openPortal: () => show('portal'),
+    // erste Ankunft in der Portalwelt
+    realmArrived(type) {
+      reveals.push({ realm: type });
+      if (!$('.reveal')) nextReveal();
+    },
     // neuer Begleiter: Pop-up
     // Geschenk vom Begleiter
     companionGift(res) {

@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES } from './items.js';
+import { RARITIES, getItem, worldPool } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import { dupValue, payWithDuplicates } from './dupes.js';
@@ -32,7 +32,7 @@ export const DEPTH = [1, 0.6, 0.4, 0.25, 0.15, 0.08];
 // Höchstens so lange wird offline weitergehackt
 export const MAX_OFFLINE_MINUTES = 480;
 
-const MONSTERS = ITEMS.filter((i) => i.cat === 'monster');
+const monsters = () => worldPool('monster', (i) => i.cat === 'monster');
 const m = () => state.mine;
 
 export const unlocked = (level) => level <= buildings.tier('mine');
@@ -45,12 +45,12 @@ export const levelOf = (id) => Math.max(0, Math.min(rawLevel(id), buildings.tier
 export const capped = (level) => level < MAX_TIER && level >= buildings.tier('mine');
 export const digsPerMinute = (item, level = levelOf(item.id)) => BASE_DIGS[item.tier] * SPEED[level];
 export const yieldOf = (item, level = levelOf(item.id)) => YIELD[level];
-export const material = () => dupValue(MONSTERS);
+export const material = () => dupValue(monsters());
 export const levelCost = (item) => (rawLevel(item.id) < MAX_TIER && rawLevel(item.id) < buildings.tier('mine') ? LEVEL_COST[rawLevel(item.id)] : null);
 
 export function levelUp(item) {
   const cost = levelCost(item);
-  if (cost === null || !state.count(item.id) || !payWithDuplicates(MONSTERS, cost)) return false;
+  if (cost === null || !state.count(item.id) || !payWithDuplicates(monsters(), cost)) return false;
   tick();
   m().lvl[item.id] = rawLevel(item.id) + 1;
   state.changed();
@@ -58,9 +58,9 @@ export function levelUp(item) {
 }
 
 export const candidates = () =>
-  MONSTERS.filter((i) => state.count(i.id)).sort((a, b) => digsPerMinute(b) * yieldOf(b) - digsPerMinute(a) * yieldOf(a) || b.tier - a.tier);
+  monsters().filter((i) => state.count(i.id)).sort((a, b) => digsPerMinute(b) * yieldOf(b) - digsPerMinute(a) * yieldOf(a) || b.tier - a.tier);
 
-export const workers = (level) => m().slots[level].map((id) => (id && state.count(id) ? ITEMS.find((i) => i.id === id) : null));
+export const workers = (level) => m().slots[level].map((id) => (id && state.count(id) ? getItem(id) : null));
 export const assignedAt = (id) => m().slots.findIndex((row) => row.includes(id));
 
 export function assign(level, slot, id) {

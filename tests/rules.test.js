@@ -948,3 +948,76 @@ test('Brunnen: Preise 100/850, Duplikat-Wunsch bringt nur Eigenes und kostet 50 
   assert.equal(before - state.gold, 30 * 1350);
   assert.equal(state.well.pityA, 0, 'zählt nicht für den Glückszähler');
 });
+
+// ---------------------------------------------------------------- Dimensionsportal
+
+import * as realm from '../src/realm.js';
+import { ALL_ITEMS, worldItems, rollItem } from '../src/items.js';
+import * as buildings from '../src/buildings.js';
+
+test('Portal: Hölle und Himmel haben je 2100 eigene Stücke mit eigenen Namen', () => {
+  assert.equal(ITEMS.length, 2100);
+  assert.equal(ALL_ITEMS.length, 6300);
+  for (const w of ['hoelle', 'himmel']) {
+    const list = worldItems(w);
+    assert.equal(list.length, 2100);
+    assert.ok(list.every((i) => i.world === w && i.id.startsWith(`${w}-`)));
+    assert.equal(new Set(list.map((i) => i.id)).size, 2100);
+    for (const c of CATEGORIES) for (const r of RARITIES) assert.equal(getGroup(c.id, r.id, w).length, PER_GROUP);
+  }
+  assert.notEqual(getGroup('helden', 'A', 'hoelle')[0].name, getGroup('helden', 'A')[0].name);
+});
+
+test('Portal: kostet 10.000 Gold, die Portalwelt hat eigene Gebäude, Gold und Sammlung bleiben', () => {
+  assert.equal(buildings.BUILDINGS.portal.buy, 10000);
+  assert.equal(buildings.nextCost('portal'), 10000);
+  state.addGold(20000);
+  state.buildings.camp = 3;
+  state.realm.type = 'hoelle';
+  assert.ok(buildings.advance('portal'));
+  assert.equal(buildings.nextCost('portal'), null, 'kein Ausbau');
+  const gold = state.gold;
+  const heim = getGroup('helden', 'D')[0];
+  state.addItems([heim]);
+
+  assert.ok(state.switchWorld());
+  assert.equal(realm.current(), 'hoelle');
+  assert.equal(buildings.tier('camp'), -1, 'in der Hölle ist noch nichts gebaut');
+  assert.equal(buildings.tier('portal'), 0, 'das Portal für den Rückweg steht');
+  assert.equal(state.gold, gold + 0, 'Gold bleibt');
+  assert.equal(state.count(heim.id), 1, 'Sammlung bleibt');
+  // Wünsche und Funde kommen aus der Portalwelt, Teams nehmen nur Stücke dieser Welt
+  assert.equal(rollItem().world, 'hoelle');
+  state.buildings.arena = 0;
+  arena.party.autoEquip();
+  assert.equal(state.arena.team[0].hero, null, 'Heimat-Helden kämpfen nicht in der Hölle');
+  const teufel = getGroup('helden', 'C', 'hoelle')[0];
+  state.addItems([teufel]);
+  arena.party.autoEquip();
+  assert.equal(state.arena.team[0].hero, teufel.id);
+  state.buildings.camp = 1;
+
+  assert.ok(state.switchWorld());
+  assert.equal(realm.current(), 'normal');
+  assert.equal(buildings.tier('camp'), 3, 'die Heimat ist wie vorher');
+  assert.ok(state.switchWorld());
+  assert.equal(buildings.tier('camp'), 1, 'die Hölle auch');
+  state.switchWorld();
+});
+
+test('Portal: der Spielstand mit beiden Welten übersteht Speichern und Laden', () => {
+  state.realm.type = 'himmel';
+  state.buildings.portal = 0;
+  state.buildings.mine = 2;
+  state.switchWorld();
+  state.buildings.mine = 0;
+  state.replace(state.parseSave(state.exportSave()));
+  assert.equal(realm.current(), 'himmel', 'man landet wieder im Himmel');
+  assert.equal(state.buildings.mine, 0);
+  assert.equal(state.buildings.portal, 0);
+  state.switchWorld();
+  assert.equal(state.buildings.mine, 2, 'die Heimat ist erhalten');
+  assert.equal(realm.current(), 'normal');
+  state.reset();
+  assert.equal(realm.current(), 'normal', 'Neustart beginnt in der Heimat');
+});

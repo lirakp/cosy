@@ -1,4 +1,5 @@
 import { ITEMS, getItem } from './items.js';
+import * as realm from './realm.js';
 
 // Spielstand: Gold und gesammelte Stücke. Wird im Browser gespeichert.
 
@@ -72,7 +73,7 @@ const fresh = () => ({
   pulls: 0,
   exp: newExpedition(),
   dungeon: { run: null, team: Array.from({ length: 5 }, member) },
-  buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1, well: 0 },
+  buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1, well: 0, portal: -1 },
   well: { pityA: 0, pityS: 0, freeNext: false, dailyDay: -1, dailyUsed: 0, spiritGift: false, spiritWishes: 0 },
   arena: newArena(),
   mine: newMine(),
@@ -83,7 +84,37 @@ const fresh = () => ({
   magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
   companions: { owned: [], active: null, pts: {}, gifts: 0 },
   tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
+  // Dimensionsportal: welche Welt dahinter liegt, ob man gerade dort ist, und
+  // der Spielstand der Welt, in der man gerade NICHT ist
+  realm: { type: null, inside: false, other: null },
 });
+
+// Diese Teile hat jede Welt für sich (Gebäude, Expedition, Dungeon, Arena,
+// Mine, Schmiede, Brunnen, Garten). Alles andere – Gold, Sammlung, Begleiter,
+// Haus, Dorf, Magie – teilen sich beide Welten.
+export const WORLD_KEYS = ['buildings', 'exp', 'dungeon', 'arena', 'mine', 'forge', 'well', 'garden'];
+
+// Neue Portalwelt: alles noch unbebaut, nur Brunnen und Portal (für den Rückweg) stehen.
+function freshRealmWorld() {
+  const f = fresh();
+  const w = Object.fromEntries(WORLD_KEYS.map((k) => [k, f[k]]));
+  w.buildings = { ...w.buildings, portal: 0 };
+  return w;
+}
+
+// Ergänzt fehlende Teile eines Welt-Spielstands
+function mergeWorld(saved = {}, base) {
+  return {
+    exp: { ...base.exp, ...saved.exp },
+    dungeon: { ...base.dungeon, ...saved.dungeon },
+    buildings: { ...base.buildings, ...saved.buildings },
+    arena: { ...base.arena, ...saved.arena },
+    mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
+    forge: { ...base.forge, ...saved.forge },
+    well: { ...base.well, ...saved.well },
+    garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
+  };
+}
 
 // Ältere Spielstände zählten Fische nur nach Rang (0 … 5) – das waren genau diese Arten.
 const OLD_FISH = ['weissfisch', 'forelle', 'karpfen', 'hecht', 'goldkarpfen', 'mondfisch'];
@@ -122,28 +153,35 @@ function normalize(saved) {
   const merged = {
     ...base,
     ...saved,
-    exp: { ...base.exp, ...saved.exp },
-    dungeon: { ...base.dungeon, ...saved.dungeon },
-    buildings: { ...base.buildings, ...saved.buildings },
-    arena: { ...base.arena, ...saved.arena },
-    mine: { ...base.mine, ...saved.mine, trader: { ...base.mine.trader, ...saved.mine?.trader } },
-    forge: { ...base.forge, ...saved.forge },
+    ...mergeWorld(saved, base),
     stats: { ...base.stats, ...saved.stats },
     magic: { ...base.magic, ...saved.magic },
     companions: { ...base.companions, ...saved.companions },
-    well: { ...base.well, ...saved.well },
     tailor: { ...base.tailor, ...saved.tailor },
-    garden: { ...base.garden, ...saved.garden, helper: { ...base.garden.helper, ...saved.garden?.helper } },
+    realm: { ...base.realm, ...saved.realm },
     village: { ...base.village, ...saved.village, market: { ...base.village.market, ...saved.village?.market }, trap: { ...base.village.trap, ...saved.village?.trap } },
   };
   merged.village.fish = migrateFish(merged.village.fish);
   merged.village.caughtBy = migrateFish(merged.village.caughtBy);
   merged.magic = migrateMagic(merged.magic);
+  // Spielstand der anderen Welt ebenfalls ergänzen (in der Portalwelt ist die Heimat „die andere“)
+  if (merged.realm.other) {
+    const otherBase = merged.realm.inside ? fresh() : freshRealmWorld();
+    merged.realm.other = mergeWorld(merged.realm.other, otherBase);
+  }
+  if (merged.realm.inside && !merged.realm.type) merged.realm.inside = false;
+  if (merged.realm.inside) merged.buildings.portal = 0;
   return merged;
 }
 
 const listeners = new Set();
 let data = load();
+syncRealm();
+
+// Merkt sich für die übrigen Module, in welcher Welt man gerade ist
+function syncRealm() {
+  realm.setCurrent(data.realm.inside ? data.realm.type : 'normal');
+}
 
 function load() {
   try {
@@ -386,11 +424,30 @@ export const state = {
   // Ersetzt den kompletten Spielstand (Import, Neustart, Tests).
   replace(next) {
     data = normalize(next) || fresh();
+    syncRealm();
     changed();
   },
   reset() {
     data = fresh();
+    syncRealm();
     changed();
+  },
+
+  // ------------------------------------------------------------ Portalwelt
+  get realm() {
+    return data.realm;
+  },
+  // Wechselt die Welt: tauscht die Welt-Teile mit dem gemerkten Stand der anderen Welt.
+  switchWorld() {
+    if (!data.realm.type) return false;
+    const other = data.realm.other || freshRealmWorld();
+    const leaving = Object.fromEntries(WORLD_KEYS.map((k) => [k, data[k]]));
+    for (const k of WORLD_KEYS) data[k] = other[k];
+    data.realm.other = leaving;
+    data.realm.inside = !data.realm.inside;
+    syncRealm();
+    changed();
+    return true;
   },
 
   collected: (items = ITEMS) => items.reduce((n, item) => n + (data.owned[item.id] ? 1 : 0), 0),
