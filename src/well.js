@@ -29,7 +29,15 @@ export const tier = () => Math.max(0, buildings.tier('well'));
 // In den Portalwelten kostet ein Wunsch das Doppelte.
 // variant: false/'normal' · true/'dupes' (nur Duplikate, +50 je Zug) · 'new' (nur Neues, +100 je Zug)
 const extra = (variant) => (variant === 'new' ? NEW_EXTRA : variant ? DUPE_EXTRA : 0);
-export const cost = (n, variant = false) => (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + extra(variant) * n) * (realm.inRealm() ? realm.PULL : 1);
+// Fehlen nur noch Stücke ab Rang A, wird „Nur Neue“ deutlich teurer
+export const NEW_HIGH_COST = { 1: 1000, 10: 9500 };
+export const onlyHighMissing = () => {
+  const missing = worldItems().filter((i) => !state.count(i.id));
+  return missing.length > 0 && missing.every((i) => i.tier >= 3);
+};
+export const cost = (n, variant = false) => variant === 'new' && onlyHighMissing()
+  ? NEW_HIGH_COST[n === 10 ? 10 : 1] * (realm.inRealm() ? realm.PULL : 1)
+  : (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + extra(variant) * n) * (realm.inRealm() ? realm.PULL : 1);
 
 // Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
 // aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).

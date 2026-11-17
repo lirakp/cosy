@@ -539,7 +539,9 @@ Duplikat-Wünsche zählen nicht für den Glückszähler.
 Mit „Nur Neue“ kommen nur Stücke, die man noch nicht besitzt, also keine Duplikate.
 Das kostet 100 Gold mehr je Zug (200 / 1850). Der Rang wird wie immer gewürfelt und
 zählt für den Glückszähler. Fehlt einem in dem Rang nichts mehr, kommt ein Stück aus
-einem anderen Rang. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
+einem anderen Rang.
+Fehlen in der Welt nur noch Stücke ab Rang A, kostet „Nur Neue“ **1.000** (einzeln) bzw.
+**9.500** (zehn) Gold, in den Dimensionen das Doppelte. Dafür ist jedes Stück ein neues A, S oder SS. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
 × 50 Stück. Die Bilder werden nicht einzeln gespeichert, sondern aus Bauplänen
 in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 

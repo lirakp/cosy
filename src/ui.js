@@ -164,7 +164,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           <button class="${wishMode === 'dupes' ? 'on' : ''}" data-act="wish-mode" data-v="dupes" ${well.canDupe() ? '' : 'disabled'}><b>Nur Duplikate</b><span>+${DUPE_EXTRA} Gold je Zug</span></button>
           <button class="${wishMode === 'new' ? 'on' : ''}" data-act="wish-mode" data-v="new" ${well.canNew() ? '' : 'disabled'}><b>Nur Neue</b><span>+${NEW_EXTRA} Gold je Zug</span></button>
         </div>
-        <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}</p>
+        <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}${wishMode === 'new' && well.onlyHighMissing() ? ' <b class="gold-text">Dir fehlen nur noch Stücke ab Rang A – jeder Neu-Wunsch bringt eines davon, kostet aber mehr.</b>' : ''}</p>
         <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
         <div class="pity">
           <div class="line"><span>Glückszähler <b class="rank-a">A</b></span><span class="muted">spätestens in ${well.untilA()} Stücken</span></div>

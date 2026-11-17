@@ -1373,3 +1373,18 @@ test('Brunnen: „Nur Neue“ bringt keine Duplikate und kostet 100 mehr je Zug'
   assert.ok(state.well.pityA < well.PITY_A, 'zählt für den Glückszähler');
   assert.equal(arena.SILK_CHANCE, 0.4, 'Seide +5 %');
 });
+
+test('Brunnen: Fehlen nur noch A–SS, kostet „Nur Neue“ 1.000 bzw. 9.500 und bringt nur A–SS', () => {
+  resetWell();
+  state.buildings.well = 0;
+  assert.equal(well.onlyHighMissing(), false);
+  state.addItems(ITEMS.filter((i) => i.tier <= 2));
+  assert.equal(well.onlyHighMissing(), true);
+  assert.equal(well.cost(1, 'new'), 1000);
+  assert.equal(well.cost(10, 'new'), 9500);
+  assert.ok(well.cost(1) <= 100, 'normale Wünsche bleiben günstig');
+  setGold(20000);
+  const r = well.pull(10, seeded(4), { fresh: true });
+  assert.equal(r.paid, 9500);
+  assert.ok(r.results.every(({ item, isNew }) => isNew && item.tier >= 3));
+});
