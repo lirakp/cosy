@@ -484,3 +484,4 @@ td b { color: var(--rc); }
 }
 .pause-card h2 { margin: 0; font-size: 28px; letter-spacing: 6px; color: #fdf6e3; text-shadow: 3px 3px 0 #1b1730; }
 .pause-card p { margin: 0; }
+.pause-card .big { flex: none; }
