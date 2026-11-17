@@ -47,8 +47,16 @@ export function current(now = Date.now()) {
 export const active = (id) => current()?.id === id;
 export const remaining = (now = Date.now()) => (current(now) ? Math.ceil((current(now).until - now) / 1000) : 0);
 
-export function grant(id, now = Date.now()) {
-  state.buff = { id, until: now + BUFF_MINUTES * 60000 };
+export function grant(id, now = Date.now(), minutes = BUFF_MINUTES) {
+  state.buff = { id, until: now + minutes * 60000 };
+}
+
+// verlängert einen laufenden Rausch
+export function extend(minutes, now = Date.now()) {
+  const b = current(now);
+  if (!b) return false;
+  state.buff = { id: b.id, until: b.until + minutes * 60000 };
+  return true;
 }
 
 // Würfelt beim Aufwachen: mit 10 % ein zufälliger der drei Rausche, sonst nichts.

@@ -250,6 +250,9 @@ export const state = {
     return gain;
   },
 
+  get garden() {
+    return data.garden;
+  },
   get stats() {
     return data.stats;
   },

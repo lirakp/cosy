@@ -10,6 +10,7 @@ import * as mine from './mine.js';
 import * as trader from './trader.js';
 import * as forgeMod from './forge.js';
 import * as sets from './sets.js';
+import * as garden from './garden.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -80,6 +81,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'mine') renderMine();
     if (view === 'forge') renderForge();
     if (view === 'stats') renderStats();
+    if (view === 'garden') renderGarden();
+    if (view === 'kitchen') renderKitchen();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -167,6 +170,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (next.result) return showResult(next.result);
     if (next.fight) return showFight(next.fight);
     if (next.setDone) return showSetComplete(next.setDone);
+    if (next.meal) return showMeal(next.meal);
     if ('wake' in next) return showWakeUp(next.wake);
     const { item, isNew, source } = next;
     audio.play('reveal', item.tier);
@@ -421,6 +425,135 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     document.body.append(el);
     $('button[data-act]', el).focus();
     if (b) audio.play('reveal', 4);
+    onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Garten
+
+  const cropChip = (id, n, need) => `<span class="ore-chip${need !== undefined && n < need ? ' short' : ''}" data-crop="${id}"><b>${need !== undefined ? `${n}/${need}` : fmt(n)}</b> ${garden.crop(id).name}</span>`;
+  const fillCrops = (root = overlay) => {
+    for (const el of root.querySelectorAll('[data-crop]')) el.prepend(picture(garden.cropImage(el.dataset.crop)));
+  };
+  let gardenSel = null; // Beet, für das gerade Saatgut gewählt wird
+
+  function renderGarden() {
+    const now = Date.now();
+    const bedCards = garden.beds().map((b, i) => {
+      if (!b) {
+        return `<button class="bed empty${gardenSel === i ? ' sel' : ''}" data-act="bed" data-v="${i}"><b>Beet ${i + 1}</b><span>leer – pflanzen</span></button>`;
+      }
+      const c = garden.crop(b.crop);
+      const g = garden.growth(i, now);
+      return `<div class="bed${g >= 1 ? ' ready' : ''}" data-crop-img="${c.id}">
+        <b>Beet ${i + 1} · ${c.name}</b>
+        ${g >= 1 ? '<span class="gold-text">reif!</span>' : `<span data-bed-time="${i}">${clock(garden.remaining(i, now))}</span>`}
+        <div class="bar"><i data-bed-bar="${i}" style="width:${g * 100}%"></i></div>
+      </div>`;
+    }).join('');
+    const price = garden.nextBedPrice();
+    const seeds = gardenSel === null ? '' : `
+      <div class="chest picker">
+        <div class="line"><span>Was soll in Beet ${gardenSel + 1} wachsen?</span><button data-act="bed-close">Abbrechen</button></div>
+        <div class="seeds">${garden.CROPS.map((c) => `
+          <button class="seed" data-act="plant" data-v="${c.id}" data-crop-img="${c.id}" ${state.gold >= c.seed ? '' : 'disabled'}>
+            <b>${c.name}</b><span>${c.minutes} min · ${c.yield}× Ernte</span><span class="gold-text">${c.seed} Gold</span>
+          </button>`).join('')}</div>
+      </div>`;
+    overlay.innerHTML = `
+      <section class="panel gardenpanel">
+        ${head('Garten')}
+        <p class="lead">Pflanzen wachsen in echter Zeit weiter, auch wenn das Spiel geschlossen ist. Gekocht wird am Kamin im Haus.</p>
+        <div class="leader-actions">
+          <button class="big" data-act="harvest" ${garden.readyCount(now) ? '' : 'disabled'}>Alles ernten (${garden.readyCount(now)})</button>
+          ${price === null ? '' : `<button data-act="buy-bed" ${state.gold >= price ? '' : 'disabled'}>Neues Beet · ${fmt(price)} Gold</button>`}
+        </div>
+        ${seeds}
+        <div class="beds">${bedCards}</div>
+        <h4>Vorrat</h4>
+        <div class="ores">${garden.CROPS.map((c) => cropChip(c.id, garden.have(c.id))).join('')}</div>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-crop-img]')) el.prepend(picture(garden.cropImage(el.dataset.cropImg)));
+    fillCrops();
+  }
+
+  // Restzeiten jede Sekunde aktualisieren; ein reifes Beet zeichnet das Menü neu
+  function updateGarden() {
+    if (view !== 'garden') return;
+    const now = Date.now();
+    let changedState = false;
+    garden.beds().forEach((b, i) => {
+      const t = $(`[data-bed-time="${i}"]`);
+      if (!b || !t) return;
+      if (garden.ready(i, now)) changedState = true;
+      t.textContent = clock(garden.remaining(i, now));
+      $(`[data-bed-bar="${i}"]`).style.width = `${garden.growth(i, now) * 100}%`;
+    });
+    if (changedState) renderGarden();
+  }
+
+  function harvest() {
+    const got = garden.harvestAll();
+    const parts = Object.entries(got).map(([id, n]) => `${n}× ${garden.crop(id).name}`);
+    if (!parts.length) {
+      audio.play('error');
+      return false;
+    }
+    audio.play('gold');
+    toast(`Geerntet: ${parts.join(', ')}`);
+    return true;
+  }
+
+  // ------------------------------------------------------------ Küche
+
+  function renderKitchen() {
+    const b = buffs.current();
+    const cards = garden.RECIPES.map((r) => {
+      const effect = r.buff
+        ? `${buffs.BUFFS[r.buff].name} für ${r.minutes} Minuten`
+        : `Verlängert einen laufenden Rausch um ${r.extend} Minuten`;
+      return `<div class="recipe r-${r.buff ? buffs.BUFFS[r.buff].rank : 'A'}" data-recipe="${r.id}">
+        <b>${r.name}</b>
+        <span class="muted">${effect}</span>
+        <div class="ores">${Object.entries(r.needs).map(([id, n]) => cropChip(id, garden.have(id), n)).join('')}</div>
+        <button data-act="cook" data-v="${r.id}" ${garden.canCook(r) ? '' : 'disabled'}>Kochen und essen</button>
+        ${r.extend && !b ? '<span class="note">Gerade ist kein Rausch aktiv.</span>' : ''}
+      </div>`;
+    }).join('');
+    overlay.innerHTML = `
+      <section class="panel kitchenpanel">
+        ${head('Kochen am Kamin')}
+        <p class="lead">Aus der Ernte deines Gartens werden Gerichte, die gezielt einen Rausch geben. Ein neuer Rausch ersetzt den laufenden.</p>
+        ${b ? `<p class="buff-note">Aktiv: ${buffs.BUFFS[b.id].name}, noch ${clock(buffs.remaining())}</p>` : ''}
+        <div class="recipes">${cards}</div>
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-recipe]')) {
+      const r = garden.RECIPES.find((x) => x.id === el.dataset.recipe);
+      const frame = document.createElement('div');
+      frame.className = 'frame small';
+      frame.append(picture(r.buff ? buffs.icon(r.buff) : garden.teaImage()));
+      el.prepend(frame);
+    }
+    fillCrops();
+  }
+
+  function showMeal(r) {
+    const b = buffs.current();
+    const def = buffs.BUFFS[b.id];
+    const el = document.createElement('div');
+    el.className = `reveal r-${def.rank}`;
+    el.innerHTML = `
+      <div class="rays"></div>
+      <div class="card">
+        <div class="source">LECKER! · ${r.name.toUpperCase()}</div>
+        <div class="rank-big">${def.name.toUpperCase()}</div>
+        <div class="frame"></div>
+        <p>${def.text}<br>Noch ${clock(buffs.remaining())} Minuten.</p>
+        <button data-act="reveal-next">Weiter</button>
+      </div>`;
+    $('.frame', el).append(picture(r.buff ? buffs.icon(r.buff) : garden.teaImage()));
+    document.body.append(el);
+    $('button[data-act]', el).focus();
+    audio.play('reveal', 4);
     onToggle(true);
   }
 
@@ -1097,6 +1230,24 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       audio.play('levelUp');
       renderWardrobe();
     }
+    if (act === 'bed') { gardenSel = Number(btn.dataset.v); renderGarden(); }
+    if (act === 'bed-close') { gardenSel = null; renderGarden(); }
+    if (act === 'plant') {
+      audio.play(garden.plant(gardenSel, btn.dataset.v) ? 'levelUp' : 'error');
+      gardenSel = null;
+      renderGarden();
+    }
+    if (act === 'harvest') { harvest(); renderGarden(); }
+    if (act === 'buy-bed') { audio.play(garden.buyBed() ? 'build' : 'error'); renderGarden(); }
+    if (act === 'cook') {
+      const r = garden.cook(btn.dataset.v);
+      if (!r) audio.play('error');
+      else {
+        reveals.push({ meal: r });
+        renderKitchen();
+        nextReveal();
+      }
+    }
     if (act === 'stats-reset') {
       if (confirm('Statistik zurücksetzen? Der Spielstand bleibt erhalten.')) {
         state.resetStats();
@@ -1205,6 +1356,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openMine: () => show('mine'),
     openForge: () => show('forge'),
     openStats: () => show('stats'),
+    openGarden: () => show('garden'),
+    openKitchen: () => show('kitchen'),
+    harvest,
+    updateGarden,
     setComplete(cat, tier) {
       reveals.push({ setDone: { cat, tier } });
       // erst nach dem laufenden Ereignis anzeigen, damit es keine anderen Pop-ups verdrängt

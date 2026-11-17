@@ -43,3 +43,9 @@ export const TRADER_RANGE = 10;
 // Schmiede-Anbau links am Haus
 export const FORGE_X = 180;
 export const FORGE_RANGE = 10;
+
+// Garten im eingezäunten Bereich rechts vom Haus
+export const GARDEN_X = 298;
+export const GARDEN_RANGE = 44;
+export const GARDEN_BED_X = 258; // linker Rand des ersten Beets
+export const GARDEN_BED_STEP = 14;

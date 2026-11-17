@@ -36,6 +36,32 @@ Dann <http://localhost:8000> öffnen.
 **Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
+## Garten und Küche
+
+Rechts vom Haus liegen Beete (zwei sind frei, weitere kosten 300 · 800 · 2000 ·
+5000 Gold). Pflanzen wachsen in echter Zeit, auch offline; mit `E` am Garten
+wird geerntet oder gepflanzt.
+
+| Pflanze | Saatgut | Wachstum | Ernte |
+| --- | --- | --- | --- |
+| Karotte | 10 Gold | 5 min | 2 |
+| Weizen | 15 Gold | 8 min | 2 |
+| Kartoffel | 20 Gold | 12 min | 2 |
+| Beeren | 30 Gold | 20 min | 3 |
+| Kürbis | 50 Gold | 30 min | 1 |
+| Sternenblume | 150 Gold | 60 min | 1 |
+
+Am Kamin im Haus wird gekocht – Gerichte geben gezielt einen Rausch:
+
+| Gericht | Zutaten | Wirkung |
+| --- | --- | --- |
+| Goldene Kürbissuppe | 1 Kürbis, 1 Sternenblume, 2 Karotten | Goldrausch, 5 min |
+| Glückskuchen | 3 Weizen, 2 Beeren | Glücksrausch, 6 min |
+| Kraft-Eintopf | 2 Kartoffeln, 1 Kürbis, 2 Karotten | Gladiatorrausch, 6 min |
+| Sternenblüten-Tee | 1 Sternenblume, 2 Beeren | verlängert den laufenden Rausch um 5 min |
+
+Werte in `src/garden.js`.
+
 ## Sammel-Sets
 
 Wer alle 50 Stücke einer Kategorie in einem Rang besitzt, schließt ein Set ab
@@ -265,6 +291,7 @@ Gedacht zum Ausbalancieren; lässt sich separat zurücksetzen.
 | `src/mine.js` | Mine: Ebenen, Arbeiter, Erz |
 | `src/minescene.js` | Darstellung der Mine mit hackenden Monstern |
 | `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
+| `src/garden.js` | Garten (Beete, Wachstum, Ernte) und Küche (Rezepte) |
 | `src/sets.js` | Sammel-Sets und ihre Boni |
 | `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |

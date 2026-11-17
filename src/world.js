@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X, GARDEN_BED_X, GARDEN_BED_STEP } from './config.js';
+import * as garden from './garden.js';
 import * as trader from './trader.js';
 import * as mine from './mine.js';
 import * as dungeon from './dungeon.js';
@@ -543,6 +544,35 @@ export function createWorld() {
       if (buildings.owned('mine')) ctx.drawImage(mineProp, MINE_X - 40 - cam, 0);
       else ctx.drawImage(site, MINE_X - 24 - cam, 0);
 
+      // Gartenbeete vor dem Zaun
+      const now = Date.now();
+      garden.beds().forEach((b, i) => {
+        const x = GARDEN_BED_X + i * GARDEN_BED_STEP - cam;
+        const y = GROUND_Y + 2;
+        rect(ctx, x - 1, y - 1, 14, 7, PAL.woodDark);
+        rect(ctx, x, y, 12, 5, '#5a3a2e');
+        for (let k = 1; k < 12; k += 3) px(ctx, x + k, y + 1 + (k % 2), '#7a5038');
+        if (!b) return;
+        const g = garden.growth(i, now);
+        if (g >= 1) {
+          ctx.drawImage(garden.cropImage(b.crop), x + 1, y - 9, 10, 10);
+          return;
+        }
+        const stage = Math.floor(g * 3);
+        for (const cx of [x + 3, x + 8]) {
+          px(ctx, cx, y - 1, PAL.leafLight);
+          if (stage >= 1) {
+            px(ctx, cx, y - 2, PAL.leaf);
+            px(ctx, cx - 1, y - 2, PAL.leafLight);
+            px(ctx, cx + 1, y - 3, PAL.leaf);
+          }
+          if (stage >= 2) {
+            rect(ctx, cx - 1, y - 4, 3, 1, PAL.leaf);
+            px(ctx, cx, y - 5, PAL.leafLight);
+          }
+        }
+      });
+
       // Erzhändler am Brunnen, wenn er gerade da ist
       if (trader.present()) {
         const tx = TRADER_X - cam;
@@ -583,6 +613,16 @@ export function createWorld() {
       glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker + Math.round(night * 6), 0.35 * lamp);
 
       glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
+
+      // reife Beete funkeln
+      garden.beds().forEach((b, i) => {
+        if (!garden.ready(i)) return;
+        const x = GARDEN_BED_X + i * GARDEN_BED_STEP - cam + 6;
+        const y = GROUND_Y - 9 + Math.round(Math.sin(time * 3 + i) * 1.5);
+        if (Math.floor(time * 3 + i) % 3 === 0) return;
+        rect(ctx, x - 1, y, 3, 1, PAL.glowLight);
+        rect(ctx, x, y - 1, 1, 3, PAL.glowLight);
+      });
 
       // Schmiedefeuer brennt immer, Funken steigen aus der Esse
       if (buildings.owned('forge')) {

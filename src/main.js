@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE, GARDEN_X, GARDEN_RANGE } from './config.js';
+import * as garden from './garden.js';
 import * as forge from './forge.js';
 import * as sets from './sets.js';
 import * as mine from './mine.js';
@@ -253,6 +254,8 @@ function act() {
   if (near === 'lift') ui.openMine();
   if (near === 'trader') ui.openTrader();
   if (near === 'forge') ui.openForge();
+  if (near === 'garden') garden.readyCount() ? ui.harvest() : ui.openGarden();
+  if (near === 'kitchen') ui.openKitchen();
   if (near === 'door') leaveHouse();
   if (near === 'wardrobe') ui.openWardrobe();
   if (near === 'bed') sleep();
@@ -346,6 +349,7 @@ function expeditionTick() {
   ui.updateTrader();
   forge.tick();
   ui.updateForge();
+  ui.updateGarden();
 
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
@@ -461,6 +465,7 @@ function frame(now) {
     : place === 'mine' ? mineZoneAt(player.x)
     : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
     : Math.abs(player.x - FORGE_X) < FORGE_RANGE ? 'forge'
+    : Math.abs(player.x - GARDEN_X) < GARDEN_RANGE ? 'garden'
     : Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
@@ -477,9 +482,11 @@ function frame(now) {
     : near === 'lift' ? `Aufzug · Ebene ${mineLevel + 1} (${mine.LEVELS[mineLevel].name})`
     : near === 'trader' ? '✦ Erzhändler'
     : near === 'well' ? '✦ Wunschbrunnen'
-    : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
+    : near in buildings.BUILDINGS && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
     : near === 'forge' ? '⚒ Schmiede'
+    : near === 'garden' ? (garden.readyCount() ? `Ernten ✦ (${garden.readyCount()})` : 'Garten')
+    : near === 'kitchen' ? 'Am Kamin kochen'
     : near === 'mine' ? 'Mine betreten'
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'

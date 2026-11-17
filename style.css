@@ -615,3 +615,41 @@ table.stats td { border-top: 1px solid #3a3170; }
 .setpanel.done { background: color-mix(in srgb, var(--rc) 18%, #1b1730); }
 .set-grid { grid-template-columns: repeat(5, 40px) !important; gap: 4px; justify-content: center; }
 .set-grid .sprite { width: 40px; }
+
+/* ---------------------------------------------------------------- Garten und Küche */
+
+.beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.bed {
+  background: #1b1730;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  text-align: left;
+  box-shadow: 0 0 0 2px #6a4a30;
+}
+.bed > .sprite { width: 32px; }
+.bed b { color: #fdf6e3; font-weight: normal; }
+.bed.empty { align-items: flex-start; color: #b9a6c9; }
+.bed.empty.sel { background: #3a3170; box-shadow: 0 0 0 2px #fdf6e3; }
+.bed.ready { box-shadow: 0 0 0 2px #ffd04a; }
+.bed .bar i { background: #6fbf6a; }
+.seeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.seed { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 12px; background: #1b1730; }
+.seed .sprite { width: 28px; }
+.seed b { color: #fdf6e3; font-weight: normal; }
+.ore-chip.short b { color: #ff9a8a; }
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.recipe {
+  background: #1b1730;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  box-shadow: 0 0 0 2px var(--rc);
+}
+.recipe b { color: #fdf6e3; font-size: 13px; }
+.recipe > button { align-self: flex-start; }
+.frame.small { width: 48px; padding: 4px; }

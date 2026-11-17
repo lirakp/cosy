@@ -17,6 +17,7 @@ export const ROOM_BOUNDS = [22, 300];
 export const DOOR_SPAWN = 36;
 export function zoneAt(x) {
   if (x < 48) return 'door';
+  if (x >= 134 && x <= 186) return 'kitchen';
   if (x >= 198 && x <= 246) return 'wardrobe';
   if (x >= 252) return 'bed';
   return null;
@@ -270,6 +271,16 @@ export function createInterior() {
         rect(ctx, x + 1, FLOOR - 5 - Math.round(h * 0.7), 1, Math.round(h * 0.7), PAL.glow);
       }
       rect(ctx, FIRE_X - 7, FLOOR - 7, 14, 2, PAL.glowLight);
+      // Kochtopf über dem Feuer
+      rect(ctx, FIRE_X, 106, 1, 6, PAL.stone);
+      circle(ctx, FIRE_X, FLOOR - 21, 6, PAL.ink);
+      circle(ctx, FIRE_X, FLOOR - 21, 5, '#3a3448');
+      rect(ctx, FIRE_X - 6, FLOOR - 27, 13, 2, PAL.stone);
+      rect(ctx, FIRE_X - 4, FLOOR - 26, 9, 1, '#c87a5a');
+      for (let i = 0; i < 2; i++) {
+        const t = (time * 0.8 + i * 0.5) % 1;
+        px(ctx, FIRE_X - 2 + i * 4 + Math.round(Math.sin(time * 2 + i) * 1), FLOOR - 29 - Math.round(t * 8), PAL.smoke);
+      }
       // Kerzenflamme
       const f = Math.floor(time * 7) % 3;
       rect(ctx, CANDLE.x, CANDLE.y - 3 - (f ? 1 : 0), 1, 3 + (f ? 1 : 0), PAL.glow);
