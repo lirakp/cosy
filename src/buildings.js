@@ -33,6 +33,13 @@ export const BUILDINGS = {
     pitch: 'Sechs Ebenen tief: Deine Monster hacken dort Erz, das der seltene Erzhändler gegen Sammelstücke tauscht.',
     unlocks: 'Jeder Rang öffnet eine tiefere Ebene mit wertvollerem Erz und erlaubt, Monster bis zu diesem Rang zu verbessern.',
   },
+  forge: {
+    name: 'Schmiede',
+    buy: 1000,
+    upgrades: [2000, 5000, 12000, 30000, 70000],
+    pitch: 'Ein Anbau am Haus: Hier kopierst du gezielt eigene Sammelstücke – für Gold, Erz aus der Mine und Schmiedeglut.',
+    unlocks: 'Kopiert werden Stücke bis zum Rang der Schmiede. Jeder Ausbau vergrößert den Glutvorrat und lässt die Glut schneller nachladen.',
+  },
 };
 
 const MAX_TIER = RARITIES.length - 1;

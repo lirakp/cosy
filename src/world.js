@@ -1,4 +1,4 @@
-import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, GROUND_Y, WALK_Y, WELL_X, CAMP_X, CHEST_X, DUNGEON_X, ARENA_X, MINE_X, TRADER_X, FORGE_X } from './config.js';
 import * as trader from './trader.js';
 import * as mine from './mine.js';
 import * as dungeon from './dungeon.js';
@@ -236,6 +236,47 @@ function drawArena(ctx, x) {
   px(ctx, x - 1, base - 18, PAL.coinDark);
 }
 
+// Schmiede-Anbau links am Haus: Steinmauern, Pultdach, Esse, offene Feuerstelle, Amboss
+function drawForge(ctx, x) {
+  const base = GROUND_Y + 3;
+  const left = x - 14;
+  const right = x + 15;
+  // Mauern
+  rect(ctx, left, base - 18, right - left, 18, PAL.stone);
+  for (let row = 0; row < 6; row++) {
+    for (let bx = left + (row % 2) * 3; bx < right; bx += 6) px(ctx, bx, base - 16 + row * 3, PAL.ink);
+    rect(ctx, left, base - 15 + row * 3, right - left, 1, 'rgba(42, 33, 64, 0.2)');
+  }
+  rect(ctx, left, base - 18, right - left, 1, PAL.stoneLight);
+  // Esse
+  rect(ctx, left + 4, base - 36, 6, 18, PAL.brick);
+  rect(ctx, left + 3, base - 37, 8, 2, PAL.stone);
+  for (let y = base - 34; y < base - 20; y += 3) px(ctx, left + 6, y, PAL.ink);
+  // Pultdach, zum Haus hin höher
+  for (let i = 0; i <= right - left + 1; i++) {
+    const top = base - 20 - Math.floor((i * 8) / (right - left + 1));
+    rect(ctx, left - 1 + i, top, 1, base - 18 - top, i % 4 === 3 ? PAL.roofDark : PAL.roof);
+    px(ctx, left - 1 + i, top, PAL.roofLight);
+  }
+  // offene Feuerstelle
+  rect(ctx, x - 7, base - 13, 14, 13, PAL.ink);
+  rect(ctx, x - 5, base - 15, 10, 2, PAL.ink);
+  rect(ctx, x - 9, base - 15, 2, 15, PAL.woodDark);
+  rect(ctx, x + 7, base - 15, 2, 15, PAL.woodDark);
+  rect(ctx, x - 9, base - 16, 18, 2, PAL.woodDark);
+  // Schild mit Hammer
+  rect(ctx, left - 2, base - 16, 1, 3, PAL.woodDark);
+  rect(ctx, left - 6, base - 13, 9, 7, PAL.woodLight);
+  rect(ctx, left - 4, base - 12, 5, 2, PAL.stone);
+  rect(ctx, left - 2, base - 10, 1, 3, PAL.woodDark);
+  // Amboss
+  rect(ctx, left - 18, base - 7, 11, 2, PAL.stone);
+  rect(ctx, left - 21, base - 7, 3, 1, PAL.stone);
+  rect(ctx, left - 15, base - 5, 5, 3, PAL.ink);
+  rect(ctx, left - 17, base - 2, 9, 2, PAL.woodDark);
+  rect(ctx, left - 18, base - 7, 11, 1, PAL.stoneLight);
+}
+
 function drawMineEntrance(ctx, x) {
   const base = GROUND_Y + 4;
   // felsiger Hügel
@@ -379,6 +420,11 @@ export function createWorld() {
   const gate = prop(drawDungeonGate);
   const site = prop(drawSite);
   const arenaProp = prop(drawArena);
+  const forgeProp = (() => {
+    const [c, ctx] = makeCanvas(64, VIEW_H);
+    drawForge(ctx, 40);
+    return c;
+  })();
   const mineProp = (() => {
     const [c, ctx] = makeCanvas(80, VIEW_H);
     drawMineEntrance(ctx, 40);
@@ -491,6 +537,8 @@ export function createWorld() {
       drawTeam(ctx, cam, time);
 
       ctx.drawImage(buildings.owned('dungeon') ? gate : site, DUNGEON_X - 24 - cam, 0);
+      if (buildings.owned('forge')) ctx.drawImage(forgeProp, FORGE_X - 40 - cam, 0);
+      else ctx.drawImage(site, FORGE_X - 30 - cam, 0);
       ctx.drawImage(buildings.owned('arena') ? arenaProp : site, ARENA_X - 24 - cam, 0);
       if (buildings.owned('mine')) ctx.drawImage(mineProp, MINE_X - 40 - cam, 0);
       else ctx.drawImage(site, MINE_X - 24 - cam, 0);
@@ -535,6 +583,22 @@ export function createWorld() {
       glow(ctx, LANTERN_X - 4 - cam, GROUND_Y - 13, 12 + flicker + Math.round(night * 6), 0.35 * lamp);
 
       glow(ctx, WELL_X - cam, GROUND_Y - 8, 13 + flicker, 0.3, PAL.magic);
+
+      // Schmiedefeuer brennt immer, Funken steigen aus der Esse
+      if (buildings.owned('forge')) {
+        const fx = FORGE_X - cam;
+        const base = GROUND_Y + 3;
+        for (let i = 0; i < 5; i++) {
+          const h = 2 + Math.round((Math.sin(time * 10 + i * 1.9) + 1) * 2);
+          rect(ctx, fx - 5 + i * 2, base - 1 - h, 2, h, i % 2 ? PAL.roofLight : PAL.glow);
+        }
+        rect(ctx, fx - 6, base - 2, 12, 2, PAL.glowLight);
+        glow(ctx, fx, base - 5, 12 + flicker + Math.round(night * 6), 0.25 + 0.2 * night, PAL.roofLight);
+        for (let i = 0; i < 3; i++) {
+          const t = (time * 0.6 + i / 3) % 1;
+          px(ctx, fx - 7 + Math.round(Math.sin(time * 2 + i * 2) * 2), base - 38 - Math.round(t * 18), t < 0.5 ? PAL.glowLight : PAL.roofLight);
+        }
+      }
       if (trader.present()) {
         const tx = TRADER_X - cam;
         rect(ctx, tx + 10, GROUND_Y - 1, 3, 4, PAL.ink);

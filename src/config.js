@@ -39,3 +39,7 @@ export const MINE_X = 892;
 export const MINE_RANGE = 22;
 export const TRADER_X = 462;
 export const TRADER_RANGE = 10;
+
+// Schmiede-Anbau links am Haus
+export const FORGE_X = 180;
+export const FORGE_RANGE = 10;

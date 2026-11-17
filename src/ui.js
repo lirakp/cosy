@@ -8,6 +8,7 @@ import { audio } from './audio.js';
 import * as buffs from './buffs.js';
 import * as mine from './mine.js';
 import * as trader from './trader.js';
+import * as forgeMod from './forge.js';
 import { tierChances } from './items.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
@@ -52,6 +53,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
   let arenaTab = 'fight';
   let arenaSel = null; // angetippter Platz im Arena-Team: { i, key }
   let mineSel = null; // angetippter Arbeitsplatz in der Mine: { l, s }
+  const forgeSel = { cat: CATEGORIES[0].id, rank: 'D', item: null };
   const reveals = [];
 
   const refreshGold = () => {
@@ -75,6 +77,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     if (view === 'arena') renderArena();
     if (view === 'wardrobe') renderWardrobe();
     if (view === 'mine') renderMine();
+    if (view === 'forge') renderForge();
     if (view === 'trader') renderTrader();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
@@ -416,6 +419,79 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     $('button[data-act]', el).focus();
     if (b) audio.play('reveal', 4);
     onToggle(true);
+  }
+
+  // ------------------------------------------------------------ Schmiede
+
+  function renderForge() {
+    if (!buildings.owned('forge')) return renderPurchase('forge', 'Schmiede');
+    forgeMod.tick();
+    const cats = CATEGORIES.map((c) => `<button class="tab${c.id === forgeSel.cat ? ' on' : ''}" data-act="forge-cat" data-v="${c.id}">${c.name}</button>`).join('');
+    const ranks = RARITIES.map((r, t) => `<button class="tab r-${r.id}${r.id === forgeSel.rank ? ' on' : ''}" data-act="forge-rank" data-v="${r.id}"><b>${r.id}</b>${forgeMod.canForgeRank(t) ? '' : '<small>gesperrt</small>'}</button>`).join('');
+    overlay.innerHTML = `
+      <section class="panel forgepanel">
+        ${head('Schmiede')}
+        <p class="lead">Kopiere gezielt ein Sammelstück, das du schon besitzt. Kostet Gold, Erz aus der Mine und Schmiedeglut.</p>
+        ${upgradeBar('forge')}
+        <div class="chest glut">
+          <div class="line"><span>Schmiedeglut <span id="glut-dots"></span></span><span id="glut-next" class="muted"></span></div>
+        </div>
+        <div class="ores">${RARITIES.map((r, t) => oreChip(t, mine.ore(t))).join('')}</div>
+        <nav class="tabs">${cats}</nav>
+        <nav class="tabs ranks">${ranks}</nav>
+        <div class="detail" id="forge-detail"></div>
+        <div class="grid" id="forge-grid"></div>
+      </section>`;
+    $('#forge-grid').replaceChildren(
+      ...getGroup(forgeSel.cat, forgeSel.rank).map((item) => {
+        const n = state.count(item.id);
+        const el = tile(item, { hidden: !n, badge: n > 1 ? `<span class="count">×${n}</span>` : '' });
+        el.dataset.act = 'forge-pick';
+        if (!n) el.disabled = true;
+        if (item.id === forgeSel.item) el.classList.add('sel');
+        return el;
+      })
+    );
+    fillOres();
+    renderForgeDetail();
+    updateForge();
+  }
+
+  function renderForgeDetail() {
+    const box = $('#forge-detail');
+    const item = forgeSel.item && getItem(forgeSel.item);
+    if (!box) return;
+    if (!item || item.cat !== forgeSel.cat || item.rank !== forgeSel.rank) {
+      box.className = 'detail';
+      box.innerHTML = '<p class="muted">Wähle ein eigenes Stück aus, um es zu kopieren.</p>';
+      return;
+    }
+    const c = forgeMod.cost(item);
+    const why = forgeMod.blocker(item);
+    box.className = `detail r-${item.rank}`;
+    box.innerHTML = `
+      <div class="frame"></div>
+      <div class="info">
+        <h3>${item.name}</h3>
+        <p><b class="rank-text">Rang ${item.rank}</b> · ${item.catName} · im Besitz: ${state.count(item.id)}</p>
+        <p class="forge-cost"><span class="gold-text">${fmt(c.gold)} Gold</span> · <span class="price" data-ore="${item.tier}">${c.ore}</span> · <span class="glut-cost">${c.glut} Glut</span></p>
+        <button class="big" data-act="forge-make" ${why ? 'disabled' : ''}>Kopie schmieden</button>
+        ${why ? `<p class="note">${why}</p>` : `<p class="muted">Verkaufswert der Kopie: ${fmt(item.sell)} Gold</p>`}
+      </div>`;
+    $('.frame', box).append(sprite(item));
+    fillOres(box);
+  }
+
+  // Glutanzeige, jede Sekunde aktualisiert
+  function updateForge() {
+    const dots = $('#glut-dots');
+    if (!dots) return;
+    forgeMod.tick();
+    const max = forgeMod.maxGlut();
+    const g = forgeMod.glut();
+    dots.innerHTML = Array.from({ length: max }, (_, i) => `<i class="ember${i < g ? ' on' : ''}"></i>`).join('') + ` <b>${g}/${max}</b>`;
+    const sec = forgeMod.nextGlutIn();
+    $('#glut-next').textContent = sec ? `nächste Glut in ${clock(sec)} · alle ${forgeMod.glutMinutes()} min` : 'voll';
   }
 
   // ------------------------------------------------------------ Mine
@@ -877,6 +953,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
         <button data-act="sell" data-id="${item.id}" ${extra ? '' : 'disabled'}>
           ${extra ? `${extra} Duplikat${extra > 1 ? 'e' : ''} verkaufen (+${fmt(extra * item.sell)} Gold)` : 'Keine Duplikate'}
         </button>
+        ${buildings.owned('forge') ? `<button data-act="forge-item" data-id="${item.id}">In der Schmiede kopieren</button>` : ''}
       </div>`;
     $('.frame', box).append(sprite(item));
   }
@@ -930,6 +1007,24 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
       onOutfit(btn.dataset.id);
       audio.play('levelUp');
       renderWardrobe();
+    }
+    if (act === 'forge-cat') { forgeSel.cat = btn.dataset.v; renderForge(); }
+    if (act === 'forge-rank') { forgeSel.rank = btn.dataset.v; renderForge(); }
+    if (act === 'forge-pick') { forgeSel.item = btn.dataset.id; renderForge(); }
+    if (act === 'forge-make') {
+      const got = forgeMod.forge(forgeSel.item);
+      if (!got) audio.play('error');
+      else {
+        audio.play('build');
+        reveals.push({ ...got, source: 'SCHMIEDE' });
+        renderForge();
+        nextReveal();
+      }
+    }
+    if (act === 'forge-item') {
+      const item = getItem(btn.dataset.id);
+      Object.assign(forgeSel, { cat: item.cat, rank: item.rank, item: item.id });
+      show('forge');
     }
     if (act === 'mine-slot') {
       const sel = { l: Number(btn.dataset.l), s: Number(btn.dataset.s) };
@@ -1013,6 +1108,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where }) {
     openArena: () => show('arena'),
     openWardrobe: () => show('wardrobe'),
     openMine: () => show('mine'),
+    openForge: () => show('forge'),
+    updateForge,
     openTrader: () => show('trader'),
     updateTrader,
     refreshMine() {

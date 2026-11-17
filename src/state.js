@@ -48,12 +48,14 @@ function load() {
       saved.arena = { ...newArena(), ...saved.arena };
       saved.mine = { ...newMine(), ...saved.mine };
       saved.buildings.mine ??= -1;
+      saved.buildings.forge ??= -1;
+      saved.forge = { glut: 3, last: 0, made: 0, ...saved.forge };
       return saved;
     }
   } catch {
     // kein oder kaputter Spielstand -> neu anfangen
   }
-  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1 }, arena: newArena(), mine: newMine() };
+  return { gold: START_GOLD, owned: {}, pulls: 0, exp: newExpedition(), dungeon: { run: null }, buildings: { camp: -1, dungeon: -1, arena: -1, mine: -1, forge: -1 }, arena: newArena(), mine: newMine(), forge: { glut: 3, last: 0, made: 0 } };
 }
 
 function save() {
@@ -81,6 +83,9 @@ export const state = {
   },
   get dungeon() {
     return data.dungeon;
+  },
+  get forge() {
+    return data.forge;
   },
   get mine() {
     return data.mine;

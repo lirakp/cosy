@@ -1,4 +1,5 @@
-import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE } from './config.js';
+import { VIEW_W, VIEW_H, WORLD_W, DAY_LENGTH, WELL_X, WELL_RANGE, CHEST_X, CAMP_RANGE, GROUND_Y, DUNGEON_X, DUNGEON_RANGE, ARENA_X, ARENA_RANGE, HOUSE_X, HOUSE_RANGE, MINE_X, MINE_RANGE, TRADER_X, TRADER_RANGE, FORGE_X, FORGE_RANGE } from './config.js';
+import * as forge from './forge.js';
 import * as mine from './mine.js';
 import * as trader from './trader.js';
 import { createMineScene, zoneAt as mineZoneAt, MINE_BOUNDS, LIFT_SPAWN } from './minescene.js';
@@ -201,6 +202,7 @@ function act() {
   if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
   if (near === 'lift') ui.openMine();
   if (near === 'trader') ui.openTrader();
+  if (near === 'forge') ui.openForge();
   if (near === 'door') leaveHouse();
   if (near === 'wardrobe') ui.openWardrobe();
   if (near === 'bed') sleep();
@@ -211,6 +213,7 @@ function act() {
 }
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
+document.getElementById('btn-forge').addEventListener('click', () => ui.openForge());
 document.getElementById('btn-mine').addEventListener('click', () => ui.openMine());
 document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
 document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
@@ -223,6 +226,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') ui.openDungeon();
   if (e.code === 'KeyB') ui.openArena();
   if (e.code === 'KeyN') ui.openMine();
+  if (e.code === 'KeyH') ui.openForge();
   // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
   if (place === 'mine' && (e.code === 'ArrowUp' || e.code === 'KeyW')) travel(mineLevel - 1);
   if (place === 'mine' && (e.code === 'ArrowDown' || e.code === 'KeyS') && mine.unlocked(mineLevel + 1)) travel(mineLevel + 1);
@@ -289,6 +293,8 @@ function expeditionTick() {
   }
   if (visit === 'left') ui.toast('Der Erzhändler ist weitergezogen.');
   ui.updateTrader();
+  forge.tick();
+  ui.updateForge();
 
   const found = expedition.tick();
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
@@ -402,6 +408,7 @@ function frame(now) {
     place === 'house' ? zoneAt(player.x)
     : place === 'mine' ? mineZoneAt(player.x)
     : Math.abs(player.x - HOUSE_X) < HOUSE_RANGE ? 'house'
+    : Math.abs(player.x - FORGE_X) < FORGE_RANGE ? 'forge'
     : Math.abs(player.x - WELL_X) < WELL_RANGE ? 'well'
     : Math.abs(player.x - CHEST_X) < CAMP_RANGE ? 'camp'
     : Math.abs(player.x - DUNGEON_X) < DUNGEON_RANGE ? 'dungeon'
@@ -420,6 +427,7 @@ function frame(now) {
     : near === 'well' ? '✦ Wunschbrunnen'
     : near && !buildings.owned(near) ? `${buildings.BUILDINGS[near].name} bauen · ${buildings.BUILDINGS[near].buy} Gold`
     : near === 'arena' ? 'Bossarena'
+    : near === 'forge' ? '⚒ Schmiede'
     : near === 'mine' ? 'Mine betreten'
     : near === 'dungeon' ? (dungeon.status() === 'done' ? 'Dungeon · Beute abholen ✦' : dungeon.status() === 'running' ? `Dungeon · noch ${dungeon.remaining()} s` : 'Dungeon')
     : !chestHasContent() ? 'Expedition'

@@ -33,7 +33,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `P` Pause · `M` Ton an/aus ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 ## Tag und Nacht
@@ -77,6 +77,18 @@ Besuch (10 · 10 · 12 · 15 · 20 · 25 Erz → zufälliges Stück dieses Rangs
 
 Werte in `src/mine.js` und `src/trader.js`.
 
+## Schmiede
+
+Der Anbau links am Haus kopiert gezielt ein Sammelstück, das man schon besitzt
+(auch direkt aus der Galerie). Damit das nicht alles aushebelt, gibt es drei Bremsen:
+
+- **Gold:** immer das Vierfache des Verkaufswerts – Kopieren und Verkaufen lohnt nie.
+- **Erz** im Rang des Stücks: 5 · 6 · 8 · 10 · 14 · 20 – die Schmiede hängt an der Mine.
+- **Schmiedeglut:** jede Kopie kostet 1 · 1 · 2 · 2 · 3 · 4 Glut. Vorrat und
+  Nachladezeit nach Schmiede-Rang: 3 Glut / 30 min (D) bis 8 Glut / 10 min (SS).
+
+Kopiert werden nur Stücke bis zum Rang der Schmiede. Werte in `src/forge.js`.
+
 ## Das Haus
 
 An der Haustür (`E`) betritt man das Häuschen. Durch das Fenster sieht man den
@@ -116,8 +128,8 @@ in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
 ## Anlagen
 
-Expeditionslager, Dungeon-Tor, Bossarena und Mine müssen erst gebaut werden (250,
-400, 600 und 800 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
+Expeditionslager, Dungeon-Tor, Bossarena, Mine und Schmiede müssen erst gebaut
+werden (250, 400, 600, 800 und 1000 Gold) und starten auf Rang D. Jeder Ausbau schaltet den nächsten Rang frei:
 
 | Ausbau auf | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- |
@@ -125,6 +137,7 @@ Expeditionslager, Dungeon-Tor, Bossarena und Mine müssen erst gebaut werden (25
 | Dungeon-Tor | 800 | 2500 | 7000 | 18000 | 45000 |
 | Bossarena | 1200 | 3500 | 9000 | 22000 | 55000 |
 | Mine | 1500 | 4000 | 10000 | 25000 | 60000 |
+| Schmiede | 2000 | 5000 | 12000 | 30000 | 70000 |
 
 Der Lager-Rang begrenzt, bis zu welcher Stufe Lebewesen und Leitung entwickelt
 werden können; der Tor-Rang bestimmt die zugänglichen Gefahrenstufen; der Arena-Rang die
@@ -225,4 +238,5 @@ Der Spielstand liegt im `localStorage` des Browsers.
 | `src/mine.js` | Mine: Ebenen, Arbeiter, Erz |
 | `src/minescene.js` | Darstellung der Mine mit hackenden Monstern |
 | `src/trader.js` | Erzhändler: Ankunft, Angebote, Tausch |
+| `src/forge.js` | Schmiede: Kopierkosten und Schmiedeglut |
 | `src/main.js` | Spielschleife, Kamera, Skalierung |
