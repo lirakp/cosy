@@ -694,7 +694,7 @@ Artefakt. Jedes Stück kann nur einmal getragen werden.
 - **Zufallsboss:** 30 Gold, der Rang wird mit den Chancen des Brunnens gewürfelt.
 - **Siegchance:** Team-Stärke ÷ Boss-Stärke, begrenzt auf 5–95 %. Nach dem
   Kampf ist der Boss weg, auch bei einer Niederlage.
-- **Beute:** 3× Stoff im Rang des Bosses, mit 35 % zusätzlich 1× Seide.
+- **Beute:** 3× Stoff im Rang des Bosses, mit 40 % zusätzlich 1× Seide.
 - **Arena-Händler:** 3 Stoff → Sammelstück im selben Rang (75 %) oder einen
   Rang höher (25 %). 1 Seide → einen Rang höher (70 %) oder selber Rang (30 %).
   Rang SS ergibt immer SS.
