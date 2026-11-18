@@ -1456,11 +1456,11 @@ test('Brunnen: Geschenk des Brunnengeists ist selten und garantiert Rang A–SS'
   assert.ok(well.pull('spirit').error);
 });
 
-test('Brunnen: „Nur Duplikate“ und „Nur Neue“ treffen zu 75 % und kosten Glückstaler-Aufschlag', () => {
+test('Brunnen: „Nur Duplikate“ und „Nur Neue“ treffen zu 75 % und kosten nicht mehr als normal', () => {
   resetWell(0, 0);
   state.buildings.well = 0;
-  assert.deepEqual(well.price('stern', 10, 'new'), { taler: 20, stern: 10 });
-  assert.deepEqual(well.price('taler', 1, 'dupes'), { taler: 2, stern: 0 });
+  assert.deepEqual(well.price('stern', 10, 'new'), { taler: 0, stern: 10 });
+  assert.deepEqual(well.price('taler', 1, 'dupes'), { taler: 1, stern: 0 });
   state.well.coins = { taler: 10000, stern: 0, splinters: 0 };
   assert.ok(well.pull(10, Math.random, { variant: 'dupes' }).error, 'ohne Sammlung geht es nicht');
   state.addItems([getGroup('monster', 'D')[0], getGroup('waffen', 'D')[3], getGroup('helden', 'C')[2]]);
@@ -1468,7 +1468,7 @@ test('Brunnen: „Nur Duplikate“ und „Nur Neue“ treffen zu 75 % und kosten
   let dup = 0;
   for (let i = 0; i < 30; i++) for (const { isNew } of well.pull(10, random, { variant: 'dupes' }).results) if (!isNew) dup++;
   assert.ok(dup / 300 >= well.MODE_CHANCE - 0.07, `Duplikate ${dup}/300`);
-  assert.equal(well.coins('taler'), 10000 - 30 * 20);
+  assert.equal(well.coins('taler'), 10000 - 30 * 10);
   let fresh = 0, total = 0;
   for (let i = 0; i < 30; i++) for (const { isNew } of well.pull(10, random, { variant: 'new' }).results) { total++; if (isNew) fresh++; }
   assert.ok(fresh / total >= well.MODE_CHANCE - 0.07, `Neue ${fresh}/${total}`);
@@ -1541,4 +1541,13 @@ test('Zauber: Zeit-Schule lädt auch die Schmiedeglut', () => {
   magic.learn(sp.id);
   assert.ok(magic.cast(sp.id, {}, now));
   assert.ok(forge.glut() >= 3, `Glut ${forge.glut()}`);
+});
+
+test('Brunnen: „Nur Neue“ geht auch nur mit Sternentalern oder genau 10 Glückstalern', () => {
+  resetWell(10, 10);
+  state.buildings.well = 0;
+  assert.ok(!well.pull(10, seeded(2), { currency: 'stern', variant: 'new' }).error);
+  assert.ok(!well.pull(10, seeded(3), { currency: 'taler', variant: 'new' }).error);
+  assert.equal(well.coins('taler'), 0);
+  assert.equal(well.coins('stern'), 0);
 });

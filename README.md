@@ -605,9 +605,9 @@ wie 9):
 | 🌟 Sternentaler (teuer) | 500 Gold (10 für 4500) | B 70 % · A 25 % · S 4,5 % · SS 0,5 % |
 
 - Ein Wunsch kostet einen Taler, zehn Wünsche zehn Taler.
-- **Zusatz-Modi:** „Nur Duplikate“ (+1 🪙 je Wunsch) und „Nur Neue“ (+2 🪙 je
-  Wunsch) treffen mit **75 %** je Stück; die übrigen 25 % sind ganz normale Stücke.
-  Der Aufschlag wird immer in Glückstalern bezahlt, auch bei Sternentaler-Wünschen.
+- **Zusatz-Modi:** „Nur Duplikate“ und „Nur Neue“ kosten dasselbe wie ein normaler
+  Wunsch (mit beiden Talern) und treffen mit **75 %** je Stück; die übrigen 25 % sind
+  ganz normale Stücke.
 - Jeder Glückstaler-Wunsch gibt einen **Sternsplitter**; 25 Splitter werden
   automatisch zu einem Sternentaler.
 - Gratiswünsche (Wunsch des Tages, Folgewunsch) würfeln wie ein Glückstaler-Wunsch.

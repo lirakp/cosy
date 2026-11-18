@@ -26,8 +26,8 @@ export const SPIRIT_MIN_TIER = 3; // Geschenk des Brunnengeists: mindestens Rang
 
 // Duplikat- und Neu-Wünsche treffen nur mit dieser Chance je Stück, sonst ein normales Stück
 export const MODE_CHANCE = 0.75;
-// Aufschlag der Modi je Zug, in Glückstalern
-export const MODE_EXTRA = { dupes: 1, new: 2 };
+// Die Modi kosten dasselbe wie ein normaler Wunsch (kein Aufschlag)
+export const MODE_EXTRA = { dupes: 0, new: 0 };
 
 // Währungen (je Welt). odds: Chance je Rang D … SS. Ein 10er-Pack kostet wie 9.
 export const CURRENCIES = {

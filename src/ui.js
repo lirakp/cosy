@@ -189,8 +189,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         ${free ? `<button class="big free-wish" data-act="pull" data-n="free">✦ Gratiswunsch<small>${free === 'next' ? 'Glückswurf' : 'Wunsch des Tages'} · wie ein Glückstaler</small></button>` : ''}
         <div class="wish-modes">
           <button class="${wishMode === 'normal' ? 'on' : ''}" data-act="wish-mode" data-v="normal"><b>Normal</b><span>alles möglich</span></button>
-          <button class="${wishMode === 'dupes' ? 'on' : ''}" data-act="wish-mode" data-v="dupes" ${well.canDupe() ? '' : 'disabled'}><b>Nur Duplikate</b><span>+${well.MODE_EXTRA.dupes} 🪙 je Zug</span></button>
-          <button class="${wishMode === 'new' ? 'on' : ''}" data-act="wish-mode" data-v="new" ${well.canNew() ? '' : 'disabled'}><b>Nur Neue</b><span>+${well.MODE_EXTRA.new} 🪙 je Zug</span></button>
+          <button class="${wishMode === 'dupes' ? 'on' : ''}" data-act="wish-mode" data-v="dupes" ${well.canDupe() ? '' : 'disabled'}><b>Nur Duplikate</b><span>75 % Duplikate</span></button>
+          <button class="${wishMode === 'new' ? 'on' : ''}" data-act="wish-mode" data-v="new" ${well.canNew() ? '' : 'disabled'}><b>Nur Neue</b><span>75 % Neues</span></button>
         </div>
         <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}${extra ? ` Aufschlag: +${extra} Glückstaler je Zug.` : ''}</p>
         <div class="chest coins">
