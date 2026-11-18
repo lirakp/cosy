@@ -19,13 +19,15 @@ export const TEAM_SIZE = 10;
 export const FIGHT_SECONDS = 5;
 export const MAX_FIGHTS_PER_TICK = 15000; // höchstens so viele Kämpfe auf einmal (z. B. nach langer Abwesenheit)
 // Bosse werden mit jedem Sieg ein wenig zäher
-export const GROWTH = 0.0015;
+export const GROWTH = 0.004;
+// Bosse im Rush sind zäher als in der Arena (× Arena-Stärke)
+export const RUSH_POWER = 1.5;
 // Lange Läufe: höchstens so hohe Siegchance je Kampf – ein starkes Team hält Stunden durch
 export const RUN_MAX_CHANCE = 0.9998;
 // Gold nimmt bei sehr langen Läufen langsam ab (Boss Nr. n bringt 1 / (1 + n/500))
-export const GOLD_FALLOFF = 500;
+export const GOLD_FALLOFF = 200;
 // Gold je besiegtem Boss nach Rang (D … SS)
-export const BOSS_GOLD = [40, 90, 200, 450, 1100, 3000];
+export const BOSS_GOLD = [15, 35, 80, 180, 450, 1200];
 // Wiederbeleben: Grundpreis + je besiegtem Boss, gedeckelt
 export const REVIVE_BASE = 300;
 export const REVIVE_STEP = 150;
@@ -50,7 +52,7 @@ export const party = createParty({
 // angesetzt und werden langsamer zäher (bessere Siegchancen), die Beute ist größer.
 export const MODES = {
   normal: { name: 'Bossrush', minTier: 0, powerMult: 1, growth: GROWTH, goldMult: 1, silkBonus: 0 },
-  ultimate: { name: 'Ultimativer Bossrush', minTier: 3, powerMult: 0.5, growth: 0.001, goldMult: 1.5, silkBonus: 0.15 },
+  ultimate: { name: 'Ultimativer Bossrush', minTier: 3, powerMult: 0.5, growth: 0.003, goldMult: 1.5, silkBonus: 0.15 },
 };
 export const mode = (id) => MODES[id] || MODES.normal;
 
@@ -59,12 +61,17 @@ export const best = (m = 'normal') => (m === 'ultimate' ? r().bestUltimate || 0 
 export const reviveCost = (bosses = run()?.bosses || 0) => Math.min(REVIVE_MAX, REVIVE_BASE + REVIVE_STEP * bosses);
 
 // Stärke des nächsten Bosses: Grundwert seines Rangs, wächst mit jedem Sieg
-export const bossPower = (tier, bosses, m = 'normal') => Math.round(BOSS_POWER[tier] * mode(m).powerMult * (1 + mode(m).growth * bosses));
+export const bossPower = (tier, bosses, m = 'normal') => Math.round(BOSS_POWER[tier] * RUSH_POWER * mode(m).powerMult * (1 + mode(m).growth * bosses));
 // Siegchance in langen Läufen: ab gleicher Stärke fast sicher; ist der Boss stärker,
 // sinkt sie nur sanft (quadratisch) – damit ein einzelner starker Boss nicht sofort alles beendet.
+// Die volle Sicherheit gibt es erst mit deutlichem Vorsprung (ab 1,25-facher Stärke);
+// ist der Gegner stärker, fällt die Chance spürbar (quadratisch).
+export const SAFE_RATIO = 1.25;
+export const EVEN_CHANCE = 0.995; // Chance bei gleicher Stärke
 export function runChance(ratio) {
-  if (ratio >= 1) return RUN_MAX_CHANCE;
-  return Math.max(MIN_CHANCE, RUN_MAX_CHANCE - 0.5 * (1 - ratio) ** 2);
+  if (ratio >= SAFE_RATIO) return RUN_MAX_CHANCE;
+  if (ratio >= 1) return EVEN_CHANCE + ((RUN_MAX_CHANCE - EVEN_CHANCE) * (ratio - 1)) / (SAFE_RATIO - 1);
+  return Math.max(MIN_CHANCE, EVEN_CHANCE - 1.5 * (1 - ratio) ** 2);
 }
 export const winChance = (power, boss) => buffs.gladiator(runChance(power / boss + party.gemSum('smaragd')));
 

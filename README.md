@@ -785,7 +785,7 @@ Dungeon-Team (5 Helden) steigt in der gewählten Art Etage für Etage hinab: all
 **10 Sekunden** eine, auch offline, bis es fällt. Solange der Abstieg läuft,
 ist das Team gesperrt. Eine normale Erkundung geht dann nicht.
 
-- Jede Etage verlangt 1,2 % mehr Stärke (linear, × Art). Alle **5** Etagen wartet ein
+- Jede Etage verlangt 3 % mehr Stärke (linear, × Art). Alle **5** Etagen wartet ein
   **Wächter** (× 1,5, sicheres Sammelstück), alle **10** ein **Etagenboss**
   (× 2,5, Sammelstück einen Rang höher). Der Mindest-Rang der Beute steigt alle
   10 Etagen.
@@ -848,9 +848,9 @@ Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 - Nach dem Start kämpft das Team **alle 5 Sekunden** gegen einen Boss mit
   zufälligem Rang (Chancen wie am Brunnen). Das läuft auch offline weiter,
   bis es verliert.
-- Jeder Boss wird je bisherigem Sieg um 6 % stärker. Die Siegchance ist
-  Team-Stärke ÷ Boss-Stärke (5–95 %).
-- Jeder Sieg bringt Gold (40 · 90 · 200 · 450 · 1100 · 3000 je Rang, in
+- Bosse im Rush sind **1,5× so stark** wie in der Arena und werden je bisherigem
+  Sieg um 0,4 % stärker (Siegchance siehe „Lange Läufe“ unten).
+- Jeder Sieg bringt Gold (15 · 35 · 80 · 180 · 450 · 1200 je Rang, in
   Dimensionen doppelt), 3 Stoff und mit 40 % 1 Seide im Rang des Bosses.
 - **Wiederbeleben** nach einer Niederlage: 300 Gold + 150 je besiegtem Boss,
   höchstens **15.000**. Danach geht es gegen denselben Boss weiter.
@@ -859,17 +859,21 @@ Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 
 **⚔ Ultimativer Bossrush** (zweiter Start-Knopf): nur Bosse von Rang **A bis SS**.
 Damit die Siegchancen passen, sind sie nur halb so stark angesetzt und werden je
-Sieg nur um 3,5 % statt 6 % zäher. Die Beute ist größer: Gold × 1,5 und +15 %
+Sieg nur um 0,3 % statt 0,4 % zäher. Die Beute ist größer: Gold × 1,5 und +15 %
 Seide-Chance. Wiederbeleben und Heimkehren funktionieren wie im normalen Rush. Der
 beste Lauf wird getrennt gespeichert.
 
 **Lange Läufe und AFK-Modus** (Bossrush, ultimativer Bossrush und Abstieg):
-Ist das Team mindestens so stark wie der Gegner, liegt die Siegchance bei 99,98 %.
-Ist der Gegner stärker, sinkt sie nur sanft. Bosse wachsen je Sieg nur um 0,15 %
-(ultimativ 0,1 %), Abstieg-Etagen linear um 1,2 %. Ein Team mit Stärke ~3000 hält
-im Bossrush im Schnitt etwa 3 Stunden durch; im Abstieg hält Stärke ~2000 etwa
-8 Stunden. Das Gold je Boss nimmt bei sehr langen Läufen langsam ab
-(1 / (1 + Bosse/500)), im Abstieg wächst es nur mit der Wurzel der Tiefe. Der
+Die volle Siegchance von 99,98 % gibt es erst mit deutlichem Vorsprung (Team
+mindestens 1,25× so stark wie der Gegner). Bei gleicher Stärke sind es 99,5 %, ist
+der Gegner stärker, fällt sie quadratisch: 99,5 % − 1,5 × (1 − Verhältnis)²
+(bei 80 % Stärke ≈ 93,5 %, bei 50 % ≈ 62 %, mindestens 5 %). Bosse wachsen je Sieg
+um 0,4 % (ultimativ 0,3 %), Abstieg-Etagen linear um 3 % (Etage 1 verlangt 40 ×
+Art). Das Gold je Boss nimmt bei langen Läufen ab (1 / (1 + Bosse/200)), im Abstieg
+wächst es nur mit der Wurzel der Tiefe (4 × (1 + √Etage) × Art).
+Richtwerte (simuliert, Helden ohne Level): 5 Helden Rang C ≈ 17.000 Gold pro Stunde
+im Bossrush, 10 Helden A ≈ 26.000; Läufe dauern je nach Team Minuten bis zu einer
+Stunde – im AFK-Modus geht es danach automatisch weiter. Der
 Mindest-Rang der Beute steigt im Abstieg alle 100 Etagen, höchstens bis A.
 Mit dem Häkchen **🌙 AFK-Modus** vor dem Start wird nach einer Niederlage
 automatisch eingesammelt und neu gestartet. Im Abstieg geschieht das ohne Verlust,

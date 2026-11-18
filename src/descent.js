@@ -17,7 +17,7 @@ import * as guild from './guild.js';
 
 export const FLOOR_SECONDS = 10;
 export const MAX_FLOORS_PER_TICK = 15000; // höchstens so viele Etagen auf einmal (z. B. nach langer Abwesenheit)
-export const BASE_NEED = 30; // Stärke für Etage 1 (× Art)
+export const BASE_NEED = 40; // Stärke für Etage 1 (× Art)
 export const GUARD_EVERY = 5;
 export const BOSS_EVERY = 10;
 export const GUARD_MULT = 1.5;
@@ -27,7 +27,7 @@ export const GUARD_ITEM_CHANCE = 0.5; // Sammelstück beim Wächter (Etagenboss:
 // Lange Läufe: höchstens so hohe Siegchance je Etage (ein starkes Team hält Stunden durch)
 export const RUN_MAX_CHANCE = 0.9998;
 // Anforderung wächst linear mit der Tiefe
-export const LINEAR = 0.012;
+export const LINEAR = 0.03;
 export const EVENT_CHANCE = 0.25; // Ereignis-Raum statt Kampf (nicht auf Wächter-/Boss-Etagen)
 export const REVIVE_BASE = 300;
 export const REVIVE_STEP = 150;
@@ -152,7 +152,7 @@ function resolve(x, rand) {
   if (rand() < odds) {
     guild.record('descent');
     // Gold wächst mit der Tiefe, aber gebremst (Wurzel) – lange Läufe sollen nicht ausufern
-    const gold = Math.round(8 * (1 + Math.sqrt(floor)) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
+    const gold = Math.round(4 * (1 + Math.sqrt(floor)) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
     x.loot.gold += gold;
     const itemChance = kind === 'boss' ? 1 : kind === 'waechter' ? GUARD_ITEM_CHANCE : ITEM_CHANCE;
     if (rand() < itemChance + party.gemSum('topas')) addItem(x, Math.min(5, minTierAt(floor) + (kind === 'boss' ? 1 : 0)), rand);
