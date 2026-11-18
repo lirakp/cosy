@@ -472,11 +472,6 @@ function act() {
 
 document.getElementById('btn-gallery').addEventListener('click', () => ui.openGallery());
 document.getElementById('btn-companions').addEventListener('click', () => ui.openCompanions());
-document.getElementById('btn-forge').addEventListener('click', () => ui.openForge());
-document.getElementById('btn-mine').addEventListener('click', () => ui.openMine());
-document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
-document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
-document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
 // Touch: Mana antippen öffnet das Zauberbuch, ▲ ▼ wechseln die Mine-Ebene
 manaEl.addEventListener('click', () => !paused && !ui.isOpen() && ui.openTower());
 const mineNav = document.getElementById('mine-nav');
