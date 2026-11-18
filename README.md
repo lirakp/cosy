@@ -71,7 +71,7 @@ auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antipp
   lässt es sich im Browser über „Zum Home-Bildschirm“ wie eine App installieren
   (Vollbild, offline spielbar – `manifest.webmanifest`, `sw.js`).
 - **Bedienung per Touch:** ◀ ▶ unten links/rechts gedrückt halten zum Laufen,
-  der grüne Knopf rechts ist die Aktion (`E`), Menüs über die Knöpfe oben, das
+  der grüne Knopf rechts ist die Aktion (`E`), Galerie und Begleiter über die Knöpfe oben (Schmiede, Mine, Arena usw. direkt am Gebäude), das
   Mana-Feld öffnet das Zauberbuch, in der Mine wechseln ▲ ▼ die Ebene. Am besten
   quer halten.
 - **Spielstand übertragen:** In der Android-App kopiert „Sichern“ den Spielstand in
