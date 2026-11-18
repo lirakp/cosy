@@ -814,69 +814,10 @@ test('Begleiter: Geschenke bringen je nach Tier Gold, Saat, Fisch, Erz – selte
 import * as well from '../src/well.js';
 
 const setGold = (g) => (g > state.gold ? state.addGold(g - state.gold) : state.spend(state.gold - g));
-const resetWell = () => Object.assign(state.well, { pityA: 0, pityS: 0, freeNext: false, dailyDay: state.dayCount, dailyUsed: 99, spiritGift: false });
+const resetWell = (taler = 1e6, stern = 1e6) => Object.assign(state.well, { pityA: 0, pityS: 0, freeNext: false, dailyDay: state.dayCount, dailyUsed: 99, spiritGift: false, coins: { taler, stern, splinters: 0 } });
 
-test('Brunnen: Glückszähler garantiert spätestens beim 60. Stück ein A und beim 300. ein S', () => {
-  resetWell();
-  state.buildings.well = 0;
-  setGold(1e9);
-  let sinceA = 0, sinceS = 0, maxA = 0, maxS = 0;
-  const random = () => 0.001; // immer Rang D, solange nichts erzwungen wird
-  for (let i = 0; i < 70; i++) {
-    for (const { item } of well.pull(10, random).results) {
-      sinceA = item.tier >= 3 ? 0 : sinceA + 1;
-      sinceS = item.tier >= 4 ? 0 : sinceS + 1;
-      maxA = Math.max(maxA, sinceA);
-      maxS = Math.max(maxS, sinceS);
-    }
-  }
-  assert.equal(maxA, well.PITY_A - 1, 'nie mehr als 59 Stücke ohne A');
-  assert.equal(maxS, well.PITY_S - 1, 'nie mehr als 299 Stücke ohne S');
-});
 
-test('Brunnen: Gratiswünsche am Tag, Gratis-Folgewunsch und Rabatt je Rang', () => {
-  resetWell();
-  state.well.dailyUsed = 0;
-  state.buildings.well = 0;
-  setGold(0);
-  assert.equal(well.dailyLeft(), 1);
-  const r = well.pull(1, () => 0.99);
-  assert.ok(!r.error && r.free === 'daily' && r.paid === 0);
-  assert.equal(well.dailyLeft(), 0);
-  assert.ok(well.pull(1, () => 0.99).error, 'danach kostet es');
-  setGold(1e6);
-  const g = well.pull(1, () => 0.01); // Glückswurf trifft
-  assert.ok(g.gotFreeNext && well.freeNext());
-  const before = state.gold;
-  assert.equal(well.pull(1, () => 0.99).free, 'next');
-  assert.equal(state.gold, before);
-  state.dayCount += 1;
-  assert.equal(well.dailyLeft(), 1, 'neuer Tag, neuer Gratiswunsch');
-  state.buildings.well = 5;
-  assert.equal(well.dailyLeft(), 3);
-  assert.equal(well.cost(10), 680, '850 Gold − 20 % bei Rang SS');
-  state.buildings.well = 0;
-});
 
-test('Brunnen: Geschenk des Brunnengeists ist selten und garantiert Rang A–SS', () => {
-  resetWell();
-  state.buildings.well = 0;
-  setGold(1e9);
-  const random = seeded(3);
-  let gifts = 0;
-  const n = 3000;
-  for (let i = 0; i < n; i++) {
-    const r = well.pull(10, random);
-    if (r.gotSpirit) {
-      gifts++;
-      const s = well.pull('spirit', random);
-      assert.equal(s.free, 'spirit');
-      assert.ok(s.results[0].item.tier >= 3);
-    }
-  }
-  close(gifts / n, 1 - (1 - well.SPIRIT_CHANCE[0]) ** 10, 0.012, 'je 10er-Zug');
-  assert.ok(well.pull('spirit').error, 'ohne Geschenk geht es nicht');
-});
 
 // ---------------------------------------------------------------- Schneiderei
 
@@ -929,27 +870,6 @@ test('Schneiderei: Einrichtung macht das Haus gemütlich, Veredeln tauscht Mater
   assert.equal(tailor.refine('seide-up', 5), false, 'über SS geht nichts');
 });
 
-test('Brunnen: Preise 100/850, Duplikat-Wunsch bringt nur Eigenes und kostet 50 mehr je Zug', () => {
-  resetWell();
-  state.buildings.well = 0;
-  assert.equal(well.cost(1), 100);
-  assert.equal(well.cost(10), 850);
-  assert.equal(well.cost(1, true), 150);
-  assert.equal(well.cost(10, true), 1350);
-  setGold(1e6);
-  assert.ok(well.pull(10, Math.random, { dupes: true }).error, 'ohne Sammlung geht es nicht');
-  const mine = [getGroup('monster', 'D')[0], getGroup('waffen', 'D')[3], getGroup('helden', 'B')[2]];
-  state.addItems(mine);
-  const before = state.gold;
-  const random = seeded(4);
-  let own = 0;
-  for (let i = 0; i < 30; i++) {
-    const r = well.pull(10, random, { dupes: true });
-    for (const { isNew } of r.results) if (!isNew) own++;
-  }
-  assert.ok(own / 300 >= well.MODE_CHANCE - 0.07, `mindestens etwa 75 % Duplikate (${own}/300)`);
-  assert.equal(before - state.gold, 30 * 1350);
-});
 
 // ---------------------------------------------------------------- Dimensionsportal
 
@@ -1031,10 +951,10 @@ test('Dimensionen: Gebäude starten bei Rang B, kosten mehr, Wünsche kosten das
   state.addItems(getGroup('lebewesen', 'D').slice(0, 4));
   expedition.tick();
   const homeRate = expedition.goldPerMinute();
-  assert.equal(well.cost(1), 100);
+  assert.equal(well.coinPrice('taler'), 40);
   state.switchWorld('hoelle');
   assert.equal(buildings.tier('well'), 2, 'Brunnen steht schon auf B');
-  assert.equal(well.cost(1), Math.round(100 * (1 - well.DISCOUNT[2])) * 2, 'doppelt, mit Rabatt des B-Brunnens');
+  assert.equal(well.coinPrice('taler'), Math.round(40 * (1 - well.DISCOUNT[2])) * 2, 'doppelt, mit Rabatt des B-Brunnens');
   const price = buildings.nextCost('camp');
   assert.equal(price, buildings.realmBuy('camp'));
   assert.ok(price > buildings.BUILDINGS.camp.buy * 10);
@@ -1356,42 +1276,7 @@ test('Abstieg: Wiederbeleben wird mit der Tiefe teurer und stoppt bei 15.000, Qu
   assert.equal(x.status, 'running');
 });
 
-test('Brunnen: „Nur Neue“ bringt keine Duplikate und kostet 100 mehr je Zug', () => {
-  resetWell();
-  state.buildings.well = 0;
-  setGold(1e7);
-  assert.equal(well.cost(1, 'new'), 200);
-  assert.equal(well.cost(10, 'new'), 1850);
-  const random = seeded(31);
-  state.addItems(getGroup('monster', 'D').slice(0, 49));
-  let fresh = 0;
-  let total = 0;
-  for (let i = 0; i < 40; i++) {
-    const r = well.pull(10, random, { fresh: true });
-    for (const { isNew } of r.results) {
-      total++;
-      if (isNew) fresh++;
-    }
-  }
-  assert.ok(fresh / total >= well.MODE_CHANCE - 0.06, `mindestens etwa 75 % neu (${fresh}/${total})`);
-  assert.ok(state.well.pityA < well.PITY_A, 'zählt für den Glückszähler');
-  assert.equal(arena.SILK_CHANCE, 0.4, 'Seide +5 %');
-});
 
-test('Brunnen: Fehlen nur noch A–SS, kostet „Nur Neue“ 1.000 bzw. 9.500 und bringt nur A–SS', () => {
-  resetWell();
-  state.buildings.well = 0;
-  assert.equal(well.onlyHighMissing(), false);
-  state.addItems(ITEMS.filter((i) => i.tier <= 2));
-  assert.equal(well.onlyHighMissing(), true);
-  assert.equal(well.cost(1, 'new'), 1000);
-  assert.equal(well.cost(10, 'new'), 9500);
-  assert.ok(well.cost(1) <= 100, 'normale Wünsche bleiben günstig');
-  setGold(20000);
-  const r = well.pull(10, seeded(4), { fresh: true });
-  assert.equal(r.paid, 9500);
-  assert.ok(r.results.filter(({ item, isNew }) => isNew && item.tier >= 3).length >= 4, 'die Treffer sind neue A–SS');
-});
 
 // ---------------------------------------------------------------- Edelsteine und Statuen
 
@@ -1483,26 +1368,109 @@ test('Lange Läufe: starke Teams halten Stunden durch, AFK sammelt ein und start
   assert.equal(descent.retreat().lost, false);
 });
 
-test('Brunnen-Währungen: Glückstaler (D/C) und Sternentaler (B–SS), Splitter und Bonus-Taler', () => {
+
+// ---------------------------------------------------------------- Brunnen (Wünschen nur mit Währung)
+
+test('Brunnen: Wünschen geht nur mit Glückstalern oder Sternentalern, die man mit Gold kauft', () => {
+  resetWell(0, 0);
+  state.buildings.well = 0;
+  setGold(1e6);
+  assert.ok(well.pull(1).error, 'ohne Taler kein Wunsch');
+  assert.equal(well.coinPrice('taler'), 40);
+  assert.equal(well.coinPrice('taler', 10), 360, '10er-Pack wie 9');
+  assert.equal(well.coinPrice('stern', 10), 4500);
+  const gold = state.gold;
+  assert.ok(well.buyCoins('taler', 10));
+  assert.equal(gold - state.gold, 360);
+  const r = well.pull(10, seeded(1), { currency: 'taler' });
+  assert.equal(r.results.length, 10);
+  assert.equal(well.coins('taler'), 0);
+  assert.equal(well.splinters(), 10);
+  state.buildings.well = 5;
+  assert.equal(well.coinPrice('taler', 10), Math.round(360 * 0.8), 'Brunnen-Rabatt');
+});
+
+test('Brunnen: Glückszähler garantiert spätestens beim 60. Stück ein A und beim 300. ein S', () => {
   resetWell();
   state.buildings.well = 0;
-  setGold(1e7);
-  assert.equal(well.coinPrice('taler', 10), 400);
-  assert.equal(well.coinPrice('stern'), 500);
-  assert.ok(well.pull(1, Math.random, { currency: 'taler' }).error, 'ohne Taler geht es nicht');
-  assert.ok(well.buyCoins('taler', 200));
-  assert.ok(well.buyCoins('stern', 100));
+  let sinceA = 0, sinceS = 0, maxA = 0, maxS = 0;
+  const random = () => 0.001; // immer Rang D, solange nichts erzwungen wird
+  for (let i = 0; i < 70; i++) {
+    for (const { item } of well.pull(10, random).results) {
+      sinceA = item.tier >= 3 ? 0 : sinceA + 1;
+      sinceS = item.tier >= 4 ? 0 : sinceS + 1;
+      maxA = Math.max(maxA, sinceA);
+      maxS = Math.max(maxS, sinceS);
+    }
+  }
+  assert.equal(maxA, well.PITY_A - 1);
+  assert.equal(maxS, well.PITY_S - 1);
+});
+
+test('Brunnen: Glückstaler fast nur D/C, Sternentaler nur B–SS, Splitter werden zu Sternentalern', () => {
+  resetWell(200, 100);
+  state.buildings.well = 0;
   const random = seeded(8);
   const t = [0, 0, 0, 0, 0, 0];
   for (let i = 0; i < 20; i++) for (const { item } of well.pull(10, random, { currency: 'taler' }).results) t[item.tier]++;
   assert.ok((t[0] + t[1]) / 200 > 0.85, 'fast nur D/C');
-  assert.equal(well.coins('taler'), 0);
-  assert.equal(well.coins('stern'), 100 + 200 / well.SPLINTERS_PER_STAR, 'Splitter werden zu Sternentalern');
+  assert.equal(well.coins('stern'), 100 + 200 / well.SPLINTERS_PER_STAR);
   const s = [0, 0, 0, 0, 0, 0];
   for (let i = 0; i < 10; i++) for (const { item } of well.pull(10, random, { currency: 'stern' }).results) s[item.tier]++;
   assert.equal(s[0] + s[1], 0, 'nie D oder C');
   assert.ok(s[3] + s[4] + s[5] > 10, 'viele A–SS');
-  const r = well.pull(10, random);
-  assert.equal(r.bonusTaler, 1);
-  assert.equal(well.coins('taler'), 1, 'ein Bonus-Taler je normalem 10er-Wunsch');
+});
+
+test('Brunnen: Gratiswünsche am Tag und als Glückswurf, ohne Taler', () => {
+  resetWell(1000, 0);
+  state.well.dailyUsed = 0;
+  state.buildings.well = 0;
+  assert.equal(well.dailyLeft(), 1);
+  const r = well.pull('free', () => 0.99);
+  assert.ok(!r.error && r.free === 'daily');
+  assert.equal(well.coins('taler'), 1000, 'kostet nichts');
+  assert.ok(well.pull('free').error, 'danach ist erst einmal Schluss');
+  const g = well.pull(1, () => 0.01, { currency: 'taler' }); // Glückswurf trifft
+  assert.ok(g.gotFreeNext && well.freeNext());
+  assert.equal(well.pull('free', () => 0.99).free, 'next');
+  state.dayCount += 1;
+  assert.equal(well.dailyLeft(), 1, 'neuer Tag, neuer Gratiswunsch');
+});
+
+test('Brunnen: Geschenk des Brunnengeists ist selten und garantiert Rang A–SS', () => {
+  resetWell();
+  state.buildings.well = 0;
+  const random = seeded(3);
+  let gifts = 0;
+  const n = 3000;
+  for (let i = 0; i < n; i++) {
+    const r = well.pull(10, random);
+    if (r.gotSpirit) {
+      gifts++;
+      const s = well.pull('spirit', random);
+      assert.equal(s.free, 'spirit');
+      assert.ok(s.results[0].item.tier >= 3);
+    }
+  }
+  close(gifts / n, 1 - (1 - well.SPIRIT_CHANCE[0]) ** 10, 0.012, 'je 10er-Zug');
+  assert.ok(well.pull('spirit').error);
+});
+
+test('Brunnen: „Nur Duplikate“ und „Nur Neue“ treffen zu 75 % und kosten Glückstaler-Aufschlag', () => {
+  resetWell(0, 0);
+  state.buildings.well = 0;
+  assert.deepEqual(well.price('stern', 10, 'new'), { taler: 20, stern: 10 });
+  assert.deepEqual(well.price('taler', 1, 'dupes'), { taler: 2, stern: 0 });
+  state.well.coins = { taler: 10000, stern: 0, splinters: 0 };
+  assert.ok(well.pull(10, Math.random, { variant: 'dupes' }).error, 'ohne Sammlung geht es nicht');
+  state.addItems([getGroup('monster', 'D')[0], getGroup('waffen', 'D')[3], getGroup('helden', 'C')[2]]);
+  const random = seeded(4);
+  let dup = 0;
+  for (let i = 0; i < 30; i++) for (const { isNew } of well.pull(10, random, { variant: 'dupes' }).results) if (!isNew) dup++;
+  assert.ok(dup / 300 >= well.MODE_CHANCE - 0.07, `Duplikate ${dup}/300`);
+  assert.equal(well.coins('taler'), 10000 - 30 * 20);
+  let fresh = 0, total = 0;
+  for (let i = 0; i < 30; i++) for (const { isNew } of well.pull(10, random, { variant: 'new' }).results) { total++; if (isNew) fresh++; }
+  assert.ok(fresh / total >= well.MODE_CHANCE - 0.07, `Neue ${fresh}/${total}`);
+  assert.equal(arena.SILK_CHANCE, 0.4);
 });

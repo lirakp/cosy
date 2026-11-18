@@ -294,7 +294,7 @@ Zauber-Schriftrollen gibt es nur in der Heimat.
 - **Start bei Rang B:** Gebäude werden in einer Dimension direkt auf Rang B
   gebaut, der Brunnen steht dort schon auf B. Sie kosten mehr: Bau = (Bau +
   Ausbau auf C + Ausbau auf B der Heimat) × 2,5, jeder weitere Ausbau × 2,5.
-- **Höhere Belohnungen:** Gold aus Expedition, Dungeon und Münzen × 2. Wünsche
+- **Höhere Belohnungen:** Gold aus Expedition, Dungeon und Münzen × 2. Taler
   am Brunnen kosten das Doppelte.
 - **Eigene Boni**, solange man dort ist:
   - Hölle: Expedition +50 % Gold, Mine +30 % Erz, Arena und Dungeon +15 % Stärke
@@ -449,7 +449,7 @@ Werte in `src/tailor.js`, Kleidung in `src/sprites.js`.
   spätestens das 300. ohne S oder besser ein S. Beide Zähler stehen im Brunnen-Menü.
 - **Wunsch des Tages:** Gratis-Einzelwünsche pro Spieltag. Der Brunnen funkelt,
   wenn einer bereit ist.
-- **Gratis-Folgewunsch:** Nach jedem Wunsch ist der nächste Einzelwunsch mit
+- **Gratis-Folgewunsch:** Nach jedem bezahlten Wunsch ist der nächste Einzelwunsch mit
   etwas Glück gratis (5–12 % je Brunnen-Rang).
 - **Brunnengeist:** Er schwebt über dem Brunnen, nachts deutlicher, und kommentiert
   jeden Wunsch. Ganz selten (je gezogenem Stück 0,4–1,25 %) erscheint er mit
@@ -563,36 +563,30 @@ Werte in `src/buffs.js`, Outfits in `src/sprites.js`.
 
 ## Sammeln
 
-Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
-100 Gold, zehn Züge 850 Gold. Mit „Nur Duplikate“ kommen nur Stücke, die man schon
-besitzt (Material zum Leveln) – für 50 Gold mehr je Zug (150 / 1350). Der Rang wird
-wie immer gewürfelt; fehlt einem der Rang, kommt ein Stück aus dem nächstniedrigeren.
-Duplikat-Wünsche zählen nicht für den Glückszähler.
-**Trefferchance der Zusatz-Modi:** „Nur Duplikate“ und „Nur Neue“ treffen mit **75 %**
-je Stück; die übrigen 25 % sind ganz normale Stücke.
+Auf dem Weg erscheinen Münzen (je 10 Gold). **Gewünscht wird nur mit
+Brunnen-Währung** – Gold kauft die Taler, nicht mehr den Wunsch selbst.
 
 **Brunnen-Währungen** (im Brunnen mit Gold kaufen, Brunnen-Rabatt gilt, in den
-Dimensionen doppelt; jede Welt hat ihr eigenes Portemonnaie):
+Dimensionen doppelt; jede Welt hat ihr eigenes Portemonnaie; ein 10er-Pack kostet
+wie 9):
 
 | Währung | Preis | Chancen |
 | --- | --- | --- |
-| 🪙 Glückstaler (günstig) | 40 Gold | D 55 % · C 40 % · B 4 % · A 0,9 % · S 0,09 % · SS 0,01 % |
-| 🌟 Sternentaler (teuer) | 500 Gold | B 70 % · A 25 % · S 4,5 % · SS 0,5 % |
+| 🪙 Glückstaler (günstig) | 40 Gold (10 für 360) | D 55 % · C 40 % · B 4 % · A 0,9 % · S 0,09 % · SS 0,01 % |
+| 🌟 Sternentaler (teuer) | 500 Gold (10 für 4500) | B 70 % · A 25 % · S 4,5 % · SS 0,5 % |
 
-Dazu:
-
+- Ein Wunsch kostet einen Taler, zehn Wünsche zehn Taler.
+- **Zusatz-Modi:** „Nur Duplikate“ (+1 🪙 je Wunsch) und „Nur Neue“ (+2 🪙 je
+  Wunsch) treffen mit **75 %** je Stück; die übrigen 25 % sind ganz normale Stücke.
+  Der Aufschlag wird immer in Glückstalern bezahlt, auch bei Sternentaler-Wünschen.
 - Jeder Glückstaler-Wunsch gibt einen **Sternsplitter**; 25 Splitter werden
   automatisch zu einem Sternentaler.
-- Jeder normale, bezahlte **10er-Wunsch** gibt einen Glückstaler gratis.
-- Der Glückszähler gilt auch für Taler-Wünsche.
+- Gratiswünsche (Wunsch des Tages, Folgewunsch) würfeln wie ein Glückstaler-Wunsch.
+- Der Glückszähler gilt für alle Wünsche.
+
 Im Brunnen lassen sich die Pop-ups für Rang A–SS abschalten (Häkchen unter den
 Modus-Knöpfen, wird im Browser gemerkt). Dann gibt es nur einen kurzen Hinweis.
-Mit „Nur Neue“ kommen nur Stücke, die man noch nicht besitzt, also keine Duplikate.
-Das kostet 100 Gold mehr je Zug (200 / 1850). Der Rang wird wie immer gewürfelt und
-zählt für den Glückszähler. Fehlt einem in dem Rang nichts mehr, kommt ein Stück aus
-einem anderen Rang.
-Fehlen in der Welt nur noch Stücke ab Rang A, kostet „Nur Neue“ **1.000** (einzeln) bzw.
-**9.500** (zehn) Gold, in den Dimensionen das Doppelte. Dafür ist jedes Stück ein neues A, S oder SS. Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
+Es gibt 2100 Sammelstücke: 7 Kategorien × 6 Ränge
 × 50 Stück. Die Bilder werden nicht einzeln gespeichert, sondern aus Bauplänen
 in `src/art/` erzeugt – jedes Stück sieht bei jedem Start gleich aus.
 
