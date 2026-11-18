@@ -36,6 +36,8 @@ import * as themes from './themes.js';
 import { createWorld } from './world.js';
 import * as projects from './projects.js';
 import * as guild from './guild.js';
+import * as achievements from './achievements.js';
+let achCountdown = 2;
 import { createPlayer } from './player.js';
 
 const canvas = document.getElementById('game');
@@ -229,6 +231,11 @@ async function loadSave(text) {
     audio.play('error');
   }
 }
+
+document.getElementById('btn-achievements').addEventListener('click', () => {
+  setPaused(false);
+  ui.openAchievements();
+});
 
 document.getElementById('btn-stats').addEventListener('click', () => {
   setPaused(false);
@@ -485,6 +492,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') ui.openMine();
   if (e.code === 'KeyH') ui.openForge();
   if (e.code === 'KeyI') ui.openStats();
+  if (e.code === 'KeyR') ui.openAchievements();
   if (e.code === 'KeyZ') ui.openTower();
   if (e.code === 'KeyC') ui.openCompanions();
   // in der Mine mit ↑ / ↓ (oder W / S) zwischen den Ebenen wechseln
@@ -606,6 +614,11 @@ function expeditionTick() {
   if (found && !document.hidden) ui.toast('✦ Dein Team hat etwas gefunden! Leere die Truhe.', true);
   ui.updateChest();
   showBuff();
+  // Errungenschaften alle paar Sekunden prüfen
+  if (--achCountdown <= 0) {
+    achCountdown = 3;
+    ui.achievementsUnlocked(achievements.check());
+  }
   if (!document.hidden) state.addPlayed(1);
   if (--saveCountdown <= 0 || found) {
     saveCountdown = 10;

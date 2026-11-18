@@ -55,7 +55,7 @@ python3 -m http.server 8000
 
 Dann <http://localhost:8000> öffnen.
 
-**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `Z` Zauberbuch · `M` Ton an/aus ·
+**Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `R` Errungenschaften · `Z` Zauberbuch · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
 
@@ -877,6 +877,29 @@ Händler werden übersprungen. Während des Laufs zeigt eine Zeile die bisherige
 AFK-Läufe, den Rekord und das eingesammelte Gold. „AFK beenden“ schaltet es ab.
 
 Werte in `src/bossrush.js`.
+## Errungenschaften
+
+`R` (oder im Pause-Menü) öffnet die Errungenschaften: 22 Stück in fünf Gruppen
+(Sammeln, Aufbau, Kämpfen, Dorf, Magie & Begleiter), jede mit bis zu fünf Stufen
+**Bronze · Silber · Gold · Platin · Diamant**. Sie werden alle paar Sekunden geprüft;
+erreichte Stufen zahlen sofort aus (die letzte Stufe einer Errungenschaft zählt immer
+als Diamant):
+
+| Stufe | Belohnung | Punkte |
+| --- | --- | --- |
+| Bronze | 5 🪙 | 5 |
+| Silber | 15 🪙 | 10 |
+| Gold | 30 🪙 + 1 🌟 | 20 |
+| Platin | 50 🪙 + 3 🌟 | 35 |
+| Diamant | 100 🪙 + 6 🌟 | 60 |
+
+Beispiele: Sammlerherz (25 … 2.100 verschiedene Stücke), Legendenjäger (SS-Stücke),
+Wunschkind (10 … 20.000 Wünsche), Baumeisterin (Gebäude auf SS), Unaufhaltsam
+(50 … 50.000 Bossrush-Bosse), In die Tiefe / Bodenlos (Abstieg), Beste Freunde,
+Gemeinsinn (Dorfprojekte), Fischkunde, Zauberkundig, Tierfreund, Weltenwanderer.
+Bisheriger Fortschritt zählt mit – alte Spielstände bekommen ihre Stufen beim ersten
+Start nachgezahlt. Werte in `src/achievements.js`.
+
 ## Statistik
 
 `I` oder Pause → Statistik zeigt, woher Gold und Sammelstücke kommen: Gold

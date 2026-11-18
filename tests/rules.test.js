@@ -1670,3 +1670,28 @@ test('Gilde: Daueraufträge mit Meilensteinen bis zum Limit, danach Standardbelo
   assert.ok(state.gold > gold);
   assert.ok(!guild.canDeliver(0));
 });
+
+// ---------------------------------------------------------------- Errungenschaften
+
+import * as ach from '../src/achievements.js';
+
+test('Errungenschaften: Stufen werden erreicht, zahlen Taler und Punkte und zählen nur einmal', () => {
+  state.well.coins = { taler: 0, stern: 0, splinters: 0 };
+  assert.equal(ach.points(), 0);
+  state.addItems(ITEMS.slice(0, 30));
+  const got = ach.check();
+  const s = got.find((x) => x.a.id === 'sammler');
+  assert.ok(s && s.stage === 1);
+  assert.equal(ach.stageOf('sammler'), 1);
+  assert.ok(well.coins('taler') >= ach.STAGES[0].taler);
+  assert.equal(ach.check().length, 0, 'nicht doppelt');
+  // mehrere Stufen auf einmal, letzte Stufe zählt als Diamant
+  guild.record('descent', 50000);
+  const more = ach.check().filter((x) => x.a.id === 'abstieg');
+  assert.equal(more.length, 5);
+  assert.equal(more[4].info.name, 'Diamant');
+  assert.equal(ach.stageOf('abstieg'), 5);
+  assert.ok(ach.points() > 0 && ach.points() <= ach.maxPoints());
+  // jede Errungenschaft liefert einen Wert
+  for (const a of ach.ACHIEVEMENTS) assert.equal(typeof a.value(), 'number', a.id);
+});

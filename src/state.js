@@ -90,6 +90,7 @@ const fresh = () => ({
   companions: { owned: [], active: null, pts: {}, gifts: 0 },
   tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
   statues: [null, null, null], // Statuen auf dem Hof (Sammelstück-Ids)
+  achievements: { got: {} },
   // Dimensionsportal: welche Welt dahinter liegt, ob man gerade dort ist, und
   // der Spielstand der Welt, in der man gerade NICHT ist
   // type: die erste Portalwelt (Zufall beim Bau) · inside: Welt, in der man gerade ist (null = Heimat)
@@ -407,6 +408,10 @@ export const state = {
   },
   get magic() {
     return data.magic;
+  },
+  // Errungenschaften: erreichte Stufe je Errungenschaft (gilt für alle Welten)
+  get achievements() {
+    return (data.achievements ||= { got: {} });
   },
   get village() {
     return data.village;

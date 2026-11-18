@@ -29,6 +29,7 @@ import * as care from './companioncare.js';
 import * as friendship from './friendship.js';
 import * as projects from './projects.js';
 import * as guild from './guild.js';
+import * as ach from './achievements.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
@@ -116,6 +117,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (view === 'portal') renderPortal();
     if (view === 'trader') renderTrader();
     if (view === 'project') renderProject();
+    if (view === 'achievements') renderAchievements();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -134,6 +136,66 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       <button class="close" data-act="close" aria-label="Schließen">✕</button>
     </header>`;
 
+
+
+  // ------------------------------------------------------------ Errungenschaften
+
+  let achGroup = null;
+  function renderAchievements() {
+    const groups = ach.GROUPS;
+    achGroup ||= groups[0];
+    const tabs = groups.map((g) => {
+      const list = ach.ACHIEVEMENTS.filter((a) => a.group === g);
+      const done = list.reduce((n, a) => n + ach.stageOf(a.id), 0);
+      const all = list.reduce((n, a) => n + a.goals.length, 0);
+      return `<button class="tab${achGroup === g ? ' on' : ''}" data-act="ach-tab" data-v="${g}">${g} <small>${done}/${all}</small></button>`;
+    }).join('');
+    const rows = ach.ACHIEVEMENTS.filter((a) => a.group === achGroup).map((a) => {
+      const s = ach.stageOf(a.id);
+      const max = s >= a.goals.length;
+      let v = 0;
+      try { v = a.value(); } catch { v = 0; }
+      const goal = a.goals[Math.min(s, a.goals.length - 1)];
+      const from = s && !max ? a.goals[s - 1] : 0;
+      const share = max ? 1 : Math.max(0, Math.min(1, (v - from) / (goal - from)));
+      const medals = a.goals.map((g, i) => {
+        const info = ach.stageInfo(a, i);
+        return `<i class="medal${i < s ? ' on' : ''}" style="--mc:${info.color}" title="${info.name}: ${fmt(g)}">★</i>`;
+      }).join('');
+      const next = max ? null : ach.stageInfo(a, s);
+      return `<div class="ach${max ? ' max' : ''}">
+        <div class="line"><b>${a.name}</b><span class="medals">${medals}</span></div>
+        <span class="muted">${a.text}</span>
+        <div class="bar"><i style="width:${share * 100}%"></i></div>
+        <div class="line"><span>${max ? 'Alle Stufen erreicht!' : `${fmt(Math.min(v, goal))} / ${fmt(goal)}`}</span>
+          ${next ? `<span class="gold-text">${next.name}: ${coinsText(next.taler, next.stern)} · ${next.points} Punkte</span>` : ''}</div>
+      </div>`;
+    }).join('');
+    overlay.innerHTML = `
+      <section class="panel achpanel">
+        ${head('Errungenschaften')}
+        <div class="chest"><div class="line"><b>🏆 ${fmt(ach.points())} / ${fmt(ach.maxPoints())} Punkte</b><span>${ach.doneCount()} von ${ach.totalCount()} Stufen</span></div>
+          <div class="bar"><i style="width:${(ach.points() / ach.maxPoints()) * 100}%"></i></div>
+          <span class="muted">Jede Stufe (Bronze, Silber, Gold, Platin, Diamant) bringt sofort Taler, ab Gold auch Sternentaler.</span></div>
+        <div class="tabs">${tabs}</div>
+        <div class="ach-list">${rows}</div>
+      </section>`;
+  }
+
+  // Pop-up für neu erreichte Stufen (mehrere werden zusammengefasst)
+  function achievementsUnlocked(list) {
+    if (!list.length) return;
+    audio.play('levelUp');
+    if (list.length === 1) {
+      const { a, info } = list[0];
+      toast(`🏆 ${a.name} · ${info.name}! +${coinsText(info.taler, info.stern)}`);
+    } else {
+      const taler = list.reduce((n, x) => n + x.info.taler, 0);
+      const stern = list.reduce((n, x) => n + x.info.stern, 0);
+      toast(`🏆 ${list.length} Errungenschaften erreicht! +${coinsText(taler, stern)}`);
+    }
+    if (view === 'achievements') renderAchievements();
+  }
 
   // ------------------------------------------------------------ Dorfprojekte & Gilde
 
@@ -2392,6 +2454,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       renderProject();
     }
     if (act === 'guild-tab') { guildTab = btn.dataset.v; renderProject(); }
+    if (act === 'ach-tab') { achGroup = btn.dataset.v; renderAchievements(); }
     if (act === 'order-claim' || act === 'daily-deliver' || act === 'fest-prize') {
       const res = act === 'order-claim' ? guild.claim(btn.dataset.v) : act === 'daily-deliver' ? guild.deliver(Number(btn.dataset.v)) : projects.claimPrize(Number(btn.dataset.v));
       if (!res) audio.play('error');
@@ -2691,6 +2754,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     openMine: () => show('mine'),
     openForge: () => show('forge'),
     openStats: () => show('stats'),
+    openAchievements: () => show('achievements'),
+    achievementsUnlocked,
     openGarden: () => show('garden'),
     talk(id) {
       talkTo = id;

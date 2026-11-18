@@ -1081,3 +1081,14 @@ body[data-display="fill"] { background: #0b0a1f; }
 .hearts i.on { color: #f2708a; }
 .friend .bar i { background: #f2708a; }
 p.hearts { color: #f2a0b0; }
+
+/* ---------------------------------------------------------------- Errungenschaften */
+
+.achpanel .tabs small { opacity: 0.7; }
+.ach-list { display: flex; flex-direction: column; gap: 8px; }
+.ach { background: #1b1730; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.ach .line { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ach.max { box-shadow: 0 0 0 2px #c8a0ff; }
+.ach.max .bar i { background: #c8a0ff; }
+.medal { font-style: normal; font-size: 16px; color: #3a3270; margin-left: 2px; }
+.medal.on { color: var(--mc); text-shadow: 0 0 4px var(--mc); }
