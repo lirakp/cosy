@@ -1474,3 +1474,71 @@ test('Brunnen: „Nur Duplikate“ und „Nur Neue“ treffen zu 75 % und kosten
   assert.ok(fresh / total >= well.MODE_CHANCE - 0.07, `Neue ${fresh}/${total}`);
   assert.equal(arena.SILK_CHANCE, 0.4);
 });
+
+// ---------------------------------------------------------------- Anpassungen an die neuen Systeme
+
+test('Zauber: Glücks-Schule schenkt Brunnen-Taler, Kampf-Schule schützt Bossrush und Abstieg', () => {
+  state.buildings.tower = 5;
+  state.magic.mana = 1000;
+  const luck = spellAt('glueck', 5);
+  assert.equal(luck.fx.taler, 25);
+  assert.equal(luck.fx.stern, 2);
+  state.addItems([luck.scroll]);
+  magic.learn(luck.id);
+  assert.ok(magic.cast(luck.id));
+  assert.equal(well.coins('taler'), 25);
+  assert.equal(well.coins('stern'), 2);
+  assert.equal(spellAt('glueck', 0, 'hoelle').fx.taler, 4, 'Dimensionen: doppelt');
+  const ward = spellAt('kampf', 5);
+  assert.equal(ward.fx.ward, 3);
+  state.addItems([ward.scroll]);
+  magic.learn(ward.id);
+  assert.ok(magic.cast(ward.id));
+  assert.equal(magic.wardReady(), 3);
+  // Bossrush: jede Niederlage wird abgewehrt, solange Schutz da ist
+  state.buildings.arena = 0;
+  state.addItems(getGroup('helden', 'D').slice(0, 1));
+  bossrush.party.autoEquip();
+  const t0 = Date.now();
+  assert.ok(bossrush.start('normal', { now: t0 }));
+  bossrush.tick(t0 + 5000 * 3, () => 0.999999); // drei Kämpfe, alle verloren
+  assert.equal(bossrush.run().status, 'fighting');
+  assert.equal(magic.wardReady(), 0);
+  assert.equal(bossrush.run().log.filter((l) => l.ward).length, 3);
+  bossrush.tick(t0 + 5000 * 4, () => 0.999999);
+  assert.equal(bossrush.run().status, 'down');
+});
+
+test('Begleiter & Co.: Taler-Rabatt, Seide, Schmiedeglut und Gold auch im Bossrush', () => {
+  for (const k of ['taler', 'silk', 'forge']) assert.ok(companions.BONUS_TEXT[k], k);
+  const c = companions.COMPANIONS.find((x) => x.bonus.taler && x.tier === 3 && x.world === 'hoelle');
+  state.companions.owned.push(c.id);
+  state.companions.active = c.id;
+  state.buildings.well = 0;
+  const share = companions.bonus('taler');
+  assert.ok(share >= 0.1);
+  assert.equal(well.coinPrice('stern', 10), Math.round(4500 * (1 - share)));
+  state.buildings.forge = 0;
+  const base = forge.glutMinutes();
+  const d = companions.COMPANIONS.find((x) => x.id === 'drache');
+  state.companions.owned.push(d.id);
+  state.companions.active = d.id;
+  assert.ok(forge.glutMinutes() < base, 'Mini-Drache: Glut lädt schneller');
+  assert.ok(statues.CAT_BONUS.helden.taler && statues.CAT_BONUS.waffen.silk && statues.CAT_BONUS.artefakte.forge);
+  // Rabatt ist gedeckelt
+  assert.equal(sets.pullCost(1000, 5), 500);
+});
+
+test('Zauber: Zeit-Schule lädt auch die Schmiedeglut', () => {
+  state.buildings.tower = 5;
+  state.buildings.forge = 0;
+  state.magic.mana = 1000;
+  const now = Date.now();
+  state.forge.glut = 0;
+  state.forge.last = now;
+  const sp = spellAt('natur', 5);
+  state.addItems([sp.scroll]);
+  magic.learn(sp.id);
+  assert.ok(magic.cast(sp.id, {}, now));
+  assert.ok(forge.glut() >= 3, `Glut ${forge.glut()}`);
+});

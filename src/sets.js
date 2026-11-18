@@ -16,7 +16,7 @@ export const CATEGORY_BONUS = {
   // Münzen sind nur 10 Gold wert – hier gibt es feste Gold-Beträge statt Prozenten
   relikte: { key: 'coins', text: 'Gold pro Münze auf dem Weg', flat: [1, 1, 2, 3, 4, 6] },
   artefakte: { key: 'glut', text: 'Nachladetempo der Schmiedeglut' },
-  helden: { key: 'wellDiscount', text: 'Rabatt am Wunschbrunnen' },
+  helden: { key: 'wellDiscount', text: 'Rabatt auf Brunnen-Taler' },
 };
 
 export const progress = (cat, tier) => getGroup(cat, RARITIES[tier].id).reduce((n, item) => n + (state.count(item.id) ? 1 : 0), 0);
@@ -72,8 +72,8 @@ export function refresh() {
   known = new Set(current().done);
 }
 
-// Brunnenpreis nach Helden-Rabatt
-export const pullCost = (base) => Math.round(base * (1 - bonus('wellDiscount')));
+// Taler-Preis nach Helden-Rabatt (höchstens −50 % zusammen mit anderen Rabatten)
+export const pullCost = (base, extra = 0) => Math.round(base * (1 - Math.min(0.5, bonus('wellDiscount') + extra)));
 
 export function describe(cat, tier) {
   const b = CATEGORY_BONUS[cat];

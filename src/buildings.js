@@ -47,7 +47,7 @@ export const BUILDINGS = {
     buy: 0,
     upgrades: [900, 2400, 6000, 14000, 33000],
     pitch: 'Wirf Gold hinein – der Brunnen schenkt dir dafür ein Sammelstück.',
-    unlocks: 'Jeder Rang macht Wünsche günstiger (bis −20 %), erhöht die Chance auf einen Gratis-Folgewunsch und auf ein Geschenk des Brunnengeists. Ab Rang A zwei, bei SS drei Gratiswünsche am Tag.',
+    unlocks: 'Jeder Rang macht Brunnen-Taler günstiger (bis −20 %), erhöht die Chance auf einen Gratis-Folgewunsch und auf ein Geschenk des Brunnengeists. Ab Rang A zwei, bei SS drei Gratiswünsche am Tag.',
   },
   portal: {
     name: 'Dimensionsportal',

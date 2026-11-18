@@ -8,6 +8,7 @@ import * as mine from './mine.js';
 import * as fishtrap from './fishtrap.js';
 import * as stars from './stars.js';
 import * as companions from './companions.js';
+import * as forge from './forge.js';
 
 // Magie: Der Magierturm sammelt Mana (nachts doppelt so schnell). Jede
 // Schriftrolle im Spiel lehrt genau einen Zauber. Es gibt fünf Schulen; je
@@ -36,6 +37,9 @@ export const COOLDOWN = [5, 8, 12, 20, 30, 45]; // Minuten
 //   luck        nächste n Wünsche am Brunnen: erstes Stück mindestens Rang v
 //   stars       so viele Sternschnuppen ziehen kurz nacheinander vorbei (auch am Tag)
 //   shield      nächste n Dungeon-Erkundungen oder Bosskämpfe: +v Erfolg
+//   ward        die nächsten n Niederlagen im Bossrush oder Abstieg werden abgewehrt
+//   taler       Glückstaler für den Brunnen · stern: Sternentaler
+//   (skip lädt auch die Schmiedeglut auf)
 export const SCHOOLS = [
   {
     id: 'natur', name: 'Zeit & Wachstum', icon: '❀',
@@ -73,12 +77,12 @@ export const SCHOOLS = [
   {
     id: 'glueck', name: 'Glück & Sterne', icon: '✦',
     spells: [
-      ['Glücksfunke', { luck: { n: 1, v: 1 } }],
-      ['Wunschstern', { luck: { n: 2, v: 1 }, stars: 3 }],
-      ['Kleeblattsegen', { luck: { n: 2, v: 2 }, stars: 4 }],
-      ['Sternschnuppenregen', { luck: { n: 3, v: 2 }, stars: 6 }],
-      ['Schicksalsfaden', { luck: { n: 3, v: 3 }, stars: 8, buff: { id: 'luck', min: 15 } }],
-      ['Tausend Wünsche', { luck: { n: 5, v: 3 }, stars: 12, buff: { id: 'luck', min: 30 } }],
+      ['Glücksfunke', { luck: { n: 1, v: 1 }, taler: 2 }],
+      ['Wunschstern', { luck: { n: 2, v: 1 }, stars: 3, taler: 4 }],
+      ['Kleeblattsegen', { luck: { n: 2, v: 2 }, stars: 4, taler: 6 }],
+      ['Sternschnuppenregen', { luck: { n: 3, v: 2 }, stars: 6, taler: 10 }],
+      ['Schicksalsfaden', { luck: { n: 3, v: 3 }, stars: 8, taler: 15, stern: 1, buff: { id: 'luck', min: 15 } }],
+      ['Tausend Wünsche', { luck: { n: 5, v: 3 }, stars: 12, taler: 25, stern: 2, buff: { id: 'luck', min: 30 } }],
     ],
   },
   {
@@ -86,10 +90,10 @@ export const SCHOOLS = [
     spells: [
       ['Schutzhauch', { shield: { n: 1, v: 0.05 } }],
       ['Eisenhaut', { shield: { n: 1, v: 0.1 } }],
-      ['Schutzschild', { shield: { n: 2, v: 0.12 } }],
-      ['Kriegsruf', { shield: { n: 2, v: 0.15 } }],
-      ['Bollwerk', { shield: { n: 3, v: 0.2 } }],
-      ['Unbezwingbar', { shield: { n: 3, v: 0.25 }, buff: { id: 'gladiator', min: 20 } }],
+      ['Schutzschild', { shield: { n: 2, v: 0.12 }, ward: 1 }],
+      ['Kriegsruf', { shield: { n: 2, v: 0.15 }, ward: 1 }],
+      ['Bollwerk', { shield: { n: 3, v: 0.2 }, ward: 2 }],
+      ['Unbezwingbar', { shield: { n: 3, v: 0.25 }, ward: 3, buff: { id: 'gladiator', min: 20 } }],
     ],
   },
 ];
@@ -104,7 +108,7 @@ export function describe(fx) {
   const out = [];
   if (fx.replant) out.push('Leere Beete werden kostenlos mit der letzten Saat bepflanzt.');
   if (fx.ripen) out.push(fx.crops ? `Alle Beete sind sofort reif, dazu +${fx.crops} Ernte je Beet.` : 'Alle bepflanzten Beete sind sofort reif.');
-  if (fx.skip) out.push(`Expedition und Mine bekommen sofort ${fx.skip} Minuten Ertrag.`);
+  if (fx.skip) out.push(`Expedition, Mine und Schmiedeglut bekommen sofort ${fx.skip} Minuten.`);
   if (fx.rain) out.push(`${fx.rain} Sekunden regnet es Münzen auf den Weg.`);
   if (fx.gold) out.push(`Sofort ${fx.gold.toLocaleString('de-DE')} Gold.`);
   if (fx.lure) out.push(`${fx.lure.n === 1 ? 'Der nächste Fisch beißt' : `Die nächsten ${fx.lure.n} Fische beißen`} sofort und ${fx.lure.n === 1 ? 'ist' : 'sind'} ${plural(fx.lure.v, 'Rang', 'Ränge')} höher.`);
@@ -112,6 +116,8 @@ export function describe(fx) {
   if (fx.luck) out.push(`${fx.luck.n === 1 ? 'Der nächste Wunsch' : `Die nächsten ${fx.luck.n} Wünsche`} am Brunnen: erstes Stück mindestens Rang ${rankId(fx.luck.v)}.`);
   if (fx.stars) out.push(`${fx.stars} Sternschnuppen ziehen kurz nacheinander vorbei – auch am Tag.`);
   if (fx.shield) out.push(`${fx.shield.n === 1 ? 'Nächste Dungeon-Erkundung oder nächster Bosskampf' : `Die nächsten ${fx.shield.n} Dungeon-Erkundungen oder Bosskämpfe`}: ${pct(fx.shield.v)} Erfolg.`);
+  if (fx.ward) out.push(`Bossrush und Abstieg: ${fx.ward === 1 ? 'die nächste Niederlage wird' : `die nächsten ${fx.ward} Niederlagen werden`} abgewehrt – es geht einfach weiter.`);
+  if (fx.taler) out.push(`+${fx.taler} Glückstaler${fx.stern ? ` und +${fx.stern} Sternentaler` : ''} für den Wunschbrunnen.`);
   if (fx.buff) out.push(`${buffs.BUFFS[fx.buff.id].name} für ${fx.buff.min} Minuten.`);
   if (fx.ore) out.push(`${fx.ore.n} Erz vom Rang ${rankId(fx.ore.tier)} für die Mine.`);
   if (fx.wish) out.push('Der nächste Einzelwunsch am Brunnen ist gratis.');
@@ -161,6 +167,9 @@ function stronger(fx) {
   if (o.luck) o.luck = { n: o.luck.n + 1, v: o.luck.v };
   if (o.shield) o.shield = { n: o.shield.n + 1, v: Math.round((o.shield.v + 0.05) * 100) / 100 };
   if (o.buff) o.buff = { ...o.buff, min: Math.round(o.buff.min * 1.5) };
+  if (o.ward) o.ward += 1;
+  if (o.taler) o.taler *= 2;
+  if (o.stern) o.stern += 1;
   return o;
 }
 for (const w of ['hoelle', 'himmel']) {
@@ -280,7 +289,14 @@ export function cast(id, { onRain } = {}, now = Date.now()) {
     expedition.tick(now);
     if (state.mine.last) state.mine.last -= fx.skip * 60000;
     const ore = mine.tick(now).reduce((a, b) => a + b, 0);
-    notes.push(`Truhe +${Math.max(0, Math.round(expedition.live.gold - before))} Gold, Mine +${ore} Erz`);
+    let glut = '';
+    if (forge.tier() >= 0 && state.forge.last) {
+      const g = forge.glut();
+      state.forge.last -= fx.skip * 60000;
+      forge.tick(now);
+      if (forge.glut() > g) glut = `, Glut +${forge.glut() - g}`;
+    }
+    notes.push(`Truhe +${Math.max(0, Math.round(expedition.live.gold - before))} Gold, Mine +${ore} Erz${glut}`);
   }
   if (fx.rain) {
     onRain?.(fx.rain);
@@ -310,6 +326,16 @@ export function cast(id, { onRain } = {}, now = Date.now()) {
   if (fx.shield) {
     charge('shield', fx.shield);
     notes.push(`Schild ${pct(m().shield.v)} für ${plural(m().shield.n, 'Kampf', 'Kämpfe')}`);
+  }
+  if (fx.ward) {
+    m().ward = (m().ward || 0) + fx.ward;
+    notes.push(`Schutz vor ${plural(m().ward, 'Niederlage', 'Niederlagen')}`);
+  }
+  if (fx.taler || fx.stern) {
+    const c = (state.well.coins ||= { taler: 0, stern: 0, splinters: 0 });
+    c.taler = (c.taler || 0) + (fx.taler || 0);
+    c.stern = (c.stern || 0) + (fx.stern || 0);
+    notes.push(`+${fx.taler || 0} 🪙${fx.stern ? ` +${fx.stern} 🌟` : ''}`);
   }
   if (fx.buff) {
     const cur = buffs.current(now);
@@ -343,6 +369,14 @@ function consume(key) {
 export const useLure = () => consume('lure'); // Ränge höher
 export const useLuckyPull = () => consume('luckyPull'); // Mindest-Rang
 export const useShield = () => consume('shield'); // Bonus auf die Erfolgschance
+// Schutz vor einer Niederlage im Bossrush oder Abstieg (true = verbraucht)
+export function useWard() {
+  if (!(m().ward > 0)) return false;
+  m().ward--;
+  state.changed();
+  return true;
+}
+export const wardReady = () => m().ward || 0;
 const left = (key) => (m()[key] && m()[key].n) || 0;
 export const lureReady = () => left('lure');
 export const luckyReady = () => left('luckyPull');
@@ -357,5 +391,6 @@ export function pending() {
   if (lureReady()) out.push(`Lockruf ×${lureReady()} (+${m().lure.v} Rang)`);
   if (luckyReady()) out.push(`Glück ×${luckyReady()} (ab ${rankId(m().luckyPull.v)})`);
   if (shieldReady()) out.push(`Schild ×${shieldReady()} (${pct(m().shield.v)})`);
+  if (wardReady()) out.push(`Schutz ×${wardReady()} (Bossrush/Abstieg)`);
   return out;
 }

@@ -429,7 +429,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     rushShown = `${x.bosses}${x.status}`;
     const boss = bossrush.bossOf(x.boss);
     const odds = bossrush.winChance(x.power, boss.power);
-    const log = x.log.map((f) => `<li class="${f.win ? 'good' : 'bad'}">${f.win ? '✓' : '✗'} ${arena.BOSS_NAMES[f.kind]} <b class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</b> · ${percent(f.odds)}</li>`).join('');
+    const log = x.log.map((f) => `<li class="${f.win ? 'good' : 'bad'}">${f.win ? '✓' : f.ward ? '⛨' : '✗'} ${arena.BOSS_NAMES[f.kind]}${f.ward ? ' · Schutzzauber!' : ''} <b class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</b> · ${percent(f.odds)}</li>`).join('');
     return `
       <div class="chest rush r-${boss.rank}">
         <div class="line"><span>${x.mode === 'ultimate' ? '⚔ <b>Ultimativ</b> · ' : ''}Besiegte Bosse <b class="gold-text">${x.bosses}</b>${x.revives ? ` · ${x.revives}× wiederbelebt` : ''}</span><span>Team-Stärke ${fmt(x.power)}</span></div>
@@ -1840,7 +1840,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       const kind = x.floor % descent.BOSS_EVERY === 0 ? 'boss' : x.floor % descent.GUARD_EVERY === 0 ? 'waechter' : 'etage';
       const odds = descent.chance(x.floor, x);
       const logHtml = x.log.map((l) => l.event
-        ? `<li class="ev">◆ Etage ${l.floor}: ${l.event === 'geheilt' ? 'Die Quelle rettet das Team!' : descent.EVENTS[l.event].name}</li>`
+        ? `<li class="ev">◆ Etage ${l.floor}: ${l.event === 'geheilt' ? 'Die Quelle rettet das Team!' : l.event === 'geschuetzt' ? 'Ein Schutzzauber rettet das Team!' : descent.EVENTS[l.event].name}</li>`
         : `<li class="${l.win ? 'good' : 'bad'}">${l.win ? '✓' : '✗'} Etage ${l.floor} · ${descent.KIND_NAMES[l.kind]} · ${percent(l.odds)}</li>`).join('');
       const mods = [x.boost ? `${x.boost > 0 ? '+' : ''}${Math.round(x.boost * 100)} % Stärkung` : '', x.malus ? `−${Math.round(x.malus * 100)} % durch Fallen` : '', x.heal ? `${x.heal}× Quellwasser` : ''].filter(Boolean).join(' · ');
       const event = x.status === 'merchant'

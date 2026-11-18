@@ -5,6 +5,8 @@ import * as buffs from './buffs.js';
 import { createParty } from './party.js';
 import { BOSS_POWER, BOSS_NAMES, bossInfo, MIN_CHANCE, MAX_CHANCE, WIN_CLOTH, SILK_CHANCE } from './arena.js';
 import * as realm from './realm.js';
+import * as companions from './companions.js';
+import * as magic from './magic.js';
 
 // Bossrush: Bis zu 10 Helden (mit Ausrüstung) und Monster kämpfen nacheinander
 // gegen Bosse mit zufälligem Rang – alle FIGHT_SECONDS einer (5 s), auch offline –
@@ -108,10 +110,14 @@ export function tick(now = Date.now(), rand = Math.random) {
     x.log.length = Math.min(x.log.length, 8);
     if (win) {
       x.bosses++;
-      x.loot.gold += Math.round((BOSS_GOLD[boss.tier] / (1 + x.bosses / GOLD_FALLOFF)) * M.goldMult * realm.goldFactor() * (1 + party.gemSum('saphir')));
+      x.loot.gold += Math.round((BOSS_GOLD[boss.tier] / (1 + x.bosses / GOLD_FALLOFF)) * M.goldMult * realm.goldFactor() * (1 + party.gemSum('saphir')) * (1 + companions.bonus('dungeonGold')));
       x.loot.stoff[boss.tier] += WIN_CLOTH;
-      if (rand() < SILK_CHANCE + M.silkBonus + party.gemSum('topas')) x.loot.seide[boss.tier] += 1;
+      if (rand() < SILK_CHANCE + M.silkBonus + party.gemSum('topas') + companions.bonus('silk')) x.loot.seide[boss.tier] += 1;
       x.boss = newBoss(rand, x.mode);
+      x.next += FIGHT_SECONDS * 1000;
+    } else if (magic.useWard()) {
+      // Schutzzauber: die Niederlage wird abgewehrt, derselbe Boss noch einmal
+      x.log[0].ward = true;
       x.next += FIGHT_SECONDS * 1000;
     } else {
       x.status = 'down';

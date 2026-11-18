@@ -48,7 +48,8 @@ const wallet = () => (w().coins ||= { taler: 0, stern: 0, splinters: 0 });
 export const coins = (id) => wallet()[id] || 0;
 export const splinters = () => wallet().splinters || 0;
 // Preis in Gold (10er-Pack wie 9, Brunnen-Rabatt gilt, in den Dimensionen doppelt)
-export const coinPrice = (id, n = 1) => sets.pullCost(Math.round(CURRENCIES[id].price * (n === 10 ? 9 : n) * (1 - DISCOUNT[tier()]))) * (realm.inRealm() ? realm.PULL : 1);
+// Helden-Set, Begleiter, Statuen und Kleidung („taler“) senken den Preis weiter (zusammen höchstens −50 %)
+export const coinPrice = (id, n = 1) => sets.pullCost(CURRENCIES[id].price * (n === 10 ? 9 : n) * (1 - DISCOUNT[tier()]), companions.bonus('taler')) * (realm.inRealm() ? realm.PULL : 1);
 export function buyCoins(id, n = 1) {
   if (!CURRENCIES[id] || !state.spend(coinPrice(id, n), 'brunnen')) return false;
   wallet()[id] = coins(id) + n;

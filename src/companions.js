@@ -25,11 +25,15 @@ export const BONUS_TEXT = {
   fishing: (v) => `Fische beißen ${pct(v)} schneller`,
   stars: (v) => `Sternschnuppen kommen ${pct(v)} öfter`,
   // neue Bonus-Arten der Begleiter aus den Dimensionen
-  power: (v) => `Arena und Dungeon +${pct(v)} Stärke`,
-  dungeonGold: (v) => `Dungeon +${pct(v)} Gold`,
+  power: (v) => `Kampfteams (Arena, Dungeon, Bossrush, Abstieg) +${pct(v)} Stärke`,
+  dungeonGold: (v) => `Dungeon, Abstieg und Bossrush +${pct(v)} Gold`,
   luckWish: (v) => `+${pct(v)} Chance auf einen Gratis-Folgewunsch`,
   questGold: (v) => `Aufgaben im Dorf +${pct(v)} Gold`,
   minigame: (v) => `Minispiele der Dörfer +${pct(v)} Ertrag`,
+  // Boni für Brunnen-Taler, Seide und Schmiede
+  taler: (v) => `Brunnen-Taler ${pct(v)} günstiger`,
+  silk: (v) => `+${pct(v)} Chance auf Seide aus Kämpfen`,
+  forge: (v) => `Schmiedeglut lädt ${pct(v)} schneller`,
 };
 const pct = (v) => `${Math.round(v * 100)} %`;
 
@@ -81,7 +85,7 @@ export const COMPANIONS = [
     rows: ['...w.w...', '..gegeg..', '.ggggggg.', '.gyyyyyg.', 'gG.....Gg'],
   },
   {
-    id: 'waschbaer', fav: 'kuerbis', gifts: ['gold', 'item'], name: 'Waschbär', tier: 2, bonus: { coinReach: 26 },
+    id: 'waschbaer', fav: 'kuerbis', gifts: ['gold', 'item'], name: 'Waschbär', tier: 2, bonus: { coinReach: 26, taler: 0.05 },
     text: 'Ein kleiner Dieb mit gutem Herz: Glitzerndes kann er nicht liegen lassen.',
     colors: { r: '#8a8a98', R: '#3a3a48', w: WHITE, e: EYE },
     rows: ['.......R.R', '.......rrr', 'R......wRe', 'r..rrrrrrR', 'RrrrrRrrr.', '.rrrrrrr..', '..r.r..r.r'],
@@ -93,7 +97,7 @@ export const COMPANIONS = [
     rows: ['.ww.', 'wbbw', '.byy', '..yy'],
   },
   {
-    id: 'drache', fav: 'kuerbis', gifts: ['ore', 'gold'], name: 'Mini-Drache', tier: 3, fly: true, glow: '#ff9a4a', bonus: { mine: 0.2 },
+    id: 'drache', fav: 'kuerbis', gifts: ['ore', 'gold'], name: 'Mini-Drache', tier: 3, fly: true, glow: '#ff9a4a', bonus: { mine: 0.2, forge: 0.25 },
     text: 'Speit winzige Flammen und schmilzt damit Erz aus dem Fels.',
     colors: { d: '#d9574a', D: '#8a2a3a', w: '#f0a060', e: EYE, y: '#ffd04a' },
     rows: ['....ww....', '...wwww.D.', '..wwwwwdd.', '.....ddded', 'D.dddddyd.', '.Ddddddy..', '...d..d...'],
@@ -118,7 +122,7 @@ export const COMPANIONS = [
   },
   {
     id: 'sternenkitz', fav: 'sternenblume', gifts: ['gold', 'fish', 'ore', 'seeds', 'mana', 'item'], name: 'Sternenkitz', tier: 5, night: true, glow: '#9be8e0',
-    bonus: { coinReach: 20, expedition: 0.15, garden: 0.15, mine: 0.15, mana: 0.15, fishing: 0.15, stars: 0.15 },
+    bonus: { coinReach: 20, expedition: 0.15, garden: 0.15, mine: 0.15, mana: 0.15, fishing: 0.15, stars: 0.15, taler: 0.05, silk: 0.05, forge: 0.15 },
     text: 'Ein Rehkitz aus Sternenlicht. Man sieht es nur in klaren Nächten – ein bisschen von allem wird besser.',
     colors: { s: '#9be8e0', S: '#4fa8b0', w: WHITE, e: EYE, a: '#ffd04a' },
     rows: ['.......a.a', '.......aa.', '.......ss.', '......ssse', '.s.wsswss.', '.sswsssws.', '..ssssss..', '..s.s..s.s'],
@@ -136,19 +140,19 @@ export const COMPANIONS = [
     rows: ['b.......b', 'bb.bbb.bb', 'bbbebebbb', '.bbbbbbb.', '..b...b..'],
   },
   {
-    id: 'hoellenhund', world: 'hoelle', fav: 'feuerchili', gifts: ['gold', 'item'], name: 'Höllenhund', tier: 3, glow: '#ff5a2a', bonus: { power: 0.12 },
+    id: 'hoellenhund', world: 'hoelle', fav: 'feuerchili', gifts: ['gold', 'item'], name: 'Höllenhund', tier: 3, glow: '#ff5a2a', bonus: { power: 0.12, silk: 0.05 },
     text: 'Ein treuer Wächter mit glühenden Augen. Wer ihn sieht, kämpft mutiger.',
     colors: { d: '#3a2228', D: '#1a0c10', e: '#ff3a1a', n: EYE, t: '#ff8a3a' },
     rows: ['......DD..', '......dddD', 'D.....dedn', 'D..dddddd.', '.dddddddt.', '..dddddd..', '..d.d..d.d'],
   },
   {
-    id: 'feuerimp', world: 'hoelle', fav: 'lavamelone', gifts: ['shards', 'item'], name: 'Feuerimp', tier: 3, fly: true, glow: '#ff8a3a', bonus: { luckWish: 0.05 },
+    id: 'feuerimp', world: 'hoelle', fav: 'lavamelone', gifts: ['shards', 'item'], name: 'Feuerimp', tier: 3, fly: true, glow: '#ff8a3a', bonus: { luckWish: 0.05, taler: 0.1 },
     text: 'Ein frecher Kobold, der dem Brunnen ab und zu einen Gratiswunsch abschwatzt.',
     colors: { h: '#ffd04a', r: '#c0301c', e: '#ffd04a', w: '#ff8a3a' },
     rows: ['.h....h.', '.hrrrrh.', '.rerrer.', '.rrwwrr.', 'w.rrrr.w', '..r..r..'],
   },
   {
-    id: 'lavaschnecke', world: 'hoelle', fav: 'aschenknolle', gifts: ['ore', 'shards'], name: 'Lavaschnecke', tier: 4, glow: '#ff8a3a', bonus: { mine: 0.4, dungeonGold: 0.2 },
+    id: 'lavaschnecke', world: 'hoelle', fav: 'aschenknolle', gifts: ['ore', 'shards'], name: 'Lavaschnecke', tier: 4, glow: '#ff8a3a', bonus: { mine: 0.4, dungeonGold: 0.2, forge: 0.3 },
     text: 'Langsam, aber ihre Schleimspur schmilzt Erz aus jedem Fels.',
     colors: { o: '#3a1418', y: '#ff8a3a', s: '#c0441c', e: EYE },
     rows: ['.......e.e', '...ooo..ss', '..oyyyo.ss', '.oyooyosss', 'sssssssss.'],
@@ -173,26 +177,26 @@ export const COMPANIONS = [
     rows: ['...yy..', '..yyey.', '.yyyyyo', 'yyyyy..', '.y..y..'],
   },
   {
-    id: 'engelskatze', world: 'himmel', fav: 'wolkenbeere', gifts: ['shards', 'item'], name: 'Engelskatze', tier: 3, glow: '#ffe070', bonus: { luckWish: 0.05 },
+    id: 'engelskatze', world: 'himmel', fav: 'wolkenbeere', gifts: ['shards', 'item'], name: 'Engelskatze', tier: 3, glow: '#ffe070', bonus: { luckWish: 0.05, taler: 0.1 },
     text: 'Schnurrt so lieb, dass der Brunnen ihr gern einen Wunsch schenkt.',
     colors: { k: '#fdf6e3', K: '#ffe070', e: EYE, p: '#f2a0b0' },
     rows: ['.......K.K', '.......kkk', 'K......kek', 'K..kKkkkkp', '.kkkkkkkk.', '..kkKkkk..', '..k.k.k.k.'],
   },
   {
-    id: 'pegasus', world: 'himmel', fav: 'engelsapfel', gifts: ['gold', 'item'], name: 'Pegasusfohlen', tier: 3, bonus: { power: 0.12 },
+    id: 'pegasus', world: 'himmel', fav: 'engelsapfel', gifts: ['gold', 'item'], name: 'Pegasusfohlen', tier: 3, bonus: { power: 0.12, silk: 0.05 },
     text: 'Ein geflügeltes Fohlen. Mit ihm im Rücken fühlt sich jeder Held stärker.',
     colors: { w: '#f4f6ff', m: '#9be8ff', h: '#d8e6fc', e: EYE },
     rows: ['........h.', '.......mh.', '.......ww.', 'm.....mwew', 'mm.wwwwww.', '.mwwwwww..', '..wwwwww..', '..w.w..w.w'],
   },
   {
-    id: 'glueckskranich', world: 'himmel', fav: 'sonnenweizen', gifts: ['mana', 'shards', 'item'], name: 'Glückskranich', tier: 4, fly: true, glow: '#ffe070', bonus: { stars: 0.5, luckWish: 0.05, questGold: 0.2 },
+    id: 'glueckskranich', world: 'himmel', fav: 'sonnenweizen', gifts: ['mana', 'shards', 'item'], name: 'Glückskranich', tier: 4, fly: true, glow: '#ffe070', bonus: { stars: 0.5, luckWish: 0.05, questGold: 0.2, taler: 0.1 },
     text: 'Wer einen Glückskranich sieht, hat einen Wunsch frei – heißt es.',
     colors: { w: '#ffffff', k: '#2a2140', r: '#e8577a', e: EYE },
     rows: ['.......kr', '......kke', '......k..', '.wwwwwk..', 'wwwwwww..', '...k.k...'],
   },
   {
     id: 'himmelsdrache', world: 'himmel', fav: 'engelsapfel', gifts: ['gold', 'mana', 'shards', 'seeds', 'item'], name: 'Himmelsdrache', tier: 5, fly: true, glow: '#ffffff',
-    bonus: { coinReach: 14, expedition: 0.15, garden: 0.15, mine: 0.15, mana: 0.15, questGold: 0.3, minigame: 0.3 },
+    bonus: { coinReach: 14, expedition: 0.15, garden: 0.15, mine: 0.15, mana: 0.15, questGold: 0.3, minigame: 0.3, taler: 0.1, silk: 0.05, forge: 0.15 },
     text: 'Ein Drache aus Licht und Wolken – Hüter der Sieben Himmel.',
     colors: { d: '#fdf6e3', D: '#ffe070', w: '#9be8ff', e: EYE, y: '#ffd04a' },
     rows: ['....ww....', '...wwww.D.', '..wwwwwdd.', '.....ddded', 'D.dddddyd.', '.Ddddddy..', '...d..d...'],

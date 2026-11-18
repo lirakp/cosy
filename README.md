@@ -159,7 +159,7 @@ Galerie). Je Set nach Rang D · C · B · A · S · SS:
 | Rüstung | +2 · 3 · 4 · 6 · 8 · 12 % Team-Stärke im Dungeon |
 | Relikte | +1 · 1 · 2 · 3 · 4 · 6 Gold pro Münze auf dem Weg |
 | Artefakte | +2 · 3 · 4 · 6 · 8 · 12 % schnellere Schmiedeglut |
-| Helden | +2 · 3 · 4 · 6 · 8 · 12 % Rabatt am Wunschbrunnen |
+| Helden | +2 · 3 · 4 · 6 · 8 · 12 % Rabatt auf Brunnen-Taler |
 
 Boni einer Kategorie addieren sich. Werte in `src/sets.js`.
 
@@ -239,14 +239,17 @@ Mana und Abklingzeit je Rang D … SS: 15 · 20 · 30 · 45 · 65 · 90 Mana,
 
 | Schule | D | C | B | A | S | SS |
 | --- | --- | --- | --- | --- | --- | --- |
-| ❀ Zeit & Wachstum | **Keimling**: Beete reif | **Frühlingshauch**: + 1 Ernte je Beet | **Erntesegen**: + 15 min Ertrag für Expedition und Mine | **Zeitsprung**: + 2 Ernte, 30 min | **Jahreslauf**: leere Beete neu bepflanzt, 60 min | **Ewiger Frühling**: + 3 Ernte, 120 min |
+| ❀ Zeit & Wachstum | **Keimling**: Beete reif | **Frühlingshauch**: + 1 Ernte je Beet | **Erntesegen**: + 15 min für Expedition, Mine und Schmiedeglut | **Zeitsprung**: + 2 Ernte, 30 min | **Jahreslauf**: leere Beete neu bepflanzt, 60 min | **Ewiger Frühling**: + 3 Ernte, 120 min |
 | ◉ Gold | **Sternenregen**: 45 s Münzregen | **Münzschauer**: 60 s + 100 Gold | **Goldene Brise**: 75 s + 300 | **Schatzregen**: 90 s + 800 | **Goldflut**: 120 s + 2000, Goldrausch 10 min | **Sonnengold**: 180 s + 5000, Goldrausch 20 min |
 | ≈ Wasser | **Lockruf**: 1 Wurf, +1 Rang | **Fischflüstern**: 2 Würfe | **Gezeitenruf**: 3 Würfe, Reuse + 30 min | **Mondflut**: 4 Würfe, +2 Ränge, Reuse + 60 min | **Tiefenruf**: 5 Würfe, Reuse + 120 min | **Ruf des Ozeans**: 8 Würfe, +3 Ränge, Reuse + 240 min |
-| ✦ Glück & Sterne | **Glücksfunke**: 1 Wunsch ab C | **Wunschstern**: 2 Wünsche ab C, 3 Sternschnuppen | **Kleeblattsegen**: 2 ab B, 4 Schnuppen | **Sternschnuppenregen**: 3 ab B, 6 Schnuppen | **Schicksalsfaden**: 3 ab A, 8 Schnuppen, Glücksrausch 15 min | **Tausend Wünsche**: 5 ab A, 12 Schnuppen, Glücksrausch 30 min |
-| ⛨ Schutz & Kampf | **Schutzhauch**: 1 Kampf +5 % | **Eisenhaut**: +10 % | **Schutzschild**: 2 Kämpfe +12 % | **Kriegsruf**: 2 × +15 % | **Bollwerk**: 3 × +20 % | **Unbezwingbar**: 3 × +25 %, Gladiatorrausch 20 min |
+| ✦ Glück & Sterne | **Glücksfunke**: 1 Wunsch ab C, +2 🪙 | **Wunschstern**: 2 Wünsche ab C, 3 Sternschnuppen, +4 🪙 | **Kleeblattsegen**: 2 ab B, 4 Schnuppen, +6 🪙 | **Sternschnuppenregen**: 3 ab B, 6 Schnuppen, +10 🪙 | **Schicksalsfaden**: 3 ab A, 8 Schnuppen, +15 🪙 +1 🌟, Glücksrausch 15 min | **Tausend Wünsche**: 5 ab A, 12 Schnuppen, +25 🪙 +2 🌟, Glücksrausch 30 min |
+| ⛨ Schutz & Kampf | **Schutzhauch**: 1 Kampf +5 % | **Eisenhaut**: +10 % | **Schutzschild**: 2 Kämpfe +12 %, 1 Schutz | **Kriegsruf**: 2 × +15 %, 1 Schutz | **Bollwerk**: 3 × +20 %, 2 Schutz | **Unbezwingbar**: 3 × +25 %, 3 Schutz, Gladiatorrausch 20 min |
 
 „Wünsche“ heißt: das erste Stück eines Zugs am Brunnen hat mindestens diesen
-Rang. Lockruf-, Glücks- und Schild-Ladungen desselben Typs werden nicht
+Rang. 🪙/🌟 sind Glückstaler/Sternentaler für den Brunnen. „Schutz“ wehrt die
+nächste Niederlage im Bossrush oder Abstieg ab (es geht einfach weiter, auch im
+AFK-Modus); Schutz-Ladungen werden addiert. Die Zauber der Dimensionen schenken
+doppelt so viele Taler, einen Sternentaler und einen Schutz mehr. Lockruf-, Glücks- und Schild-Ladungen desselben Typs werden nicht
 addiert: Es zählen die meisten Ladungen und die stärkste Wirkung. Zauber-
 Sternschnuppen kommen kurz nacheinander, auch am Tag. Ein Rausch aus einem
 Zauber verlängert einen gleichen Rausch oder ersetzt einen anderen. Alte
@@ -317,6 +320,8 @@ Zauber-Schriftrollen gibt es nur in der Heimat.
   Seide):
   - Hölle: Glutpanzer, Aschemantel, Dämonenrobe, Gewand des Höllenfürsten
   - Himmel: Federkleid, Wolkenmantel, Engelsrobe, Seraphengewand
+  - Neu: Dämonenrobe Seide +5 %, Gewand des Höllenfürsten Schmiedeglut +20 % und
+    Stärke +5 %, Engelsrobe Taler −5 %, Seraphengewand Taler −10 % und Stärke +5 %.
   - Jede mit eigenem Bonus von Rang B bis SS.
 - **Die zweite Dimension:** Stehen in der Heimat **alle Gebäude auf Rang SS**
   (Lager, Dungeon, Arena, Mine, Schmiede, Turm, Brunnen), öffnet das Portal auch
@@ -355,23 +360,27 @@ Glutsteine und Sternensplitter lassen sich am Markt für je 25 Gold verkaufen.
 Je Dimension gibt es 6 eigene Begleiter (Rang B bis SS). Sie streunen nur dort
 umher und bringen neue Bonus-Arten mit:
 
+„Stärke“ gilt für alle Kampfteams (Arena, Dungeon, Bossrush, Abstieg), „Gold“ aus
+Dungeon auch für Abstieg und Bossrush. Rabatte auf Brunnen-Taler (Begleiter,
+Statuen, Kleidung, Helden-Sets) zählen zusammen, höchstens −50 %.
+
 | Hölle | Rang | Bonus |
 | --- | --- | --- |
 | Glutsalamander | B | Dungeon +20 % Gold |
 | Aschefledermaus | B | Minispiele +25 % Ertrag |
-| Höllenhund | A | Arena und Dungeon +12 % Stärke |
-| Feuerimp | A | +5 % Chance auf Gratis-Folgewunsch |
-| Lavaschnecke | S | Mine +40 % Erz, Dungeon +20 % Gold |
+| Höllenhund | A | alle Kampfteams +12 % Stärke, Seide +5 % |
+| Feuerimp | A | +5 % Chance auf Gratis-Folgewunsch, Brunnen-Taler −10 % |
+| Lavaschnecke | S | Mine +40 % Erz, Kampfgold +20 %, Schmiedeglut 30 % schneller |
 | Nachtmahr | SS | +15 % Stärke, Dungeon +30 % Gold, Expedition +20 % |
 
 | Himmel | Rang | Bonus |
 | --- | --- | --- |
 | Wolkenschaf | B | Aufgaben +30 % Gold |
 | Sternenspatz | B | Minispiele +25 % Ertrag |
-| Engelskatze | A | +5 % Chance auf Gratis-Folgewunsch |
-| Pegasusfohlen | A | Arena und Dungeon +12 % Stärke |
-| Glückskranich | S | Sternschnuppen +50 %, Gratiswunsch +5 %, Aufgaben +20 % |
-| Himmelsdrache | SS | von allem etwas, Aufgaben +30 %, Minispiele +30 % |
+| Engelskatze | A | +5 % Chance auf Gratis-Folgewunsch, Brunnen-Taler −10 % |
+| Pegasusfohlen | A | alle Kampfteams +12 % Stärke, Seide +5 % |
+| Glückskranich | S | Sternschnuppen +50 %, Gratiswunsch +5 %, Aufgaben +20 %, Taler −10 % |
+| Himmelsdrache | SS | von allem etwas, Aufgaben +30 %, Minispiele +30 %, Taler −10 %, Seide +5 %, Glut +15 % |
 
 Ihre Lieblingsleckerlis sind die Pflanzen der Dimension. Als Geschenke bringen
 sie unter anderem Glutsteine bzw. Sternensplitter. Im Begleiter-Menü stehen sie
@@ -402,8 +411,9 @@ Stücks ab Rang A, gegossen aus 10 Erz im Rang des Stücks plus 2000 / 6000 /
 20000 Gold. A ist aus Bronze, S aus Silber, SS aus Gold. Das Stück bleibt in der
 Sammlung. Bonus nach Kategorie (bei S × 1,5, bei SS × 2):
 Helden +3 % Stärke · Lebewesen +5 % Expeditionsgold · Monster +5 % Erz ·
-Waffen +5 % Dungeon-Gold · Rüstung +2 % Stärke und Münzen-Reichweite ·
-Relikte +5 % Mana · Artefakte +10 % Sternschnuppen.
+Waffen +5 % Dungeon-Gold und +3 % Seide · Rüstung +2 % Stärke und Münzen-Reichweite ·
+Relikte +5 % Mana · Artefakte +10 % Sternschnuppen und Schmiedeglut. Helden-Statuen
+machen außerdem Brunnen-Taler 3 % günstiger.
 
 **Metall-Einrichtung** fürs Haus (Gemütlichkeit wie vom Nähtisch):
 Kaminbesteck (8 Eisenerz, ♥1), Standuhr mit Pendel (8 Silbererz, ♥2),
@@ -431,7 +441,7 @@ und Seide der Bossarena genäht:
 | Blütenschürze | 5 Stoff B, 2 Seide B | Beete wachsen 12 % schneller |
 | Seidenrobe | 4 Seide A | Mana lädt 15 % schneller |
 | Wellenmantel | 4 Stoff S, 3 Seide S | Fische beißen 25 % schneller, Sternschnuppen 15 % öfter |
-| Sternenseidengewand | 4 Seide SS | +10 % auf fast alles, Münzen bis 8 Schritte |
+| Sternenseidengewand | 4 Seide SS | +10 % auf fast alles, Münzen bis 8 Schritte, Taler −5 %, Seide +5 % |
 
 - **Einrichtung:** Tischdecke, bunte Kissen, Webteppich, Wandbehang,
   Wimpelgirlande, Seidenbaldachin und Seidenlampions (leuchten nachts) machen
@@ -488,13 +498,13 @@ in die Mine und ins Dorf, und gibt seinen Bonus. Auswahl im Begleiter-Menü
 | Fuchs | C | Expedition +10 % Gold |
 | Eule (nachts, fliegt) | C | Mana lädt 15 % schneller |
 | Frosch | C | Fische beißen 25 % schneller |
-| Waschbär | B | sammelt Münzen bis 26 Schritte entfernt ein |
+| Waschbär | B | sammelt Münzen bis 26 Schritte entfernt ein, Brunnen-Taler −5 % |
 | Glühwürmchen (nachts, fliegt, leuchtet) | B | Sternschnuppen 40 % öfter |
-| Mini-Drache (fliegt, leuchtet) | A | Mine +20 % Erz |
+| Mini-Drache (fliegt, leuchtet) | A | Mine +20 % Erz, Schmiedeglut 25 % schneller |
 | Einhornfohlen | A | Beete wachsen 30 % schneller |
 | Phönixküken (fliegt, leuchtet) | S | Mana lädt 40 % schneller |
 | Neunschwanzfuchs | S | Expedition +25 % Gold |
-| Sternenkitz (nachts, leuchtet) | SS | von allem etwas: +15 % überall, Münzen bis 20 Schritte |
+| Sternenkitz (nachts, leuchtet) | SS | von allem etwas: +15 % überall, Münzen bis 20 Schritte, Taler −5 %, Seide +5 %, Glut +15 % |
 
 ### Freundschaft und Leckerlis
 

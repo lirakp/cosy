@@ -86,7 +86,7 @@ const fresh = () => ({
   stats: newStats(),
   garden: newGarden(),
   village: newVillage(),
-  magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false },
+  magic: { mana: 0, last: 0, learned: [], cd: {}, lure: false, luckyPull: false, shield: false, ward: 0 },
   companions: { owned: [], active: null, pts: {}, gifts: 0 },
   tailor: { capes: [0, 0, 0, 0, 0, 0], sewn: [], decor: [] },
   statues: [null, null, null], // Statuen auf dem Hof (Sammelstück-Ids)

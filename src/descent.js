@@ -6,6 +6,7 @@ import * as realm from './realm.js';
 import * as companions from './companions.js';
 import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE } from './dungeon.js';
 import { runChance } from './bossrush.js';
+import * as magic from './magic.js';
 
 // Abstieg: Das Dungeon-Team steigt Etage für Etage hinab – alle FLOOR_SECONDS
 // eine, auch offline – bis es fällt. Jede Etage ist schwerer; alle 5 Etagen
@@ -162,6 +163,11 @@ function resolve(x, rand) {
   if (x.heal > 0) {
     x.heal--;
     log(x, { floor, event: 'geheilt' });
+    return;
+  }
+  // Schutzzauber (Kampf-Schule): wehrt eine Niederlage ab
+  if (magic.useWard()) {
+    log(x, { floor, event: 'geschuetzt' });
     return;
   }
   x.status = 'down';

@@ -13,13 +13,13 @@ export const GOLD = { 3: 2000, 4: 6000, 5: 20000 };
 export const RANK_MULT = { 3: 1, 4: 1.5, 5: 2 };
 // Bonus je Kategorie (gleiche Arten wie bei Begleitern)
 export const CAT_BONUS = {
-  helden: { power: 0.03 },
+  helden: { power: 0.03, taler: 0.03 },
   lebewesen: { expedition: 0.05 },
   monster: { mine: 0.05 },
-  waffen: { dungeonGold: 0.05 },
+  waffen: { dungeonGold: 0.05, silk: 0.03 },
   ruestung: { power: 0.02, coinReach: 4 },
   relikte: { mana: 0.05 },
-  artefakte: { stars: 0.1 },
+  artefakte: { stars: 0.1, forge: 0.1 },
 };
 
 const list = () => (state.statues ||= [null, null, null]);

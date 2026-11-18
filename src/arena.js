@@ -4,6 +4,7 @@ import * as buildings from './buildings.js';
 import { createParty } from './party.js';
 import * as buffs from './buffs.js';
 import * as magic from './magic.js';
+import * as companions from './companions.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
@@ -92,7 +93,7 @@ export function fight() {
   if (result.win) {
     result.stoff = WIN_CLOTH;
     // Topas: mehr Seide
-    result.seide = Math.random() < SILK_CHANCE + party.gemSum('topas') ? 1 : 0;
+    result.seide = Math.random() < SILK_CHANCE + party.gemSum('topas') + companions.bonus('silk') ? 1 : 0;
     a().mats.stoff[boss.tier] += result.stoff;
     a().mats.seide[boss.tier] += result.seide;
     a().wins++;
