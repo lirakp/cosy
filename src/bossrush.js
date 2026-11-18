@@ -7,6 +7,7 @@ import { BOSS_POWER, BOSS_NAMES, bossInfo, MIN_CHANCE, MAX_CHANCE, WIN_CLOTH, SI
 import * as realm from './realm.js';
 import * as companions from './companions.js';
 import * as magic from './magic.js';
+import * as guild from './guild.js';
 
 // Bossrush: Bis zu 10 Helden (mit Ausrüstung) und Monster kämpfen nacheinander
 // gegen Bosse mit zufälligem Rang – alle FIGHT_SECONDS einer (5 s), auch offline –
@@ -110,6 +111,7 @@ export function tick(now = Date.now(), rand = Math.random) {
     x.log.length = Math.min(x.log.length, 8);
     if (win) {
       x.bosses++;
+      guild.record('rush');
       x.loot.gold += Math.round((BOSS_GOLD[boss.tier] / (1 + x.bosses / GOLD_FALLOFF)) * M.goldMult * realm.goldFactor() * (1 + party.gemSum('saphir')) * (1 + companions.bonus('dungeonGold')));
       x.loot.stoff[boss.tier] += WIN_CLOTH;
       if (rand() < SILK_CHANCE + M.silkBonus + party.gemSum('topas') + companions.bonus('silk')) x.loot.seide[boss.tier] += 1;

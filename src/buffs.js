@@ -4,6 +4,7 @@ import { goldIcon, luckIcon, gladiatorIcon } from './art/buffs.js';
 import * as sets from './sets.js';
 import * as tailor from './tailor.js';
 import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Rausch-Effekte, die man mit etwas Glück beim Schlafen bekommt.
 
@@ -68,15 +69,17 @@ export const active = (id) => {
 };
 export const remaining = (now = Date.now()) => (current(now) ? Math.ceil((current(now).until - now) / 1000) : 0);
 
+// Freundschaft (Bäckerin & Co.) lässt Räusche länger halten
+export const duration = (minutes) => minutes * (1 + companions.bonus('buffTime'));
 export function grant(id, now = Date.now(), minutes = BUFF_MINUTES) {
-  state.buff = { id, until: now + minutes * 60000 };
+  state.buff = { id, until: now + duration(minutes) * 60000 };
 }
 
 // verlängert einen laufenden Rausch
 export function extend(minutes, now = Date.now()) {
   const b = current(now);
   if (!b) return false;
-  state.buff = { id: b.id, until: b.until + minutes * 60000 };
+  state.buff = { id: b.id, until: b.until + duration(minutes) * 60000 };
   return true;
 }
 

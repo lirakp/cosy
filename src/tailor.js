@@ -82,7 +82,12 @@ export function capeImage(tier) {
 // Genähte Kleidung steht in sprites.js (OUTFITS mit `sew`); hier Preis und Besitz.
 export const SEWN = OUTFITS.filter((o) => o.sew);
 export const sewCost = (o) => [...(o.sew.stoff ? [S(o.sew.tier, o.sew.stoff)] : []), ...(o.sew.seide ? [K(o.sew.tier, o.sew.seide)] : [])];
-export const sewn = (id) => !getOutfit(id).sew || t().sewn.includes(id);
+// Zunft-Trachten (friend) gibt es erst, wenn alle Bewohner einer Welt beste Freunde sind
+export const sewn = (id) => {
+  const o = getOutfit(id);
+  if (o.friend) return (state.village?.outfits || []).includes(id);
+  return !o.sew || t().sewn.includes(id);
+};
 
 // Kleidung der Portalwelten wird nur dort genäht (aus deren Stoff und Seide)
 export const canSewHere = (o) => !o.world || o.world === realm.current();

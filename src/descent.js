@@ -7,6 +7,7 @@ import * as companions from './companions.js';
 import { party, type, pickCat, pickMemory, memoriesSeen, MIN_CHANCE } from './dungeon.js';
 import { runChance } from './bossrush.js';
 import * as magic from './magic.js';
+import * as guild from './guild.js';
 
 // Abstieg: Das Dungeon-Team steigt Etage für Etage hinab – alle FLOOR_SECONDS
 // eine, auch offline – bis es fällt. Jede Etage ist schwerer; alle 5 Etagen
@@ -149,6 +150,7 @@ function resolve(x, rand) {
   }
   const odds = chance(floor, x);
   if (rand() < odds) {
+    guild.record('descent');
     // Gold wächst mit der Tiefe, aber gebremst (Wurzel) – lange Läufe sollen nicht ausufern
     const gold = Math.round(8 * (1 + Math.sqrt(floor)) * type(x.type).goldMult * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (kind === 'boss' ? 5 : kind === 'waechter' ? 2 : 1) * (1 + party.gemSum('saphir')));
     x.loot.gold += gold;

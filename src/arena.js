@@ -8,6 +8,7 @@ import * as companions from './companions.js';
 import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
+import * as guild from './guild.js';
 
 // Bossarena: Drei Helden werden ausgerüstet und treten gegen einen Boss an.
 // Siege bringen Stoff und Seide, die der Arena-Händler gegen Sammelstücke tauscht.
@@ -91,6 +92,7 @@ export function fight() {
   const odds = shield ? magic.shielded(winChance(), shield) : winChance();
   const result = { boss, odds, win: Math.random() < odds, stoff: 0, seide: 0 };
   if (result.win) {
+    guild.record('arena');
     result.stoff = WIN_CLOTH;
     // Topas: mehr Seide
     result.seide = Math.random() < SILK_CHANCE + party.gemSum('topas') + companions.bonus('silk') ? 1 : 0;

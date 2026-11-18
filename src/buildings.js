@@ -1,6 +1,7 @@
 import { RARITIES } from './items.js';
 import { state } from './state.js';
 import * as realm from './realm.js';
+import * as companions from './companions.js';
 
 // Zusatzanlagen: Sie müssen erst gebaut werden und starten auf Rang D.
 // Jeder Ausbau schaltet den nächsten Rang frei (C, B, A, S, SS).
@@ -84,7 +85,10 @@ export function nextCost(id) {
   const b = BUILDINGS[id];
   if (t < 0) return realm.inRealm() && b.upgrades.length ? realmBuy(id) : b.buy;
   if (t >= MAX_TIER || t >= b.upgrades.length) return null;
-  return realm.inRealm() ? round(b.upgrades[t] * realm.PRICE, 500) : b.upgrades[t];
+  const cost = realm.inRealm() ? round(b.upgrades[t] * realm.PRICE, 500) : b.upgrades[t];
+  // Freundschaft (Bürgermeister & Co.) macht den Ausbau günstiger – höchstens −40 %
+  const off = Math.min(0.4, companions.bonus('building'));
+  return off > 0 ? round(cost * (1 - off), 50) : cost;
 }
 
 export function advance(id) {

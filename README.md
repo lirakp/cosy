@@ -128,6 +128,59 @@ Dorf; rechts im Dorf führt der Weg zurück.
 
 Werte in `src/village.js`.
 
+### Freundschaft, Dorfprojekte und Gilde
+
+Damit das Dorf auch später wichtig bleibt:
+
+- **Aufgaben wachsen mit:** Das Gold einer Aufgabe steigt um 12 % je Gebäude-Rang
+  in der Welt (Bau zählt als Rang). Dazu gibt es Glückstaler (leicht 1 · mittel 3 ·
+  schwer 6 🪙, schwer mit 25 % – in den Dimensionen 50 % – auch 1 🌟). Mittlere und
+  schwere Aufgaben fragen später auch nach Stoff, Seide und Duplikaten.
+- **Freundschaft:** Jede Aufgabe bringt Herzen (leicht 1 · mittel 2 · schwer 3 ♥).
+  Stufen bei 3 · 8 · 15 · 25 · 40 Herzen. Jede Stufe gibt ein Geschenk (5 🪙 ·
+  10 🪙 · 20 🪙 + 1 🌟 · 30 🪙 + 2 🌟), Stufe 5 ein seltenes Sammelstück (S/SS,
+  bevorzugt ein fehlendes). Der Bonus wächst mit der Stufe (Werte auf Stufe 5):
+
+| Heimat | Bonus | Hölle | Bonus | Himmel | Bonus |
+| --- | --- | --- | --- | --- | --- |
+| Greta | Räusche +50 % länger, Aufgaben +20 % Gold | Kohla | Räusche +50 %, Minispiele +25 % | Aurelia | Räusche +50 %, Aufgaben +20 % |
+| Ole | Fische +40 % schneller, Mana +10 % | Brandolf | Glut +40 %, Mine +15 % | Cirrus | Sternschnuppen +50 %, Minispiele +25 % |
+| Anton | Ausbau −15 %, Aufgaben +20 % | Asmund | Ausbau −15 %, Kampfgold +20 % | Lumen | Ausbau −15 %, Taler −10 % |
+| Lotte | Garten +30 %, Mine +10 % | Flamma | Garten +30 %, Seide +5 % | Celeste | Garten +30 %, Mana +20 % |
+| Jonas | Expedition +25 %, Stärke +8 % | Grimm | Stärke +10 %, Kampfgold +20 % | Zephyr | Expedition +25 %, Gratiswunsch +5 % |
+
+  Der Ausbau-Rabatt ist auf −40 % gedeckelt. Sind alle fünf Bewohner einer Welt beste
+  Freunde, gibt es ihre **Zunft-Tracht** im Kleiderschrank: Dorftracht (Aufgaben +30 %,
+  Ausbau −5 %, Münzen 6 Schritte), Glutzunft-Tracht (Stärke +8 %, Glut +20 %,
+  Minispiele +20 %), Wolkenzunft-Tracht (Taler −10 %, Sternschnuppen +30 %, Aufgaben +30 %).
+- **Dorfprojekte** am östlichen Dorfrand – in jedem Dorf (Heimat, Hölle, Himmel)
+  eigene, je drei Stufen. Man spendet nach und nach Gold, Erz, Stoff, Seide, Fisch
+  (Dimensionen: Glutsteine/Sternensplitter ×10) und Duplikate; Gold kostet in den
+  Dimensionen das Dreifache.
+  - **Taverne:** Rausch-Tränke für 15 Minuten (Freundschaft verlängert sie):
+    Glücksrausch 3.000 Gold (Stufe 1), Goldrausch 8.000 (Stufe 2), Gladiatorrausch
+    20.000 (Stufe 3, dann alle −25 %); in Hölle/Himmel auf Stufe 3 auch Höllenfeuer
+    bzw. Himmelssegen (60.000). In den Dimensionen ×3.
+  - **Gildenhaus:** *Daueraufträge* zählen über das ganze Spiel (alle Welten):
+    | Auftrag | Meilensteine | danach |
+    | --- | --- | --- |
+    | Tiefenläufer (Etagen im Abstieg) | 50 · 100 · 250 · 500 · 1.000 · 1.500 | alle 250 |
+    | Bossjäger (Bosse im Bossrush) | 25 · 50 · 100 · 250 · 500 · 1.000 · 1.500 | alle 250 |
+    | Kundschafter (erfolgreiche Dungeon-Erkundungen) | 5 · 10 · 25 · 50 · 100 · 200 · 300 | alle 50 |
+    | Arena-Champion (Siege in der Bossarena) | 5 · 10 · 25 · 50 · 100 · 200 · 300 | alle 50 |
+
+    Belohnungen steigen von 5 🪙 bis 100 🪙 + 8 🌟 + Sammelstück ab S; nach dem Limit
+    gibt es je Schritt die Standardbelohnung 20 🪙 + 2 🌟. *Tagesaufträge* (1 · 2 · 3
+    je Stufe, jeden Spieltag neu) wollen Seide, Stoff, Erz hoher Ränge oder Duplikate
+    und zahlen Gold, Taler und ab dem zweiten Auftrag ein Sammelstück ab B/A/S.
+  - **Festplatz:** Dorffest an jedem 4. · 3. · 2. Spieltag (je Stufe), mit Wimpeln im
+    Dorf. Jeder Fisch bringt Wettbewerbspunkte (D 1 · C 2 · B 4 · A 8 · S 16 · SS 32),
+    in den Dimensionen zählt ein Drittel der Minispiel-Punkte. Preise ab 10 / 30 / 60
+    Punkten (10 🪙 · 20 🪙 + 1 🌟 · 30 🪙 + 2 🌟 + Sammelstück ab A). Der Sonderhändler
+    bietet drei Stücke ab Rang A (Stufe 3: bis SS) für Sternentaler (A 2 · S 4 · SS 9 🌟).
+
+Werte in `src/friendship.js`, `src/projects.js` und `src/guild.js`.
+
 ## Garten und Küche
 
 Rechts vom Haus liegen Beete (zwei sind frei, weitere kosten 300 · 800 · 2000 ·

@@ -67,6 +67,10 @@ export const OUTFITS = [
   { id: 'ritter', name: 'Ritterrüstung', hat: 'helm', framed: true, colors: { H: '#a8b0c0', h: '#d9574a', r: '#d9574a', c: '#a8b0c0', C: '#8890a0', p: '#7a8090', b: '#5a6070' } },
   { id: 'koch', name: 'Küchenchef', hat: 'chef', colors: { H: '#fdf6e3', h: '#fdf6e3', r: '#d9574a', c: '#fdf6e3', C: '#d8d0c0', p: '#5a5a6a', b: '#2a2140' } },
   { id: 'pirat', name: 'Piratin', hat: 'pirate', colors: { H: '#2a2140', h: '#1d1528', r: '#fdf6e3', c: '#b03a3a', C: '#8a2a2a', p: '#3a3a5a', b: '#3a2a20' } },
+  // Zunft-Trachten: Geschenk, wenn alle Bewohner einer Welt beste Freunde sind
+  { id: 'dorftracht', name: 'Dorftracht', hat: 'flowers', friend: 'normal', bonus: { questGold: 0.3, building: 0.05, coinReach: 6 }, colors: { H: '#c08050', f: '#ffd04a', r: '#d9574a', c: '#3f7a4a', C: '#2f6a3a', p: '#5a3a2e', b: '#3a2a20' } },
+  { id: 'glutzunft', name: 'Glutzunft-Tracht', world: 'hoelle', hat: 'helm', framed: true, friend: 'hoelle', bonus: { power: 0.08, forge: 0.2, minigame: 0.2 }, colors: { H: '#4a2a2e', h: '#ffb03a', r: '#ffb03a', c: '#8a2a1e', C: '#6a1a12', p: '#2a1a1e', b: '#1a0c10' } },
+  { id: 'wolkenzunft', name: 'Wolkenzunft-Tracht', world: 'himmel', hat: 'wizard', friend: 'himmel', bonus: { taler: 0.1, stars: 0.3, questGold: 0.3 }, colors: { H: '#9be8ff', h: '#ffe070', r: '#ffe070', c: '#e8f0ff', C: '#c8d8f8', p: '#a8bce8', b: '#8090c0' } },
   // Genähte Kleidung (Nähtisch im Haus): erst nähen, dann tragen – mit Bonus
   { id: 'leinen', name: 'Leinenkittel', hat: 'beanie', sew: { tier: 0, stoff: 6 }, bonus: { coinReach: 6 }, colors: { H: '#d8c8a8', h: '#a8906a', r: '#c8a878', c: '#e8dcc0', C: '#c8b898', p: '#8a7a5a', b: '#5a4a30' } },
   { id: 'reisemantel', name: 'Reisemantel', hat: 'hood', framed: true, sew: { tier: 1, stoff: 6, seide: 1 }, bonus: { expedition: 0.06 }, colors: { H: '#6a5a3a', r: '#c0904a', c: '#7a6a42', C: '#5a4a30', p: '#4a5a3a', b: '#3a2a20' } },

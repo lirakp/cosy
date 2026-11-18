@@ -34,6 +34,8 @@ import { audio } from './audio.js';
 import { createBackground } from './background.js';
 import * as themes from './themes.js';
 import { createWorld } from './world.js';
+import * as projects from './projects.js';
+import * as guild from './guild.js';
 import { createPlayer } from './player.js';
 
 const canvas = document.getElementById('game');
@@ -113,7 +115,11 @@ const ui = createUI({
 let spellFx = 0; // Funkeln um die Figur nach einem Zauber
 // Minispiel im Dorf einer Dimension (statt Angeln)
 const minigame = createMinigame({
-  onEnd: (res) => ui.minigameDone(res),
+  onEnd: (res) => {
+    // Dorffest in den Dimensionen: Minispiel-Punkte zählen für den Wettbewerb
+    res.festPoints = projects.recordPoints(Math.round(res.points / 3));
+    ui.minigameDone(res);
+  },
   onSfx: (name) => audio.play(name),
 });
 let lastNight = 0;
@@ -438,6 +444,7 @@ function act() {
   if (near === 'fishbook') ui.openFishBook();
   if (near === 'trap') ui.openTrap();
   if (near?.startsWith('npc:')) ui.talk(near.slice(4));
+  if (near?.startsWith('proj:')) ui.openProject(near.slice(5));
   if (near === 'house') enterHouse();
   if (near === 'mine') buildings.owned('mine') ? enterMine() : ui.openMine();
   if (near === 'lift') ui.openMine();
@@ -623,7 +630,11 @@ function buildScenes() {
   world = createWorld(t);
   villageScene = createVillageScene({
     onBite: () => audio.play('bite'),
-    onCatch: (res) => ui.caught(res),
+    onCatch: (res) => {
+      // Dorffest: jeder Fisch zählt für den Angelwettbewerb
+      if (!res.treasure) res.festPoints = projects.recordCatch(res.tier);
+      ui.caught(res);
+    },
     onMiss: (why) => ui.toast(why === 'early' ? 'Zu früh eingeholt – der Fisch ist weg.' : 'Weg ist er … beim nächsten Biss schneller einholen!'),
   });
 }
@@ -743,6 +754,15 @@ function fishLabel() {
   return 'Warten … bei „!“ einholen';
 }
 
+// Bauplatz im Dorf: Name, Stufe, Fest-Hinweis
+function projectLabel(id) {
+  const p = projects.PROJECTS[id];
+  const st = projects.stage(id);
+  if (!st) return `✦ Bauplatz: ${p.name}`;
+  if (id === 'fest' && projects.isFestDay()) return `✦ ${p.name} · Heute ist Dorffest!`;
+  if (id === 'gilde' && Object.keys(guild.ORDERS).some((o) => guild.ready(o))) return `✦ ${p.name} · Belohnung bereit!`;
+  return `✦ ${p.name} · Stufe ${st}`;
+}
 function npcLabel(id) {
   const q = village.quest(id);
   const name = village.villager(id).name;
@@ -895,6 +915,7 @@ function frame(now) {
     : near === 'fishbook' ? 'Angelbuch'
     : near === 'trap' ? (fishtrap.built() ? `Fischreuse · ${fishtrap.stored()}/${fishtrap.capacity()}${fishtrap.full() ? ' voll!' : ''}` : `Fischreuse bauen · ${fishtrap.BUY} Gold`)
     : near?.startsWith('npc:') ? npcLabel(near.slice(4))
+    : near?.startsWith('proj:') ? projectLabel(near.slice(5))
     : near === 'house' ? 'Haus betreten'
     : near === 'door' ? 'Hinausgehen'
     : near === 'wardrobe' ? 'Kleiderschrank'

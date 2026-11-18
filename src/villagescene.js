@@ -7,11 +7,14 @@ import * as magic from './magic.js';
 import * as companions from './companions.js';
 import { state } from './state.js';
 import * as realm from './realm.js';
+import * as projects from './projects.js';
 
 // Das Dorf von außen: Häuser, Rathaus, Marktstand, Teich mit Steg.
 // Links wird geangelt, rechts geht es zurück zum Hof.
 
-export const VILLAGE_W = 640;
+export const VILLAGE_W = 860;
+// Dorfprojekte am östlichen Dorfrand (Mitte des Bauplatzes)
+export const PROJECT_X = { taverne: 622, gilde: 702, fest: 786 };
 export const VILLAGE_BOUNDS = [46, VILLAGE_W - 12];
 export const VILLAGE_SPAWN = VILLAGE_W - 40;
 const POND_W = 98;
@@ -25,6 +28,7 @@ export function zoneAt(x) {
   if (home && x > 98 && x <= 112) return 'trap';
   if (x > VILLAGE_W - 34) return 'farm';
   if (Math.abs(x - village.marketNpc().x) < 14) return 'market';
+  for (const [id, px0] of Object.entries(PROJECT_X)) if (Math.abs(x - px0) < 18) return `proj:${id}`;
   for (const v of village.villagers()) if (Math.abs(x - v.x) < 10) return `npc:${v.id}`;
   return null;
 }
@@ -131,6 +135,72 @@ function drawStall(ctx, x) {
   rect(ctx, x - 8, base - 40, 16, 7, PAL.woodLight);
   rect(ctx, x - 6, base - 38, 12, 1, PAL.woodDark);
   rect(ctx, x - 6, base - 36, 8, 1, PAL.woodDark);
+}
+
+// ---------------------------------------------------------------- Dorfprojekte
+
+const projectCache = new Map();
+// Baustelle: Gerüst, Bretterstapel und ein Schild
+function drawSite(ctx, x) {
+  const base = GROUND_Y + 4;
+  for (const dx of [-14, 12]) rect(ctx, x + dx, base - 26, 2, 26, PAL.woodDark);
+  rect(ctx, x - 14, base - 26, 28, 2, PAL.wood);
+  rect(ctx, x - 14, base - 14, 28, 2, PAL.wood);
+  for (let i = 0; i < 4; i++) rect(ctx, x - 10 + i * 5, base - 4 - (i % 2) * 2, 12, 2, i % 2 ? PAL.woodLight : PAL.wood);
+  rect(ctx, x - 6, base - 36, 12, 8, PAL.woodLight);
+  rect(ctx, x - 1, base - 28, 2, 4, PAL.woodDark);
+  rect(ctx, x - 4, base - 34, 8, 1, PAL.woodDark);
+  rect(ctx, x - 4, base - 32, 5, 1, PAL.woodDark);
+}
+function projectImage(id, stage) {
+  const key = `${realm.current()}-${id}-${stage}`;
+  if (projectCache.has(key)) return projectCache.get(key);
+  const W = 80;
+  const [c, ctx] = makeCanvas(W, VIEW_H);
+  const cx = W / 2;
+  if (!stage) drawSite(ctx, cx);
+  else if (id === 'taverne') {
+    house(ctx, cx - 26, 52, '#c89a6a', '#7a3a2a', '#5a2a1e', (g, x, top) => {
+      // Schild mit Krug
+      rect(g, x + 22, top - 2, 14, 9, PAL.woodDark);
+      rect(g, x + 23, top - 1, 12, 7, PAL.woodLight);
+      rect(g, x + 27, top + 1, 4, 4, '#ffd04a');
+      rect(g, x + 31, top + 2, 1, 2, '#ffd04a');
+      if (stage >= 2) for (let i = 0; i < 3; i++) rect(g, x + 2 + i * 4, top + 12, 3, 4, '#8a5a3a');
+    });
+  } else if (id === 'gilde') {
+    house(ctx, cx - 30, 60, '#b8b0c8', '#3a4a7a', '#2a3a5a', (g, x, top) => {
+      // Banner mit Schwert
+      rect(g, x + 30, top - 30, 1, 14, PAL.woodDark);
+      rect(g, x + 31, top - 30, 8, 10, '#3a4a7a');
+      rect(g, x + 34, top - 29, 2, 7, '#e8e0d0');
+      rect(g, x + 33, top - 24, 4, 1, '#ffd04a');
+      if (stage >= 2) { rect(g, x + 22, top + 3, 16, 10, PAL.woodDark); rect(g, x + 23, top + 4, 14, 8, '#e8d8b0'); for (let i = 0; i < 3; i++) rect(g, x + 25, top + 6 + i * 2, 10, 1, '#8a7a5a'); }
+    });
+  } else {
+    // Festplatz: Bühne mit Zeltdach
+    const base = GROUND_Y + 4;
+    rect(ctx, cx - 26, base - 8, 52, 8, PAL.wood);
+    rect(ctx, cx - 26, base - 8, 52, 2, PAL.woodLight);
+    for (const dx of [-24, 22]) rect(ctx, cx + dx, base - 34, 2, 26, PAL.woodDark);
+    for (let i = 0; i < 52; i++) rect(ctx, cx - 26 + i, base - 38 + Math.abs(i - 26) / 6, 1, 5, Math.floor(i / 4) % 2 ? '#fdf6e3' : stage >= 3 ? '#8a54c8' : '#4a8ac0');
+    if (stage >= 2) for (let i = 0; i < 6; i++) circle(ctx, cx - 20 + i * 8, base - 4, 1, PAL.flowers[i % 3]);
+  }
+  // Sterne für die Stufe
+  for (let i = 0; i < stage; i++) rect(ctx, cx - 4 + i * 4, GROUND_Y + 8, 2, 2, '#ffd04a');
+  projectCache.set(key, c);
+  return c;
+}
+// Wimpelketten und Laternen, wenn Dorffest ist
+function drawFest(ctx, cam, time) {
+  const colors = ['#e86a6a', '#ffd04a', '#6fbf6a', '#4a8ac0', '#c08ad8'];
+  for (let x = 120; x < VILLAGE_W - 40; x += 6) {
+    const sx = x - cam;
+    if (sx < -6 || sx > VIEW_W + 6) continue;
+    const y = GROUND_Y - 44 + Math.round(Math.sin(x / 40) * 3);
+    rect(ctx, sx, y, 4, 1, PAL.woodDark);
+    rect(ctx, sx + 1, y + 1, 2, 2 + (Math.floor(time * 2 + x / 6) % 2), colors[(x / 6) % colors.length | 0]);
+  }
 }
 
 function drawTree(ctx, x, r) {
@@ -404,6 +474,9 @@ export function createVillageScene({ onBite, onCatch, onMiss } = {}) {
         const y = GROUND_Y + 6 + ((i * 7) % 26);
         rect(ctx, x, y, 3, 1, pondColors()[2]);
       }
+      // Dorfprojekte (Baustelle oder Gebäude) und Festschmuck
+      for (const [id, x] of Object.entries(PROJECT_X)) ctx.drawImage(projectImage(id, projects.stage(id)), x - 40 - cam, 0);
+      if (projects.isFestDay()) drawFest(ctx, cam, time);
       // Bewohner und Marktfrau
       for (const v of village.villagers()) {
         const bob = Math.floor(time * 1.5 + v.x) % 2;

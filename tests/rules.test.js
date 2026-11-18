@@ -2,7 +2,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, tierChances, rollTier, ALL_ITEMS, worldItems, rollItem } from '../src/items.js';
+import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, tierChances, rollTier, ALL_ITEMS, worldItems, rollItem, getItem } from '../src/items.js';
 import { state } from '../src/state.js';
 import * as forge from '../src/forge.js';
 import { payWithDuplicates, dupValue } from '../src/dupes.js';
@@ -1550,4 +1550,123 @@ test('Brunnen: „Nur Neue“ geht auch nur mit Sternentalern oder genau 10 Glü
   assert.ok(!well.pull(10, seeded(3), { currency: 'taler', variant: 'new' }).error);
   assert.equal(well.coins('taler'), 0);
   assert.equal(well.coins('stern'), 0);
+});
+
+// ---------------------------------------------------------------- Dorf: Freundschaft, Projekte, Gilde
+
+import * as friendship from '../src/friendship.js';
+import * as projects from '../src/projects.js';
+import * as guild from '../src/guild.js';
+
+test('Freundschaft: Herzen bringen Stufen, Geschenke, Bonus und bei Stufe 5 ein S/SS-Stück', () => {
+  assert.equal(friendship.level('anton'), 0);
+  const ups = friendship.addHearts('anton', 8, seeded(1));
+  assert.deepEqual(ups.map((u) => u.level), [1, 2]);
+  assert.equal(well.coins('taler'), 15);
+  assert.ok(Math.abs(companions.bonus('building') - 0.15 * 2 / 5) < 1e-9);
+  // Ausbau wird günstiger
+  state.buildings.well = 1;
+  assert.ok(buildings.nextCost('well') < buildings.BUILDINGS.well.upgrades[1]);
+  const last = friendship.addHearts('anton', 40, seeded(2));
+  assert.equal(friendship.level('anton'), 5);
+  const top = last.find((u) => u.level === 5);
+  assert.ok(top.item && top.item.tier >= 4);
+  assert.ok(!friendship.outfitUnlocked('dorftracht'), 'erst wenn alle fünf beste Freunde sind');
+  for (const id of ['greta', 'ole', 'lotte', 'jonas']) friendship.addHearts(id, 40, seeded(3));
+  assert.ok(friendship.outfitUnlocked('dorftracht'));
+  assert.ok(tailor.sewn('dorftracht'));
+});
+
+test('Aufgaben: Belohnung wächst mit dem Ausbau, dazu Taler und Herzen', () => {
+  const base = village.progressFactor();
+  state.buildings.camp = 5;
+  state.buildings.arena = 5;
+  assert.ok(village.progressFactor() > base + 1);
+  state.village.quests.greta = { villager: 'greta', difficulty: 'schwer', need: { type: 'crop', id: 'karotte', n: 1 }, reward: { gold: 1000, item: null, taler: 6, stern: 1 } };
+  state.garden.crops.karotte = 3;
+  const res = village.complete('greta');
+  assert.equal(res.taler, 6);
+  assert.equal(res.hearts, 3);
+  assert.equal(well.coins('stern'), 1);
+  assert.equal(friendship.heartsOf('greta'), 3);
+  assert.equal(res.levelUps.length, 1);
+  // neue Bedarfsarten
+  state.arena.mats.seide[2] = 5;
+  assert.equal(village.haveFor({ type: 'seide', tier: 2, n: 3 }), 5);
+  village.takeNeed({ type: 'seide', tier: 2, n: 3 });
+  assert.equal(state.arena.mats.seide[2], 2);
+});
+
+test('Dorfprojekte: Spenden nach und nach, Stufe steht, Taverne verkauft Räusche', () => {
+  assert.equal(projects.stage('taverne'), 0);
+  setGold(10000);
+  projects.donate('taverne');
+  assert.equal(projects.paid('taverne', 0), 10000, 'Teilspende wird angerechnet');
+  assert.equal(projects.stage('taverne'), 0);
+  setGold(1e6);
+  state.mine.ore[1] = 100;
+  state.village.fish = { forelle: 20 };
+  const res = projects.donate('taverne');
+  assert.ok(res.built);
+  assert.equal(projects.stage('taverne'), 1);
+  assert.equal(state.mine.ore[1], 60);
+  assert.ok(!projects.buyPotion('gold'), 'Goldrausch erst ab Stufe 2');
+  assert.ok(projects.buyPotion('luck'));
+  assert.equal(buffs.current().id, 'luck');
+});
+
+test('Dorffest: Fischpunkte, Preise und Sonderhändler', () => {
+  state.village.projects = { normal: { fest: { stage: 1, paid: [] } } };
+  state.dayCount = 8;
+  assert.ok(projects.isFestDay());
+  assert.equal(projects.recordCatch(3), 8);
+  assert.equal(projects.recordCatch(1), 2);
+  assert.equal(projects.festPoints(), 10);
+  const prize = projects.claimPrize(0);
+  assert.equal(prize.taler, 10);
+  assert.equal(projects.claimPrize(0), null, 'nur einmal');
+  assert.equal(projects.offers().length, 3);
+  state.well.coins = { taler: 0, stern: 50, splinters: 0 };
+  const got = projects.buyOffer(projects.offers()[0], getItem);
+  assert.ok(got.item.tier >= 3);
+  state.dayCount = 9;
+  assert.ok(!projects.isFestDay());
+  assert.equal(projects.daysToFest(), 3);
+});
+
+test('Gilde: Daueraufträge mit Meilensteinen bis zum Limit, danach Standardbelohnung', () => {
+  state.village.projects = { normal: { gilde: { stage: 1, paid: [] } } };
+  assert.ok(guild.open());
+  guild.record('descent', 1600);
+  let n = 0;
+  while (guild.ready('descent')) {
+    guild.claim('descent', seeded(n));
+    n++;
+  }
+  assert.equal(n, 6, 'sechs Meilensteine bis 1.500 Etagen');
+  assert.equal(guild.target('descent'), 1750);
+  assert.ok(guild.afterLimit('descent'));
+  guild.record('descent', 150);
+  const std = guild.claim('descent');
+  assert.equal(std.taler, guild.STANDARD_REWARD.taler);
+  assert.equal(std.stern, guild.STANDARD_REWARD.stern);
+  // Bossrush zählt mit
+  state.buildings.arena = 5;
+  state.addItems(getGroup('helden', 'SS').slice(0, 3));
+  bossrush.party.autoEquip();
+  const t0 = Date.now();
+  bossrush.start('normal', { now: t0 });
+  bossrush.tick(t0 + 5000 * 5, () => 0.0001);
+  assert.equal(guild.count('rush'), 5);
+  // Tagesauftrag
+  const list = guild.dailies(seeded(4));
+  assert.equal(list.length, 1);
+  const q = list[0];
+  if (q.need.type === 'dupes') state.addItems(Array(q.need.n + 1).fill(worldItems().find((i) => i.tier >= q.need.minTier)));
+  else if (q.need.type === 'ore') state.mine.ore[q.need.tier] = q.need.n;
+  else state.arena.mats[q.need.type][q.need.tier] = q.need.n;
+  const gold = state.gold;
+  assert.ok(guild.deliver(0));
+  assert.ok(state.gold > gold);
+  assert.ok(!guild.canDeliver(0));
 });

@@ -6,6 +6,7 @@ import { createParty, emptyMember } from './party.js';
 import * as magic from './magic.js';
 import * as realm from './realm.js';
 import * as companions from './companions.js';
+import * as guild from './guild.js';
 
 // Dungeon: Bis zu fünf ausgerüstete Helden ziehen für eine feste Zeit los. Die
 // Dauer ist zugleich die Gefahrenstufe – längere Dungeons bringen mehr, sind aber
@@ -191,6 +192,7 @@ export function collect() {
   }
 
   if (result.success) {
+    guild.record('dungeon');
     result.gold = Math.round(level.gold * (0.8 + Math.random() * 0.4) * realm.goldFactor() * (1 + companions.bonus('dungeonGold')) * (1 + party.gemSum('saphir')));
     const found = [];
     for (let i = 0; i < level.standard; i++) found.push(rollItem({ tier: 0, cat: pickCat(t, Math.random) }));

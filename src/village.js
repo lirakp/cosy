@@ -1,4 +1,4 @@
-import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, getItem, rollTier, rollItem } from './items.js';
+import { ITEMS, RARITIES, CATEGORIES, PER_GROUP, getGroup, getItem, rollTier, rollItem, worldItems } from './items.js';
 import { state } from './state.js';
 import * as buildings from './buildings.js';
 import * as mine from './mine.js';
@@ -8,6 +8,7 @@ import { VILLAGER_ART, fishDraw, bottleDraw } from './art/village.js';
 import { M, ramp } from './art/core.js';
 import * as realm from './realm.js';
 import * as companions from './companions.js';
+import * as friendship from './friendship.js';
 
 // Das Dorf: Bewohner mit Aufgaben, ein Marktstand und Angeln am Teich.
 
@@ -91,6 +92,16 @@ export const DIFFICULTY = {
   schwer: { weight: 0.15, gold: [600, 1200], itemChance: 1, minTier: 2 },
 };
 export const NEXT_QUEST_SECONDS = [60, 180];
+// Taler als Zugabe je Schwierigkeit; schwere Aufgaben bringen manchmal einen Sternentaler
+export const QUEST_TALER = [1, 3, 6];
+export const QUEST_STERN_CHANCE = 0.25;
+// Belohnungen wachsen mit dem Fortschritt: +12 % Gold je Gebäude-Rang in dieser Welt
+export const PROGRESS_STEP = 0.12;
+export const progressFactor = () => 1 + PROGRESS_STEP * Object.keys(buildings.BUILDINGS).reduce((s, id) => s + Math.max(0, buildings.tier(id) + 1), 0);
+const scaledGold = (g) => Math.round((g * progressFactor()) / 10) * 10;
+function coinReward(level, r, sternChance = QUEST_STERN_CHANCE) {
+  return { taler: QUEST_TALER[level], stern: level === 2 && r() < sternChance ? 1 : 0 };
+}
 
 const v = () => state.village;
 const between = (r, [a, b]) => a + Math.floor(r() * (b - a + 1));
@@ -136,9 +147,22 @@ export function makeQuest(villagerId, r = Math.random) {
   } else {
     need = { type: 'item', cat: pick(r, CATEGORIES).id, tier: pick(r, [[0], [0, 1], [1, 2]][level]), n: 1 };
   }
+  need = laterNeed(level, r) || need;
   const d = DIFFICULTY[diff];
-  const reward = { gold: between(r, d.gold), item: r() < d.itemChance ? d.minTier : null };
+  const reward = { gold: scaledGold(between(r, d.gold)), item: r() < d.itemChance ? d.minTier : null, ...coinReward(level, r) };
   return { villager: villagerId, difficulty: diff, need, reward };
+}
+
+// Mittlere und schwere Aufgaben fragen später im Spiel auch nach Stoff, Seide und Duplikaten
+function laterNeed(level, r) {
+  const arena = buildings.tier('arena');
+  if (level === 0 || r() > 0.3) return null;
+  if (arena >= 0 && r() < 0.6) {
+    const tier = Math.min(arena, level === 1 ? 1 : 3);
+    return level === 1 ? { type: 'stoff', tier, n: between(r, [4, 8]) } : { type: 'seide', tier, n: between(r, [2, 4]) };
+  }
+  if (state.pulls < 50) return null;
+  return { type: 'dupes', minTier: level === 1 ? 1 : 2, n: between(r, level === 1 ? [3, 6] : [4, 8]) };
 }
 
 function makeRealmQuest(npc, world, r) {
@@ -160,8 +184,9 @@ function makeRealmQuest(npc, world, r) {
   } else {
     need = { type: 'item', world, cat: pick(r, CATEGORIES).id, tier: pick(r, [[2], [2, 3], [3]][level]), n: 1 };
   }
+  need = laterNeed(level, r) || need;
   const d = DIFFICULTY[diff];
-  const reward = { gold: between(r, d.gold) * REALM_REWARD, item: r() < Math.max(0.3, d.itemChance) ? Math.min(4, d.minTier + 2) : null, world };
+  const reward = { gold: scaledGold(between(r, d.gold) * REALM_REWARD), item: r() < Math.max(0.3, d.itemChance) ? Math.min(4, d.minTier + 2) : null, world, ...coinReward(level, r, 0.5) };
   return { villager: npc.id, difficulty: diff, need, reward };
 }
 
@@ -180,6 +205,9 @@ export function haveFor(need) {
   if (need.type === 'crop') return garden.have(need.id);
   if (need.type === 'fish') return tierCount(need.tier);
   if (need.type === 'shard') return shards(need.world);
+  if (need.type === 'gold') return state.gold;
+  if (need.type === 'stoff' || need.type === 'seide') return state.arena.mats[need.type][need.tier] || 0;
+  if (need.type === 'dupes') return dupePool(need.minTier).reduce((n, i) => n + state.duplicates(i.id), 0);
   // Sammelstück: nur Duplikate zählen – das letzte Exemplar bleibt immer
   return getGroup(need.cat, RARITIES[need.tier].id, need.world || 'normal').reduce((n, i) => n + state.duplicates(i.id), 0);
 }
@@ -190,10 +218,29 @@ export function describeNeed(need) {
   if (need.type === 'crop') return `${need.n}× ${garden.crop(need.id).name}`;
   if (need.type === 'fish') return `${need.n}× Fisch vom Rang ${RARITIES[need.tier].id}`;
   if (need.type === 'shard') return `${need.n}× ${SHARDS[need.world].plural}`;
+  if (need.type === 'gold') return `${need.n.toLocaleString('de-DE')} Gold`;
+  if (need.type === 'stoff') return `${need.n}× Stoff vom Rang ${RARITIES[need.tier].id}`;
+  if (need.type === 'seide') return `${need.n}× Seide vom Rang ${RARITIES[need.tier].id}`;
+  if (need.type === 'dupes') return `${need.n}× Duplikat ab Rang ${RARITIES[need.minTier].id} (beliebig)`;
   return `${need.n}× ${CATEGORIES.find((c) => c.id === need.cat).name}-Duplikat, Rang ${RARITIES[need.tier].id}${need.world && need.world !== 'normal' ? ` (${realm.WORLDS[need.world].name})` : ''}`;
 }
 
-function takeNeed(need) {
+// Duplikate ab einem Rang (diese Welt), die günstigsten zuerst
+const dupePool = (minTier) => worldItems().filter((i) => i.tier >= minTier).sort((a, b) => a.tier - b.tier);
+
+// Nimmt das Verlangte aus dem Vorrat (need.n Stück)
+export function takeNeed(need) {
+  if (need.type === 'gold') return state.spend(need.n, 'dorf');
+  if (need.type === 'stoff' || need.type === 'seide') state.arena.mats[need.type][need.tier] -= need.n;
+  if (need.type === 'dupes') {
+    let left = need.n;
+    for (const item of dupePool(need.minTier)) {
+      while (left > 0 && state.duplicates(item.id) > 0) {
+        state.useDuplicate(item.id);
+        left--;
+      }
+    }
+  }
   if (need.type === 'ore') return mine.spendOre(need.tier, need.n);
   if (need.type === 'crop') state.garden.crops[need.id] -= need.n;
   if (need.type === 'fish') {
@@ -228,7 +275,12 @@ export function complete(id) {
   const q = v().quests[id];
   if (!canComplete(q)) return null;
   takeNeed(q.need);
-  const reward = { gold: Math.round(q.reward.gold * (1 + companions.bonus('questGold'))), item: null, isNew: false };
+  const reward = { gold: Math.round(q.reward.gold * (1 + companions.bonus('questGold'))), item: null, isNew: false, taler: q.reward.taler || 0, stern: q.reward.stern || 0, hearts: friendship.HEARTS[q.difficulty] || 1 };
+  if (reward.taler || reward.stern) {
+    const c = (state.well.coins ||= { taler: 0, stern: 0, splinters: 0 });
+    c.taler = (c.taler || 0) + reward.taler;
+    c.stern = (c.stern || 0) + reward.stern;
+  }
   if (q.reward.item !== null) {
     reward.item = rollItem({ minTier: q.reward.item, world: q.reward.world || 'normal' });
     reward.isNew = !state.count(reward.item.id);
@@ -237,6 +289,8 @@ export function complete(id) {
   state.addGold(reward.gold, 'aufgaben');
   v().done++;
   cooldown(id);
+  // Freundschaft: Herzen und ggf. eine neue Stufe mit Geschenk
+  reward.levelUps = friendship.addHearts(id, reward.hearts);
   state.changed();
   return { quest: q, ...reward };
 }

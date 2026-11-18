@@ -26,6 +26,9 @@ import * as descent from './descent.js';
 import * as gems from './gems.js';
 import * as statues from './statues.js';
 import * as care from './companioncare.js';
+import * as friendship from './friendship.js';
+import * as projects from './projects.js';
+import * as guild from './guild.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
@@ -56,7 +59,7 @@ function tile(item, { hidden = false, badge = '' } = {}) {
   return el;
 }
 
-export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal }) {
+export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal, onProjectBuilt }) {
   const overlay = $('#overlay');
   const goldEl = $('#gold span');
   const toastEl = $('#toast');
@@ -112,6 +115,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (view === 'tailor') renderTailor();
     if (view === 'portal') renderPortal();
     if (view === 'trader') renderTrader();
+    if (view === 'project') renderProject();
     if (!view) overlay.replaceChildren();
     onToggle(busy());
   }
@@ -129,6 +133,138 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       <span class="gold-pill">◉ <span class="gold-now">${fmt(state.gold)}</span></span>
       <button class="close" data-act="close" aria-label="Schließen">✕</button>
     </header>`;
+
+
+  // ------------------------------------------------------------ Dorfprojekte & Gilde
+
+  let projectId = 'taverne';
+  let guildTab = 'dauer';
+  const coinsText = (taler, stern) => [taler ? `${taler} 🪙` : '', stern ? `${stern} 🌟` : ''].filter(Boolean).join(' + ');
+  const rewardText = (rw) => [rw.gold ? `${fmt(rw.gold)} Gold` : '', coinsText(rw.taler, rw.stern), rw.item !== null && rw.item !== undefined ? `Sammelstück ab Rang ${RARITIES[rw.item].id}` : ''].filter(Boolean).join(' + ');
+
+  function projectBuildHtml(id) {
+    const list = projects.needs(id);
+    if (!list) return '';
+    const s = projects.stage(id);
+    const rows = list.map((n, i) => {
+      const got = projects.paid(id, i);
+      const have = village.haveFor(n);
+      const can = projects.canGive(id, i);
+      return `<div class="proj-need${got >= n.n ? ' full' : ''}">
+        <span>${village.describeNeed(n)}</span>
+        <div class="bar"><i style="width:${Math.min(100, (got / n.n) * 100)}%"></i></div>
+        <span class="muted">${fmt(got)} / ${fmt(n.n)} · im Vorrat ${fmt(have)}</span>
+        <button data-act="proj-give" data-v="${i}" ${can ? '' : 'disabled'}>${got >= n.n ? 'fertig' : `+${fmt(can)} geben`}</button>
+      </div>`;
+    }).join('');
+    return `<div class="chest">
+      <div class="line"><b>${s ? `Ausbau auf Stufe ${s + 1}` : 'Bau'}: ${projects.PROJECTS[id].stages[s]}</b>
+        <button class="big" data-act="proj-give-all" ${list.some((_, i) => projects.canGive(id, i)) ? '' : 'disabled'}>Alles spenden</button></div>
+      <p class="muted">Spende nach und nach – was schon gegeben ist, bleibt angerechnet.</p>
+      ${rows}
+    </div>`;
+  }
+
+  function tavernHtml() {
+    const s = projects.stage('taverne');
+    if (!s) return '';
+    const cur = buffs.current();
+    return `<div class="chest"><b>Rausch-Tränke</b>
+      <p class="muted">Ein Trank wirkt ${Math.round(buffs.duration(15))} Minuten. Trinkst du denselben Rausch noch einmal, verlängert er sich.${cur ? ` Gerade aktiv: ${buffs.BUFFS[cur.id].name}.` : ''}</p>
+      ${projects.potions().map((p) => {
+        const b = buffs.BUFFS[p.buff];
+        const ok = s >= p.stage;
+        return `<div class="line potion r-${b.rank}"><span><b>${b.name}</b><small class="muted"> ${b.text}</small></span>
+          ${ok ? `<button data-act="potion" data-v="${p.buff}" ${state.gold >= projects.potionPrice(p) ? '' : 'disabled'}>Trinken · ${fmt(projects.potionPrice(p))} Gold</button>` : `<span class="muted">ab Stufe ${p.stage}</span>`}</div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function guildHtml() {
+    if (!guild.open()) return '';
+    const tabs = [['dauer', 'Daueraufträge'], ['tag', 'Tagesaufträge']].map(([id, name]) => `<button class="tab${guildTab === id ? ' on' : ''}" data-act="guild-tab" data-v="${id}">${name}</button>`).join('');
+    let body;
+    if (guildTab === 'dauer') {
+      body = `<p class="muted">Zählt über das ganze Spiel und alle Welten. Nach dem letzten Meilenstein gibt es für jeden weiteren Schritt die Standardbelohnung (${coinsText(guild.STANDARD_REWARD.taler, guild.STANDARD_REWARD.stern)}).</p>` +
+        Object.entries(guild.ORDERS).map(([id, o]) => {
+          const t = guild.target(id);
+          const c = guild.count(id);
+          const k = guild.claimed(id);
+          return `<div class="order">
+            <div class="line"><b>${o.name}</b><span class="muted">${guild.afterLimit(id) ? `Limit erreicht · alle ${fmt(o.repeat)}` : `Meilenstein ${k + 1} / ${o.steps.length}`}</span></div>
+            <span>${o.what}: <b>${fmt(Math.min(c, t))} / ${fmt(t)}</b> ${o.unit}</span>
+            <div class="bar"><i style="width:${Math.min(100, (c / t) * 100)}%"></i></div>
+            <div class="line"><span class="gold-text">${rewardText(guild.rewardOf(id))}</span>
+              <button data-act="order-claim" data-v="${id}" ${guild.ready(id) ? '' : 'disabled'}>Abholen</button></div>
+          </div>`;
+        }).join('');
+    } else {
+      const list = guild.dailies();
+      body = `<p class="muted">Jeden Spieltag neue Aufträge – mehr und bessere mit jeder Stufe des Gildenhauses.</p>` +
+        list.map((q, i) => `<div class="order${q.done ? ' done' : ''}">
+          <span>Bring <b>${village.describeNeed(q.need)}</b></span>
+          <span class="muted">Du hast ${fmt(village.haveFor(q.need))}</span>
+          <div class="line"><span class="gold-text">${rewardText(q.reward)}</span>
+            ${q.done ? '<span class="tag">erledigt</span>' : `<button data-act="daily-deliver" data-v="${i}" ${guild.canDeliver(i) ? '' : 'disabled'}>Abgeben</button>`}</div>
+        </div>`).join('');
+    }
+    return `<div class="tabs">${tabs}</div>${body}`;
+  }
+
+  function festHtml() {
+    const s = projects.stage('fest');
+    if (!s) return '';
+    if (!projects.isFestDay()) {
+      const d = projects.daysToFest();
+      return `<div class="chest"><b>Dorffest</b><p>Das nächste Fest ist ${d === 1 ? 'morgen' : `in ${d} Tagen`} (jeden ${projects.FEST_EVERY[s]}. Tag). Dann gibt es einen ${realm.inRealm() ? 'Minispiel' : 'Angel'}wettbewerb und einen Sonderhändler.</p></div>`;
+    }
+    const pts = projects.festPoints();
+    const prizes = projects.PRIZES.map((p, i) => `<div class="line"><span>ab <b>${p.points}</b> Punkten: <span class="gold-text">${rewardText({ ...p, item: p.item })}</span></span>
+      ${projects.prizeReady(i) ? `<button data-act="fest-prize" data-v="${i}">Abholen</button>` : `<span class="muted">${pts >= p.points ? 'abgeholt' : `${p.points - pts} fehlen`}</span>`}</div>`).join('');
+    const offers = projects.offers().map((id) => {
+      const it = getItem(id);
+      const bought = projects.offerBought(id);
+      return `<div class="line fest-offer r-${it.rank}"><span data-offer="${id}"></span><span><b>${it.name}</b> <i class="evo">${it.rank}</i>${state.count(id) ? '' : ' <b class="new">NEU</b>'}</span>
+        ${bought ? '<span class="tag">gekauft</span>' : `<button data-act="fest-buy" data-v="${id}" ${well.coins('stern') >= projects.OFFER_PRICE[it.tier] ? '' : 'disabled'}>${projects.OFFER_PRICE[it.tier]} 🌟</button>`}</div>`;
+    }).join('');
+    return `<div class="chest fest"><b>🎉 Heute ist Dorffest!</b>
+      <p>${realm.inRealm() ? 'Minispiel-Punkte am See' : 'Jeder Fisch'} zählt für den Wettbewerb${realm.inRealm() ? '' : ` (Rang D 1 · C 2 · B 4 · A 8 · S 16 · SS 32 Punkte)`}. Deine Punkte: <b class="gold-text">${pts}</b></p>
+      ${prizes}
+      <b>Sonderhändler</b><span class="muted">bezahlt wird mit Sternentalern (du hast ${well.coins('stern')} 🌟)</span>
+      ${offers}
+    </div>`;
+  }
+
+  function renderProject() {
+    const p = projects.PROJECTS[projectId];
+    const s = projects.stage(projectId);
+    const extra = projectId === 'taverne' ? tavernHtml() : projectId === 'gilde' ? guildHtml() : festHtml();
+    overlay.innerHTML = `
+      <section class="panel projectpanel">
+        ${head(`${p.name}${s ? ` · Stufe ${s}` : ' · Baustelle'}`)}
+        <p class="lead">${p.text}</p>
+        <div class="stages">${p.stages.map((t, i) => `<span class="${s > i ? 'on' : ''}">${s > i ? '✓' : `${i + 1}.`} ${t}</span>`).join('')}</div>
+        ${extra}
+        ${projectBuildHtml(projectId)}
+      </section>`;
+    for (const el of overlay.querySelectorAll('[data-offer]')) el.append(sprite(getItem(el.dataset.offer)));
+  }
+
+  function friendHtml(id) {
+    if (!friendship.isFriend(id)) return '';
+    const lv = friendship.level(id);
+    const pr = friendship.progress(id);
+    const now = companions.describeBonus({ bonus: friendship.bonusOf(id) });
+    const next = lv < friendship.MAX_LEVEL ? companions.describeBonus({ bonus: friendship.bonusOf(id, lv + 1) }) : '';
+    const hearts = Array.from({ length: friendship.MAX_LEVEL }, (_, i) => `<i class="${i < lv ? 'on' : ''}">♥</i>`).join('');
+    return `<div class="friend">
+      <div class="line"><b>Freundschaft</b><span class="hearts">${hearts}</span></div>
+      <div class="bar"><i style="width:${pr.share * 100}%"></i></div>
+      <span class="muted">${lv >= friendship.MAX_LEVEL ? 'Beste Freunde!' : `noch ${pr.missing} ♥ bis Stufe ${lv + 1} (leicht 1 · mittel 2 · schwer 3 ♥ je Aufgabe)`}</span>
+      ${now ? `<span class="gold-text">Bonus: ${now}</span>` : ''}
+      ${next ? `<span class="muted">Stufe ${lv + 1}: ${next}${lv + 1 === friendship.MAX_LEVEL ? ' + seltenes Sammelstück (S/SS)' : ` + ${coinsText(friendship.LEVEL_GIFTS[lv].taler, friendship.LEVEL_GIFTS[lv].stern)}`}</span>` : ''}
+    </div>`;
+  }
 
   // ------------------------------------------------------------ Wunschbrunnen
 
@@ -621,7 +757,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         const locked = !tailor.sewn(o.id);
         if (locked) el.classList.add('locked');
         const bonusText = o.bonus ? companions.describeBonus({ bonus: o.bonus }) : '';
-        el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}${locked ? '<span class="muted">✂ am Nähtisch nähen</span>' : ''}${bonusText ? `<span class="gold-text">${bonusText}</span>` : ''}`);
+        el.insertAdjacentHTML('beforeend', `<b>${o.name}</b>${o.id === state.outfit ? '<span class="tag">angezogen</span>' : ''}${locked ? `<span class="muted">${o.friend ? '♥ alle Bewohner dieses Dorfs beste Freunde' : '✂ am Nähtisch nähen'}</span>` : ''}${bonusText ? `<span class="gold-text">${bonusText}</span>` : ''}`);
         return el;
       })
     );
@@ -816,7 +952,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     } else {
       const have = village.haveFor(q.need);
       const ok = village.canComplete(q);
-      const reward = `${fmt(q.reward.gold)} Gold${q.reward.item !== null ? ` + Sammelstück ab Rang ${RARITIES[q.reward.item].id}` : ''}`;
+      const reward = `${fmt(q.reward.gold)} Gold${q.reward.taler || q.reward.stern ? ` + ${coinsText(q.reward.taler, q.reward.stern)}` : ''}${q.reward.item !== null ? ` + Sammelstück ab Rang ${RARITIES[q.reward.item].id}` : ''} + ${friendship.HEARTS[q.difficulty]} ♥`;
       body = `
         <p class="lead">„${npc.hello}“</p>
         <div class="chest quest r-${DIFF_RANK[q.difficulty]}">
@@ -834,6 +970,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       <section class="panel villagerpanel">
         ${head(npc.name)}
         <div class="villager-row"><div class="frame" id="npc-face"></div><div class="info">${body}</div></div>
+        ${friendHtml(npc.id)}
         <p class="muted">Erledigte Aufgaben insgesamt: ${fmt(state.village.done)}. Neue Aufgaben tauchen immer wieder auf.</p>
       </section>`;
     $('#npc-face').append(picture(village.villagerImage(npc.id)));
@@ -851,7 +988,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <div class="rank-big">DANKE!</div>
         <div class="frame"></div>
         <h3>${npc.name}</h3>
-        <p class="gold-won">+${fmt(res.gold)} Gold</p>
+        <p class="gold-won">+${fmt(res.gold)} Gold${res.taler || res.stern ? ` · +${coinsText(res.taler, res.stern)}` : ''}</p>
+        <p class="hearts">+${res.hearts} ♥${(res.levelUps || []).map((u) => `<br><b class="gold-text">Freundschaft Stufe ${u.level}!</b>${u.taler || u.stern ? ` Geschenk: ${coinsText(u.taler, u.stern)}` : ''}${u.outfit ? `<br><b class="new">Neue Tracht: ${OUTFITS.find((o) => o.id === u.outfit).name}</b> (Kleiderschrank)` : ''}`).join('')}</p>
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     $('.frame', el).append(picture(village.villagerImage(npc.id)));
@@ -2240,12 +2378,46 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       if (view === 'tailor') renderTailor();
       else renderWardrobe();
     }
+    if (act === 'proj-give' || act === 'proj-give-all') {
+      const res = projects.donate(projectId, act === 'proj-give' ? Number(btn.dataset.v) : null);
+      if (res.built) {
+        audio.play('build');
+        toast(`✦ ${projects.PROJECTS[projectId].name} erreicht Stufe ${projects.stage(projectId)}!`);
+        onProjectBuilt?.();
+      } else audio.play(res.given ? 'coin' : 'error');
+      renderProject();
+    }
+    if (act === 'potion') {
+      if (projects.buyPotion(btn.dataset.v)) { audio.play('levelUp'); toast(`${buffs.BUFFS[btn.dataset.v].name} wirkt!`); } else audio.play('error');
+      renderProject();
+    }
+    if (act === 'guild-tab') { guildTab = btn.dataset.v; renderProject(); }
+    if (act === 'order-claim' || act === 'daily-deliver' || act === 'fest-prize') {
+      const res = act === 'order-claim' ? guild.claim(btn.dataset.v) : act === 'daily-deliver' ? guild.deliver(Number(btn.dataset.v)) : projects.claimPrize(Number(btn.dataset.v));
+      if (!res) audio.play('error');
+      else {
+        audio.play('win');
+        toast(`Belohnung: ${rewardText({ ...res, item: null })}`);
+        if (res.item) {
+          reveals.push({ item: res.item, isNew: res.isNew, source: act === 'fest-prize' ? 'DORFFEST' : 'GILDE' });
+          nextReveal();
+        }
+      }
+      renderProject();
+    }
+    if (act === 'fest-buy') {
+      const res = projects.buyOffer(btn.dataset.v, getItem);
+      if (!res) audio.play('error');
+      else { reveals.push({ item: res.item, isNew: res.isNew, source: 'SONDERHÄNDLER' }); nextReveal(); }
+      renderProject();
+    }
     if (act === 'quest-done') {
       const res = village.complete(talkTo);
       if (!res) audio.play('error');
       else {
         reveals.push({ questDone: res });
         if (res.item) reveals.push({ item: res.item, isNew: res.isNew, source: 'BELOHNUNG' });
+        for (const u of res.levelUps || []) if (u.item) reveals.push({ item: u.item, isNew: u.isNew, source: 'GESCHENK · BESTE FREUNDE' });
         renderVillager();
         nextReveal();
       }
@@ -2525,6 +2697,10 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       show('villager');
     },
     openMarket: () => show('market'),
+    openProject: (id) => {
+      projectId = id;
+      show('project');
+    },
     openFishBook: () => show('fishbook'),
     openTrap: () => show('trap'),
     openTower: () => show('tower'),

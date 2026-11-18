@@ -1054,3 +1054,30 @@ body[data-display="fill"] { background: #0b0a1f; }
   .char canvas { width: 28px; height: 34px; }
   .char-info { padding: 8px 12px; }
 }
+
+/* ---------------------------------------------------------------- Dorfprojekte, Gilde, Freundschaft */
+
+.projectpanel .stages { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.projectpanel .stages span { color: #9a90c0; }
+.projectpanel .stages span.on { color: #9be8a0; }
+.proj-need { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 6px 0; border-top: 1px solid #2a2456; }
+.proj-need .bar { grid-column: 1 / -1; order: 3; }
+.proj-need .muted { order: 4; grid-column: 1 / -1; font-size: 12px; }
+.proj-need.full .bar i { background: #6fbf6a; }
+.order { background: #1b1730; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.order .line { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.order.done { opacity: 0.6; }
+.potion { align-items: center; padding: 6px 0; border-top: 1px solid #2a2456; }
+.potion small { display: block; }
+.fest { box-shadow: 0 0 0 2px #ffd04a; }
+.fest .line { align-items: center; }
+.fest-offer { display: flex; align-items: center; gap: 10px; padding: 4px 0; border-top: 1px solid #2a2456; }
+.fest-offer > span:nth-child(2) { flex: 1; }
+.fest-offer [data-offer] canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+.friend { background: #1b1730; padding: 10px 12px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 10px; text-align: left; }
+.friend .bar { width: 100%; }
+.friend .line { display: flex; justify-content: space-between; width: 100%; }
+.hearts i { color: #4b3b78; font-style: normal; font-size: 16px; margin-left: 2px; }
+.hearts i.on { color: #f2708a; }
+.friend .bar i { background: #f2708a; }
+p.hearts { color: #f2a0b0; }

@@ -2,6 +2,7 @@ import { RARITIES, rollTier } from './items.js';
 import { state } from './state.js';
 import * as realm from './realm.js';
 import * as statues from './statues.js';
+import * as friendship from './friendship.js';
 import { sprite, flipped, getOutfit } from './sprites.js';
 import { makeCanvas } from './utils.js';
 
@@ -34,6 +35,9 @@ export const BONUS_TEXT = {
   taler: (v) => `Brunnen-Taler ${pct(v)} günstiger`,
   silk: (v) => `+${pct(v)} Chance auf Seide aus Kämpfen`,
   forge: (v) => `Schmiedeglut lädt ${pct(v)} schneller`,
+  // Boni aus der Freundschaft mit den Dorfbewohnern
+  building: (v) => `Gebäude-Ausbau ${pct(v)} günstiger`,
+  buffTime: (v) => `Räusche halten ${pct(v)} länger`,
 };
 const pct = (v) => `${Math.round(v * 100)} %`;
 
@@ -249,9 +253,10 @@ export const bonusOf = (c, kind) => (c.bonus[kind] || 0) * LEVEL_MULT[level(c.id
 // Bonus des aktiven Begleiters plus genähter Kleidung (0, wenn nichts davon passt)
 const outfitBonus = (kind) => {
   const o = getOutfit(state.outfit);
-  return o.sew && state.tailor?.sewn.includes(o.id) ? o.bonus?.[kind] || 0 : 0;
+  const worn = o.sew ? state.tailor?.sewn.includes(o.id) : o.friend ? friendship.outfitUnlocked(o.id) : false;
+  return worn ? o.bonus?.[kind] || 0 : 0;
 };
-export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0) + outfitBonus(kind) + realm.bonus(kind) + statues.bonus(kind);
+export const bonus = (kind) => (active() ? bonusOf(active(), kind) : 0) + outfitBonus(kind) + realm.bonus(kind) + statues.bonus(kind) + friendship.bonus(kind);
 
 export function befriend(id) {
   if (!companion(id) || owned(id)) return false;
