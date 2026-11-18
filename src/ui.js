@@ -137,8 +137,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   const WISH_LABEL = { normal: ['wünschen', 'wünschen'], dupes: ['Duplikat', 'Duplikate'], new: ['Neues', 'Neue'] };
   const WISH_TEXT = {
     normal: 'Normale Wünsche: jedes Stück ist möglich. Zählt für den Glückszähler, Gratiswünsche gelten nur hier.',
-    dupes: 'Es kommen nur Stücke, die du schon hast – ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Zählt nicht für den Glückszähler.',
-    new: 'Es kommen nur Stücke, die dir noch fehlen – keine Duplikate. Der Rang wird wie immer gewürfelt (mit Glückszähler); fehlt dir in dem Rang nichts mehr, kommt ein Stück aus einem anderen Rang.',
+    dupes: 'Mit 75 % Chance je Stück kommt eines, das du schon hast – ideal als Material zum Leveln von Helden, Ausrüstung, Lebewesen und Minenarbeitern. Sonst ein ganz normales Stück.',
+    new: 'Mit 75 % Chance je Stück kommt eines, das dir noch fehlt (sonst ein ganz normales Stück). Der Rang wird wie immer gewürfelt (mit Glückszähler); fehlt dir in dem Rang nichts mehr, kommt ein Stück aus einem anderen Rang.',
   };
   // Pop-ups am Brunnen ein/aus (wird im Browser gemerkt)
   const POPUP_KEY = 'cosy-well-popups';
@@ -186,6 +186,22 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <label class="popup-toggle"><input type="checkbox" data-act="well-popups" ${wellPopups() ? 'checked' : ''}> Pop-ups für Rang A–SS anzeigen</label>
         <p class="muted wish-mode-text">${WISH_TEXT[wishMode]}${wishMode === 'new' && well.onlyHighMissing() ? ' <b class="gold-text">Dir fehlen nur noch Stücke ab Rang A – jeder Neu-Wunsch bringt eines davon, kostet aber mehr.</b>' : ''}</p>
         <p class="muted">Gratiswünsche heute: ${well.dailyLeft()} / ${well.DAILY_FREE[t]}${well.freeNext() ? ' · der nächste Einzelwunsch ist gratis ✦' : ''} · Chance auf einen Gratis-Folgewunsch: ${percent(well.FREE_NEXT[t])}${well.DISCOUNT[t] ? ` · ${Math.round(well.DISCOUNT[t] * 100)} % Rabatt` : ''}</p>
+        <div class="chest coins">
+          <div class="line"><b>Brunnen-Währungen</b><span class="muted">Sternsplitter ${well.splinters()} / ${well.SPLINTERS_PER_STAR} → 1 🌟</span></div>
+          ${Object.entries(well.CURRENCIES).map(([id, c]) => `
+            <div class="coin-row">
+              <span class="coin-name">${c.icon} <b>${c.name}</b> × ${well.coins(id)}<small>${c.text}</small></span>
+              <span class="coin-buy">
+                <button data-act="coin-buy" data-v="${id}" data-n="1" ${state.gold >= well.coinPrice(id, 1) ? '' : 'disabled'}>+1 · ${fmt(well.coinPrice(id, 1))}</button>
+                <button data-act="coin-buy" data-v="${id}" data-n="10" ${state.gold >= well.coinPrice(id, 10) ? '' : 'disabled'}>+10 · ${fmt(well.coinPrice(id, 10))}</button>
+              </span>
+              <span class="coin-pull">
+                <button class="${id}" data-act="pull" data-n="1" data-cur="${id}" ${well.coins(id) >= 1 ? '' : 'disabled'}>1× wünschen</button>
+                <button class="${id}" data-act="pull" data-n="10" data-cur="${id}" ${well.coins(id) >= 10 ? '' : 'disabled'}>10× wünschen</button>
+              </span>
+            </div>`).join('')}
+          <p class="muted">Chancen Glückstaler: D 55 % · C 40 % · B 4 % · A 0,9 % · S 0,09 % · SS 0,01 % · Sternentaler: B 70 % · A 25 % · S 4,5 % · SS 0,5 %. Jeder Glückstaler-Wunsch bringt einen Sternsplitter (${well.SPLINTERS_PER_STAR} = 1 Sternentaler), jeder normale 10er-Wunsch einen Glückstaler gratis. Der Glückszähler gilt auch hier.</p>
+        </div>
         <div class="pity">
           <div class="line"><span>Glückszähler <b class="rank-a">A</b></span><span class="muted">spätestens in ${well.untilA()} Stücken</span></div>
           <div class="bar pity-a"><i style="width:${Math.round(pityA * 100)}%"></i></div>
@@ -213,8 +229,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     );
   }
 
-  function pull(n) {
-    const res = well.pull(n, Math.random, { dupes: wishMode === 'dupes' && n !== 'spirit', fresh: wishMode === 'new' && n !== 'spirit' });
+  function pull(n, currency = null) {
+    const res = well.pull(n, Math.random, currency ? { currency } : { dupes: wishMode === 'dupes' && n !== 'spirit', fresh: wishMode === 'new' && n !== 'spirit' });
     if (res.error) {
       $('#well-note').textContent = res.error;
       audio.play('error');
@@ -224,6 +240,8 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     spiritLine = well.say(res);
     audio.play(res.free === 'spirit' ? 'wish' : 'pull');
     renderWell();
+    if (res.starsMade) toast(`🌟 Aus ${well.SPLINTERS_PER_STAR} Sternsplittern wurde ein Sternentaler!`);
+    else if (res.bonusTaler) toast('🪙 +1 Glückstaler für deinen 10er-Wunsch');
     if (res.gotSpirit) toast('✦ Der Brunnengeist erscheint und schenkt dir einen besonderen Wunsch!');
     else if (res.gotFreeNext) toast('✦ Glück gehabt: Dein nächster Einzelwunsch ist gratis!');
     // seltene Funde der Reihe nach groß zeigen, das seltenste zuletzt (abschaltbar)
@@ -2193,7 +2211,12 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const act = btn.dataset.act;
     if (act === 'close') show(null);
     if (act === 'gallery') show('gallery');
-    if (act === 'pull') pull(btn.dataset.n === 'spirit' ? 'spirit' : Number(btn.dataset.n));
+    if (act === 'pull') pull(btn.dataset.n === 'spirit' ? 'spirit' : Number(btn.dataset.n), btn.dataset.cur || null);
+    if (act === 'coin-buy') {
+      if (well.buyCoins(btn.dataset.v, Number(btn.dataset.n))) audio.play('coin');
+      else audio.play('error');
+      renderWell();
+    }
     if (act === 'build') {
       // Das Schicksal entscheidet beim Bau, welche Welt hinter dem Portal liegt
       if (btn.dataset.id === 'portal' && !buildings.owned('portal') && state.gold >= buildings.BUILDINGS.portal.buy && !state.realm.type) {

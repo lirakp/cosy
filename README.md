@@ -568,6 +568,23 @@ Auf dem Weg erscheinen Münzen (je 10 Gold). Am Wunschbrunnen kostet ein Zug
 besitzt (Material zum Leveln) – für 50 Gold mehr je Zug (150 / 1350). Der Rang wird
 wie immer gewürfelt; fehlt einem der Rang, kommt ein Stück aus dem nächstniedrigeren.
 Duplikat-Wünsche zählen nicht für den Glückszähler.
+**Trefferchance der Zusatz-Modi:** „Nur Duplikate“ und „Nur Neue“ treffen mit **75 %**
+je Stück; die übrigen 25 % sind ganz normale Stücke.
+
+**Brunnen-Währungen** (im Brunnen mit Gold kaufen, Brunnen-Rabatt gilt, in den
+Dimensionen doppelt; jede Welt hat ihr eigenes Portemonnaie):
+
+| Währung | Preis | Chancen |
+| --- | --- | --- |
+| 🪙 Glückstaler (günstig) | 40 Gold | D 55 % · C 40 % · B 4 % · A 0,9 % · S 0,09 % · SS 0,01 % |
+| 🌟 Sternentaler (teuer) | 500 Gold | B 70 % · A 25 % · S 4,5 % · SS 0,5 % |
+
+Dazu:
+
+- Jeder Glückstaler-Wunsch gibt einen **Sternsplitter**; 25 Splitter werden
+  automatisch zu einem Sternentaler.
+- Jeder normale, bezahlte **10er-Wunsch** gibt einen Glückstaler gratis.
+- Der Glückszähler gilt auch für Taler-Wünsche.
 Im Brunnen lassen sich die Pop-ups für Rang A–SS abschalten (Häkchen unter den
 Modus-Knöpfen, wird im Browser gemerkt). Dann gibt es nur einen kurzen Hinweis.
 Mit „Nur Neue“ kommen nur Stücke, die man noch nicht besitzt, also keine Duplikate.

@@ -990,3 +990,13 @@ body[data-display="fill"] { background: #0b0a1f; }
 .rush-modes small { display: block; font-size: 10px; }
 .afk-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; background: rgba(106, 84, 200, 0.25); padding: 6px 8px; font-size: 12px; margin: 6px 0; }
 .afk-line button { font-size: 11px; padding: 4px 8px; }
+
+.coins { display: flex; flex-direction: column; gap: 6px; }
+.coins .line { display: flex; justify-content: space-between; }
+.coin-row { display: grid; grid-template-columns: 1.3fr auto auto; gap: 8px; align-items: center; font-size: 12px; }
+.coin-name small { display: block; font-size: 10px; opacity: 0.75; }
+.coin-buy, .coin-pull { display: flex; gap: 4px; }
+.coin-row button { font-size: 11px; padding: 5px 8px; }
+.coin-pull .taler { background: #8a6a2a; }
+.coin-pull .stern { background: linear-gradient(90deg, #6a54c8, #c09030); }
+@media (max-width: 700px) { .coin-row { grid-template-columns: 1fr; } }

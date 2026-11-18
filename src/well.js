@@ -23,6 +23,22 @@ export const FREE_NEXT = [0.05, 0.06, 0.07, 0.08, 0.1, 0.12]; // Chance: nächst
 export const SPIRIT_CHANCE = [0.004, 0.005, 0.006, 0.008, 0.01, 0.0125]; // je gezogenem Stück
 export const SPIRIT_MIN_TIER = 3; // Geschenk des Brunnengeists: mindestens Rang A
 
+// Duplikat- und Neu-Wünsche treffen nur mit dieser Chance je Stück, sonst ein normales Stück
+export const MODE_CHANCE = 0.75;
+
+// Eigene Währungen des Brunnens (mit Gold gekauft, je Welt):
+//   Glückstaler  – günstig, fast immer Rang D oder C, kleine Chance auf mehr
+//   Sternentaler – teuer, garantiert Rang B bis SS
+// odds: Chance je Rang D … SS
+export const CURRENCIES = {
+  taler: { name: 'Glückstaler', icon: '🪙', price: 40, odds: [0.55, 0.4, 0.04, 0.009, 0.0009, 0.0001], text: 'fast immer Rang D oder C, mit etwas Glück höher' },
+  stern: { name: 'Sternentaler', icon: '🌟', price: 500, odds: [0, 0, 0.7, 0.25, 0.045, 0.005], text: 'garantiert Rang B, A, S oder SS' },
+};
+// Jeder Glückstaler-Wunsch bringt einen Sternsplitter; so viele ergeben einen Sternentaler
+export const SPLINTERS_PER_STAR = 25;
+// Für jeden normalen 10er-Wunsch gibt es einen Glückstaler obendrauf
+export const BONUS_TALER_PER_10 = 1;
+
 const w = () => state.well;
 export const tier = () => Math.max(0, buildings.tier('well'));
 
@@ -38,6 +54,42 @@ export const onlyHighMissing = () => {
 export const cost = (n, variant = false) => variant === 'new' && onlyHighMissing()
   ? NEW_HIGH_COST[n === 10 ? 10 : 1] * (realm.inRealm() ? realm.PULL : 1)
   : (sets.pullCost(Math.round((n === 10 ? PULL_10_COST : PULL_COST) * (1 - DISCOUNT[tier()]))) + extra(variant) * n) * (realm.inRealm() ? realm.PULL : 1);
+
+// ---------------------------------------------------------------- Währungen
+
+const wallet = () => (w().coins ||= { taler: 0, stern: 0, splinters: 0 });
+export const coins = (id) => wallet()[id] || 0;
+export const splinters = () => wallet().splinters || 0;
+// Preis in Gold (Brunnen-Rabatt gilt, in den Dimensionen doppelt)
+export const coinPrice = (id, n = 1) => Math.round(CURRENCIES[id].price * n * (1 - DISCOUNT[tier()])) * (realm.inRealm() ? realm.PULL : 1);
+export function buyCoins(id, n = 1) {
+  if (!CURRENCIES[id] || !state.spend(coinPrice(id, n), 'brunnen')) return false;
+  wallet()[id] = coins(id) + n;
+  state.changed();
+  return true;
+}
+function addCoins(id, n) {
+  wallet()[id] = coins(id) + n;
+}
+// Rang nach den Chancen einer Währung (Glückszähler gilt weiter)
+function rollCurrency(id, minTier, r) {
+  const odds = CURRENCIES[id].odds;
+  if (w().pityS >= PITY_S - 1) minTier = Math.max(minTier, 4);
+  else if (w().pityA >= PITY_A - 1) minTier = Math.max(minTier, 3);
+  const pool = odds.map((p, t) => (t >= minTier ? p : 0));
+  let u = r() * pool.reduce((a, b) => a + b, 0);
+  let t = pool.length - 1;
+  for (let k = 0; k < pool.length; k++) {
+    u -= pool[k];
+    if (u < 0) {
+      t = k;
+      break;
+    }
+  }
+  const item = rollItem({ tier: t, random: r });
+  countPity(item);
+  return { item, forced: minTier >= 3 && odds[3] + odds[4] + odds[5] < 1 };
+}
 
 // Duplikat-Wunsch: Der Rang wird wie immer gewürfelt, das Stück kommt aber nur
 // aus der eigenen Sammlung (gibt es in dem Rang nichts, dann aus dem nächstniedrigeren).
@@ -116,16 +168,25 @@ function countPity(item) {
 
 // Wünschen. mode: 1 | 10 | 'spirit'. Liefert das Ergebnis oder { error }.
 //   { results: [{ item, isNew, pity }], paid, free, gotFreeNext, gotSpirit }
-export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {}) {
+// currency: 'taler' | 'stern' – mit Brunnen-Währung statt Gold wünschen
+export function pull(mode, r = Math.random, { dupes = false, fresh = false, currency = null } = {}) {
   const n = mode === 10 ? 10 : 1;
   let free = null;
   let paid = 0;
   if (mode === 'spirit') dupes = fresh = false;
+  if (mode === 'spirit') currency = null;
+  if (currency) {
+    dupes = fresh = false;
+    if (!CURRENCIES[currency]) return { error: 'Unbekannte Währung.' };
+    if (coins(currency) < n) return { error: `Nicht genug ${CURRENCIES[currency].name} – kauf welche mit Gold.` };
+  }
   if (fresh && !canNew()) return { error: 'Du hast hier schon alles gesammelt – es gibt nichts Neues mehr.' };
   if (dupes && !canDupe()) return { error: 'Du besitzt noch kein Sammelstück, das sich verdoppeln ließe.' };
   if (mode === 'spirit') {
     if (!spiritGift()) return { error: 'Der Brunnengeist hat gerade nichts für dich.' };
     free = 'spirit';
+  } else if (currency) {
+    wallet()[currency] -= n;
   } else if (n === 1 && !dupes && !fresh && freeSingle()) free = freeSingle();
   else {
     paid = cost(n, fresh ? 'new' : dupes);
@@ -138,7 +199,9 @@ export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {
   const taken = new Set();
   for (let i = 0; i < n; i++) {
     const min = mode === 'spirit' ? SPIRIT_MIN_TIER : lucky && i === 0 ? lucky : 0;
-    rolled.push(dupes ? rollDupe(min, r) : fresh ? rollNew(min, r, taken) : rollOne(min, r));
+    // Duplikat-/Neu-Wünsche treffen zu 75 %, sonst kommt ein ganz normales Stück
+    const hit = (dupes || fresh) && r() < MODE_CHANCE;
+    rolled.push(currency ? rollCurrency(currency, min, r) : hit && dupes ? rollDupe(min, r) || rollOne(min, r) : hit && fresh ? rollNew(min, r, taken) : rollOne(min, r));
   }
   const seen = new Set();
   const results = rolled.map(({ item, forced }) => {
@@ -148,6 +211,21 @@ export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {
   });
   state.pull(paid, rolled.map((x) => x.item));
 
+  // Sternsplitter aus Glückstalern, Bonus-Taler für normale 10er-Wünsche
+  let starsMade = 0;
+  if (currency === 'taler') {
+    wallet().splinters = splinters() + n;
+    while (wallet().splinters >= SPLINTERS_PER_STAR) {
+      wallet().splinters -= SPLINTERS_PER_STAR;
+      addCoins('stern', 1);
+      starsMade++;
+    }
+  }
+  let bonusTaler = 0;
+  if (!currency && n === 10 && !dupes && !fresh && paid > 0) {
+    addCoins('taler', BONUS_TALER_PER_10);
+    bonusTaler = BONUS_TALER_PER_10;
+  }
   if (free === 'next') w().freeNext = false;
   if (free === 'daily') {
     if (w().dailyDay !== state.dayCount) w().dailyUsed = 0;
@@ -160,7 +238,7 @@ export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {
   }
   // Glück beim Wünschen: der nächste Einzelwunsch ist gratis …
   let gotFreeNext = false;
-  if (mode !== 'spirit' && !w().freeNext && r() < FREE_NEXT[tier()] + companions.bonus('luckWish')) {
+  if (mode !== 'spirit' && !currency && !w().freeNext && r() < FREE_NEXT[tier()] + companions.bonus('luckWish')) {
     w().freeNext = true;
     gotFreeNext = true;
   }
@@ -171,7 +249,7 @@ export function pull(mode, r = Math.random, { dupes = false, fresh = false } = {
     if (gotSpirit) w().spiritGift = true;
   }
   state.changed();
-  return { results, paid, free, gotFreeNext, gotSpirit, dupes, fresh };
+  return { results, paid, free, gotFreeNext, gotSpirit, dupes, fresh, currency, starsMade, bonusTaler };
 }
 
 // ---------------------------------------------------------------- Brunnengeist
