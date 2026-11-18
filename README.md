@@ -67,9 +67,9 @@ auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antipp
   automatisch mit Capacitor (`.github/workflows/android.yml`, Anpassungen in
   `mobile/prepare-android.sh`). Der Signierschlüssel `mobile/cosy-debug.keystore`
   ist ein einfacher Debug-Schlüssel (Passwort `android`), damit Updates passen.
-- **iPhone und alle anderen:** Das Spiel läuft als Web-App auf GitHub Pages
-  (`.github/workflows/pages.yml`). Im Browser öffnen und „Zum Home-Bildschirm“
-  wählen – dann startet es wie eine App im Vollbild und läuft auch offline.
+- **Als Web-App (auch iPhone):** Wird das Spiel auf einer Webseite bereitgestellt,
+  lässt es sich im Browser über „Zum Home-Bildschirm“ wie eine App installieren
+  (Vollbild, offline spielbar – `manifest.webmanifest`, `sw.js`).
 - **Bedienung per Touch:** ◀ ▶ unten links/rechts gedrückt halten zum Laufen,
   der grüne Knopf rechts ist die Aktion (`E`), Menüs über die Knöpfe oben, das
   Mana-Feld öffnet das Zauberbuch, in der Mine wechseln ▲ ▼ die Ebene. Am besten
