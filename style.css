@@ -1000,3 +1000,57 @@ body[data-display="fill"] { background: #0b0a1f; }
 .coin-pull .taler { background: #8a6a2a; }
 .coin-pull .stern { background: linear-gradient(90deg, #6a54c8, #c09030); }
 @media (max-width: 700px) { .coin-row { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------------- Handy & Tablet (Touch) */
+
+#touch-pad, #mine-nav { display: none; }
+#mana { cursor: pointer; }
+@media (pointer: coarse) {
+  #touch-pad {
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+  #touch-pad button {
+    pointer-events: auto;
+    width: 64px;
+    height: 64px;
+    font-size: 24px;
+    padding: 0;
+    background: rgba(27, 23, 48, 0.45);
+    color: rgba(253, 246, 227, 0.85);
+    box-shadow: 0 0 0 2px rgba(253, 246, 227, 0.35);
+    touch-action: none;
+  }
+  #touch-pad button.down { background: rgba(106, 84, 158, 0.75); }
+  #mine-nav:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 80px);
+  }
+  #mine-nav button { width: 52px; height: 44px; font-size: 18px; padding: 0; }
+  #btn-action { font-size: 15px; padding: 12px 18px; left: auto; transform: none; right: max(10px, env(safe-area-inset-right)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 76px); }
+  #mine-nav:not([hidden]) { right: auto; left: max(10px, env(safe-area-inset-left)); }
+  .hint { display: none; }
+}
+/* niedrige Bildschirme (Handy quer): kompaktes HUD und Startbild */
+@media (max-height: 500px) {
+  #hud { inset: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) auto max(6px, env(safe-area-inset-left)); font-size: 11px; }
+  #hud button, #gold, #daytime, #mana, #buff { font-size: 11px; padding: 4px 7px; }
+  .hud-left { gap: 5px; }
+  .hud-buttons { gap: 5px; max-width: 62%; }
+  .title-card { padding: 12px 14px 14px; gap: 8px; }
+  .logo { font-size: 34px; }
+  .tagline { display: none; }
+  .chars { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .char { padding: 4px 2px; }
+  .char canvas { width: 28px; height: 34px; }
+  .char-info { padding: 8px 12px; }
+}

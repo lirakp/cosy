@@ -21,6 +21,8 @@
       "index.html",
       "style.css",
       "src/**/*",
+      "icons/**/*",
+      "manifest.webmanifest",
       "desktop/**/*"
     ],
     "directories": {

@@ -1,0 +1,8 @@
+{
+  "appId": "app.cosy.game",
+  "appName": "Cosy",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#1b1730"
+  }
+}

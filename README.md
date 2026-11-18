@@ -58,6 +58,25 @@ Dann <http://localhost:8000> öffnen.
 **Steuerung:** `←` `→` oder `A` `D` laufen · `E` am Wunschbrunnen und im Lager · `G` Galerie · `X` Expedition · `F` Dungeon · `B` Bossarena · `N` Mine · `H` Schmiede · `P` Pause · `I` Statistik · `Z` Zauberbuch · `M` Ton an/aus ·
 auf dem Handy linke / rechte Bildhälfte gedrückt halten und die Knöpfe antippen.
 
+
+## Auf dem Handy spielen
+
+- **Android-App:** Unter *Releases → „Cosy für Android“* liegt `Cosy.apk`. Auf dem
+  Handy öffnen und installieren (einmalig „Apps aus dieser Quelle zulassen“).
+  Neue Fassungen einfach drüber installieren – der Spielstand bleibt. Gebaut wird
+  automatisch mit Capacitor (`.github/workflows/android.yml`, Anpassungen in
+  `mobile/prepare-android.sh`). Der Signierschlüssel `mobile/cosy-debug.keystore`
+  ist ein einfacher Debug-Schlüssel (Passwort `android`), damit Updates passen.
+- **iPhone und alle anderen:** Das Spiel läuft als Web-App auf GitHub Pages
+  (`.github/workflows/pages.yml`). Im Browser öffnen und „Zum Home-Bildschirm“
+  wählen – dann startet es wie eine App im Vollbild und läuft auch offline.
+- **Bedienung per Touch:** ◀ ▶ unten links/rechts gedrückt halten zum Laufen,
+  der grüne Knopf rechts ist die Aktion (`E`), Menüs über die Knöpfe oben, das
+  Mana-Feld öffnet das Zauberbuch, in der Mine wechseln ▲ ▼ die Ebene. Am besten
+  quer halten.
+- **Spielstand übertragen:** In der Android-App kopiert „Sichern“ den Spielstand in
+  die Zwischenablage, „Laden“ liest ihn von dort (oder aus einer Datei).
+
 ## Das Dorf
 
 Am Wegweiser ganz links auf dem Hof (`E` oder Klick aufs Schild) geht es ins

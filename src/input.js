@@ -1,12 +1,13 @@
 // Tastatur + Touch. `axis()` liefert -1 (links), 0 oder 1 (rechts).
 const keys = new Set();
 let pointerDir = 0;
+let padDir = 0; // Touch-Pfeile ◀ ▶
 let blocked = false;
 
 // Solange ein Menü offen ist, bleibt die Figur stehen.
 export function setBlocked(value) {
   blocked = value;
-  if (value) pointerDir = 0;
+  if (value) pointerDir = padDir = 0;
 }
 
 let tapHandler = null;
@@ -46,6 +47,25 @@ export function initInput(canvas) {
   canvas.addEventListener('pointermove', (e) => {
     if (pointerDir !== 0) point(e);
   });
+  // Pfeil-Knöpfe für Touch: gedrückt halten = laufen
+  for (const [id, dir] of [['pad-left', -1], ['pad-right', 1]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (blocked) return;
+      el.setPointerCapture(e.pointerId);
+      padDir = dir;
+      el.classList.add('down');
+    });
+    const up = () => {
+      if (padDir === dir) padDir = 0;
+      el.classList.remove('down');
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
   const release = () => (pointerDir = 0);
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
@@ -54,5 +74,5 @@ export function initInput(canvas) {
 export function axis() {
   if (blocked) return 0;
   const k = (RIGHT.some((c) => keys.has(c)) ? 1 : 0) - (LEFT.some((c) => keys.has(c)) ? 1 : 0);
-  return k !== 0 ? k : pointerDir;
+  return k !== 0 ? k : padDir || pointerDir;
 }

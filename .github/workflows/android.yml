@@ -1,0 +1,67 @@
+name: Android-App bauen
+
+# Baut die Android-App (APK) und legt sie als Download unter "Releases" ab.
+on:
+  push:
+    branches: [main, claude/cozy-game-foundation-nhof2p]
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - name: Spielregeln testen
+        run: npm test
+      - name: Spieldateien sammeln
+        run: |
+          mkdir -p www
+          cp -r index.html style.css manifest.webmanifest icons src www/
+      - name: Android-Projekt erzeugen
+        run: |
+          npm i --no-save @capacitor/core@6.2.1 @capacitor/cli@6.2.1 @capacitor/android@6.2.1
+          npx cap add android
+          command -v convert || (sudo apt-get update && sudo apt-get install -y imagemagick)
+          bash mobile/prepare-android.sh "${{ github.run_number }}"
+          npx cap sync android
+      - name: APK bauen
+        run: |
+          # immer derselbe Schlüssel – so lässt sich jede neue APK über die alte installieren
+          mkdir -p ~/.android
+          cp mobile/cosy-debug.keystore ~/.android/debug.keystore
+          cd android
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../Cosy.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cosy-Android
+          path: Cosy.apk
+          if-no-files-found: error
+      - name: Release aktualisieren
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --cleanup-tag --yes || true
+          gh release create android-latest Cosy.apk \
+            --target "$GITHUB_SHA" \
+            --title "Cosy für Android" \
+            --notes "Automatisch gebaut. Cosy.apk auf dem Handy öffnen und installieren (einmalig „Apps aus dieser Quelle zulassen“ erlauben). Updates einfach drüber installieren – der Spielstand bleibt."

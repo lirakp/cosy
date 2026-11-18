@@ -37,6 +37,7 @@ import { createWorld } from './world.js';
 import { createPlayer } from './player.js';
 
 const canvas = document.getElementById('game');
+const manaEl = document.getElementById('mana');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
@@ -170,8 +171,19 @@ addEventListener('keydown', (e) => {
 const saveNote = document.getElementById('save-note');
 const fileInput = document.getElementById('file-import');
 
-document.getElementById('btn-export').addEventListener('click', () => {
+// In der Handy-App (Android) gibt es keinen Download-Ordner: dort über die Zwischenablage
+const inApp = !!window.Capacitor?.isNativePlatform?.();
+document.getElementById('btn-export').addEventListener('click', async () => {
   state.save();
+  if (inApp) {
+    try {
+      await navigator.clipboard.writeText(state.exportSave());
+      saveNote.textContent = 'Spielstand in die Zwischenablage kopiert – z. B. in eine Notiz oder Nachricht einfügen. „Laden“ liest ihn von dort wieder ein.';
+    } catch {
+      saveNote.textContent = 'Kopieren hat nicht geklappt.';
+    }
+    return;
+  }
   const blob = new Blob([state.exportSave()], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -183,13 +195,25 @@ document.getElementById('btn-export').addEventListener('click', () => {
   saveNote.textContent = 'Gesichert. Die Datei liegt in deinem Download-Ordner.';
 });
 
-document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
+document.getElementById('btn-import').addEventListener('click', async () => {
+  if (inApp) {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim().startsWith('{')) return loadSave(text);
+    } catch {
+      // keine Zwischenablage – dann per Datei
+    }
+  }
+  fileInput.click();
+});
 fileInput.addEventListener('change', async () => {
   const file = fileInput.files[0];
   fileInput.value = '';
-  if (!file) return;
+  if (file) loadSave(await file.text());
+});
+async function loadSave(text) {
   try {
-    const loaded = state.parseSave(await file.text());
+    const loaded = state.parseSave(text);
     const owned = Object.keys(loaded.owned).length;
     if (!confirm(`Spielstand laden? ${loaded.gold.toLocaleString('de-DE')} Gold, ${owned} verschiedene Sammelstücke.\nDer aktuelle Spielstand wird ersetzt.`)) return;
     state.replace(loaded);
@@ -198,7 +222,7 @@ fileInput.addEventListener('change', async () => {
     saveNote.textContent = e.message;
     audio.play('error');
   }
-});
+}
 
 document.getElementById('btn-stats').addEventListener('click', () => {
   setPaused(false);
@@ -439,6 +463,11 @@ document.getElementById('btn-mine').addEventListener('click', () => ui.openMine(
 document.getElementById('btn-arena').addEventListener('click', () => ui.openArena());
 document.getElementById('btn-dungeon').addEventListener('click', () => ui.openDungeon());
 document.getElementById('btn-expedition').addEventListener('click', () => ui.openExpedition());
+// Touch: Mana antippen öffnet das Zauberbuch, ▲ ▼ wechseln die Mine-Ebene
+manaEl.addEventListener('click', () => !paused && !ui.isOpen() && ui.openTower());
+const mineNav = document.getElementById('mine-nav');
+document.getElementById('mine-up').addEventListener('click', () => !paused && !ui.isOpen() && travel(mineLevel - 1));
+document.getElementById('mine-down').addEventListener('click', () => !paused && !ui.isOpen() && mine.unlocked(mineLevel + 1) && travel(mineLevel + 1));
 actionButton.addEventListener('click', act);
 addEventListener('keydown', (e) => {
   if (paused || sleeping || ui.isOpen() || e.repeat) return;
@@ -495,7 +524,6 @@ setTapHandler((x, y) => {
   return true;
 });
 
-const manaEl = document.getElementById('mana');
 
 // aktiver Rausch oben links, mit Restzeit
 const buffEl = document.getElementById('buff');
@@ -563,6 +591,8 @@ function expeditionTick() {
   magic.tick(Date.now(), lastNight > 0.5);
   ui.updateTower();
   manaEl.hidden = !magic.owned();
+  mineNav.hidden = place !== 'mine';
+  if (place === 'mine') document.getElementById('mine-down').disabled = !mine.unlocked(mineLevel + 1);
   if (magic.owned()) manaEl.textContent = `✦ ${magic.mana()}/${magic.maxMana()}`;
 
   const found = expedition.tick();
@@ -918,3 +948,8 @@ requestAnimationFrame(frame);
 
 // Nur zum Messen (Adresse mit ?debug): Kamera und Figur von außen lesbar
 if (new URLSearchParams(location.search).has('debug')) window.__cosy = { cam: () => camX, x: () => player.x };
+
+// Als App installierbar (PWA): Offline-Cache, nur über http(s) – nicht im Desktop-Programm
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && location.hostname !== 'localhost') {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
