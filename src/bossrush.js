@@ -17,7 +17,10 @@ import * as guild from './guild.js';
 
 export const TEAM_SIZE = 10;
 export const FIGHT_SECONDS = 5;
-export const MAX_FIGHTS_PER_TICK = 15000; // höchstens so viele Kämpfe auf einmal (z. B. nach langer Abwesenheit)
+export const MAX_FIGHTS_PER_TICK = 20; // Sicherung: höchstens so viele Kämpfe auf einmal
+// Läuft nur, solange gespielt wird: Wer länger als PAUSE_GAP Sekunden weg war (Spiel zu,
+// im Hintergrund oder untätig), findet den Rush pausiert vor – nichts wird nachgeholt.
+export const PAUSE_GAP = 30;
 // Bosse werden mit jedem Sieg ein wenig zäher
 export const GROWTH = 0.004;
 // Bosse im Rush sind zäher als in der Arena (× Arena-Stärke)
@@ -80,17 +83,14 @@ function newBoss(rand, m = 'normal') {
 }
 export const bossOf = (b) => (b ? { ...bossInfo(b), power: bossPower(b.tier, run()?.bosses || 0, run()?.mode) } : null);
 
-// afk: nach einer Niederlage automatisch heimkehren und neu starten
-export function start(m = 'normal', { afk = false, now = Date.now(), rand = Math.random } = {}) {
+export function start(m = 'normal', { now = Date.now(), rand = Math.random } = {}) {
   if (run() || !party.heroIds().length || !buildings.owned('arena')) return false;
-  r().run = newRun(now, rand, m, afk);
+  r().run = newRun(now, rand, m);
   state.changed();
   return true;
 }
-function newRun(now, rand, m, afk, totals = null) {
+function newRun(now, rand, m) {
   return {
-    afk: !!afk,
-    totals: totals || { runs: 0, bosses: 0, gold: 0, best: 0 },
     mode: MODES[m] ? m : 'normal',
     power: party.teamPower(), // die Stärke beim Aufbruch zählt
     bosses: 0,
@@ -105,8 +105,14 @@ function newRun(now, rand, m, afk, totals = null) {
 
 // Rechnet alle fälligen Kämpfe ab. Liefert die Zahl der Kämpfe.
 export function tick(now = Date.now(), rand = Math.random) {
-  let x = run();
+  const x = run();
   if (!x || x.status !== 'fighting') return 0;
+  // Pause (Spiel zu, im Hintergrund oder untätig): einfach dort weitermachen, nichts nachholen
+  if (now - x.next > PAUSE_GAP * 1000) {
+    x.next = now + FIGHT_SECONDS * 1000;
+    state.changed();
+    return 0;
+  }
   let fights = 0;
   while (x.status === 'fighting' && now >= x.next && fights < MAX_FIGHTS_PER_TICK) {
     const boss = x.boss;
@@ -132,17 +138,6 @@ export function tick(now = Date.now(), rand = Math.random) {
       x.status = 'down';
     }
     fights++;
-    // AFK: gefallen → Beute einsammeln und gleich neu starten
-    if (x.status === 'down' && x.afk) {
-      if (x.mode === 'ultimate') r().bestUltimate = Math.max(r().bestUltimate || 0, x.bosses);
-      else r().best = Math.max(r().best || 0, x.bosses);
-      bank(x);
-      const totals = { runs: x.totals.runs + 1, bosses: x.totals.bosses + x.bosses, gold: x.totals.gold + x.loot.gold, best: Math.max(x.totals.best, x.bosses) };
-      const next = newRun(x.next, rand, x.mode, true, totals);
-      next.power = x.power;
-      r().run = next;
-      x = next;
-    }
   }
   if (fights >= MAX_FIGHTS_PER_TICK) x.next = now + FIGHT_SECONDS * 1000;
   if (x.mode === 'ultimate') r().bestUltimate = Math.max(r().bestUltimate || 0, x.bosses);
@@ -173,7 +168,7 @@ export function collect() {
   bank(y);
   r().run = null;
   state.changed();
-  return { bosses: y.bosses, revives: y.revives, ...y.loot, afkTotals: y.afk ? y.totals : null };
+  return { bosses: y.bosses, revives: y.revives, ...y.loot };
 }
 
 // Beute in den Vorrat

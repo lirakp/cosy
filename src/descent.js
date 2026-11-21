@@ -16,7 +16,9 @@ import * as guild from './guild.js';
 // Heimkehren sichert alles, wer nach einer Niederlage aufgibt, verliert die Hälfte.
 
 export const FLOOR_SECONDS = 10;
-export const MAX_FLOORS_PER_TICK = 15000; // höchstens so viele Etagen auf einmal (z. B. nach langer Abwesenheit)
+export const MAX_FLOORS_PER_TICK = 20; // Sicherung: höchstens so viele Etagen auf einmal
+// Läuft nur, solange gespielt wird (wie der Bossrush): nach einer Pause wird nichts nachgeholt
+export const PAUSE_GAP = 30;
 export const BASE_NEED = 40; // Stärke für Etage 1 (× Art)
 export const GUARD_EVERY = 5;
 export const BOSS_EVERY = 10;
@@ -76,17 +78,14 @@ export const remaining = (now = Date.now()) => (current()?.status === 'running' 
 // Mindest-Rang der Beute: alle 100 Etagen einer mehr, höchstens A (Etagenboss: einer mehr)
 const minTierAt = (floor) => Math.min(3, Math.floor(floor / 100));
 
-// afk: nach einer Niederlage automatisch einsammeln und neu starten
-export function start(typeId, now = Date.now(), afk = false) {
+export function start(typeId, now = Date.now()) {
   if (d().run || current() || !buildings.owned('dungeon') || !party.heroIds().length) return false;
-  d().descent = newRun(typeId, now, afk);
+  d().descent = newRun(typeId, now);
   state.changed();
   return true;
 }
-function newRun(typeId, now, afk, totals = null) {
+function newRun(typeId, now) {
   return {
-    afk: !!afk,
-    totals: totals || { runs: 0, gold: 0, items: 0, best: 0 },
     type: type(typeId).id,
     power: party.teamPower(),
     boost: 0,
@@ -141,7 +140,7 @@ function resolve(x, rand) {
       x.boost = Math.max(-0.3, Math.min(MAX_BOOST, x.boost + (rand() < 0.5 ? 0.1 : -0.05)));
     }
     log(x, { floor, event: ev });
-    if (ev === 'haendler' && !x.afk) {
+    if (ev === 'haendler') {
       x.status = 'merchant';
       return;
     }
@@ -177,22 +176,18 @@ function resolve(x, rand) {
 
 // Rechnet alle fälligen Etagen ab
 export function tick(now = Date.now(), rand = Math.random) {
-  let x = current();
+  const x = current();
   if (!x || x.status !== 'running') return 0;
+  if (now - x.next > PAUSE_GAP * 1000) {
+    x.next = now + FLOOR_SECONDS * 1000;
+    state.changed();
+    return 0;
+  }
   let n = 0;
   while (x.status === 'running' && now >= x.next && n < MAX_FLOORS_PER_TICK) {
     resolve(x, rand);
     x.next += FLOOR_SECONDS * 1000;
     n++;
-    // AFK: gefallen → Beute einsammeln und gleich neu absteigen
-    if (x.status === 'down' && x.afk) {
-      d().depthBest = { ...d().depthBest, [x.type]: Math.max(best(x.type), x.floor - 1) };
-      const res = bank(x, false, rand);
-      const totals = { runs: x.totals.runs + 1, gold: x.totals.gold + res.gold, items: x.totals.items + res.items.length, best: Math.max(x.totals.best, res.floors) };
-      d().descent = newRun(x.type, x.next - FLOOR_SECONDS * 1000, true, totals);
-      d().descent.power = x.power;
-      x = d().descent;
-    }
   }
   if (x.status === 'running' && now >= x.next) x.next = now + FLOOR_SECONDS * 1000;
   if (n) {
@@ -237,7 +232,7 @@ export function retreat(rand = Math.random) {
   const res = bank(y, y.status === 'down', rand);
   d().descent = null;
   state.changed();
-  return { ...res, afkTotals: y.afk ? y.totals : null };
+  return res;
 }
 
 // Rucksack gutschreiben (mit Verlust, wenn man nach einer Niederlage aufgibt)

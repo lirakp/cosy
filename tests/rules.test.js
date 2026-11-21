@@ -39,6 +39,11 @@ function withRandom(fn, random) {
 
 beforeEach(() => state.reset());
 
+// Spielt eine Weile (Bossrush/Abstieg laufen nur, solange regelmäßig getickt wird)
+function playFor(mod, from, ms, rand, step) {
+  for (let t = from + step; t <= from + ms; t += step) mod.tick(t, rand);
+}
+
 // ---------------------------------------------------------------- Katalog und Chancen
 
 test('Katalog: 2100 Stücke, eindeutige IDs, 50 je Kategorie und Rang', () => {
@@ -1187,8 +1192,8 @@ test('Bossrush: kämpft bis zur Niederlage, sammelt Beute, Wiederbeleben wird te
   const t0 = Date.now();
   assert.ok(bossrush.start('normal', { now: t0, rand: seeded(2) }));
   assert.equal(arena.party.autoEquip() && state.bossrush.team.length, 10);
-  // eine Stunde später: viele Kämpfe auf einmal
-  bossrush.tick(t0 + 3600 * 1000, seeded(5));
+  // eine Stunde gespielt: alle 5 Sekunden ein Kampf
+  playFor(bossrush, t0, 3600 * 1000, seeded(5), 5000);
   const x = bossrush.run();
   assert.ok(x.bosses > 0);
   assert.ok(x.loot.gold > 0 && x.loot.stoff.reduce((a, b) => a + b) === x.bosses * arena.WIN_CLOTH);
@@ -1228,9 +1233,9 @@ test('Abstieg: läuft bis zur Niederlage, Heimkehren sichert alles, Aufgeben kos
   assert.equal(dungeon.party.autoEquip(), false, 'Team gesperrt');
   let x = descent.current();
   const random = seeded(8);
-  for (let k = 0; k < 400 && x.status !== 'down'; k++) {
-    descent.tick(t0 + (k + 1) * 3600 * 1000, random);
-    if (x.status === 'merchant') descent.merchant(false, t0 + (k + 1) * 3600 * 1000);
+  for (let t = t0 + 10000, k = 0; k < 200000 && x.status !== 'down'; t += 10000, k++) {
+    descent.tick(t, random);
+    if (x.status === 'merchant') descent.merchant(false, t);
   }
   assert.equal(x.status, 'down');
   assert.ok(x.floor > 5);
@@ -1327,44 +1332,48 @@ test('Bossrush ultimativ: nur Bosse A–SS, schwächer angesetzt, mehr Gold', ()
   assert.ok(bossrush.start('ultimate', { now: t0, rand: seeded(9) }));
   const x = bossrush.run();
   assert.equal(x.mode, 'ultimate');
-  bossrush.tick(t0 + 3600 * 1000, seeded(11));
+  playFor(bossrush, t0, 3600 * 1000, seeded(11), 5000);
   assert.ok(x.log.every((f) => f.tier >= 3), 'nur A, S, SS');
   assert.ok(bossrush.bossPower(4, 10, 'ultimate') < bossrush.bossPower(4, 10) * 0.6);
   assert.ok(x.bosses > 0);
   assert.equal(bossrush.best('ultimate'), x.bosses);
 });
 
-test('Lange Läufe: starke Teams halten Stunden durch, AFK sammelt ein und startet neu', () => {
+test('Lange Läufe: laufen nur beim Spielen, nach einer Pause wird nichts nachgeholt', () => {
   state.buildings.arena = 5;
   state.buildings.dungeon = 5;
   state.addItems([...getGroup('helden', 'SS').slice(0, 5), ...getGroup('helden', 'S').slice(0, 5)]);
   dungeon.party.autoEquip();
   bossrush.party.autoEquip();
-  // fast sichere Siege: höchstens 0,05 % Verlust je Kampf
+  // fast sichere Siege, aber nur mit deutlichem Vorsprung
   assert.equal(bossrush.winChance(1e9, 100), bossrush.RUN_MAX_CHANCE);
   const t0 = Date.now();
-  // ein sehr starkes Team kämpft 4 Stunden lang durch
+  // ein sehr starkes Team kämpft eine Stunde lang durch, solange gespielt wird
   assert.ok(bossrush.start('normal', { now: t0, rand: seeded(1) }));
-  bossrush.run().power = 60000;
-  bossrush.tick(t0 + 4 * 3600 * 1000, seeded(2));
+  bossrush.run().power = 1e6;
+  playFor(bossrush, t0, 3600 * 1000, seeded(2), 5000);
   assert.equal(bossrush.run().status, 'fighting');
-  assert.ok(bossrush.run().bosses > 2000);
-  bossrush.collect();
-  // AFK mit schwächerem Team: fällt, sammelt ein, startet neu
-  const gold = state.gold;
-  assert.ok(bossrush.start('ultimate', { afk: true, now: t0, rand: seeded(3) }));
-  bossrush.run().power = 500;
-  bossrush.tick(t0 + 8 * 3600 * 1000, seeded(4));
+  const bosses = bossrush.run().bosses;
+  assert.ok(bosses > 600, `${bosses} Bosse`);
+  // 8 Stunden Pause (Spiel zu): nichts wird nachgeholt, danach geht es normal weiter
+  const later = t0 + 9 * 3600 * 1000;
+  assert.equal(bossrush.tick(later, seeded(3)), 0);
+  assert.equal(bossrush.run().bosses, bosses);
+  assert.equal(bossrush.tick(later + 5000, seeded(3)), 1);
   const res = bossrush.collect();
-  assert.ok(res.afkTotals.runs >= 1, 'automatisch neu gestartet');
-  assert.ok(state.gold > gold);
-  // AFK-Abstieg: Händler werden übersprungen, Neustart nach Niederlage ohne Verlust
-  assert.ok(descent.start('blut', t0, true));
-  descent.current().power = 2000;
-  descent.tick(t0 + 12 * 3600 * 1000, seeded(5));
-  const d2 = descent.current();
-  assert.equal(d2.status, 'running');
-  assert.ok(d2.totals.runs >= 1 && d2.totals.best > 300, `Rekord ${d2.totals.best}`);
+  assert.equal(res.afkTotals, undefined, 'kein AFK-Modus mehr');
+  // Abstieg genauso: nach einer langen Pause keine Etagen nachgeholt
+  assert.ok(descent.start('blut', t0));
+  descent.current().power = 1e6;
+  const rnd = seeded(5);
+  for (let t = t0 + 10000; t <= t0 + 600 * 1000; t += 10000) {
+    descent.tick(t, rnd);
+    if (descent.current().status === 'merchant') descent.merchant(false, t);
+  }
+  const floor = descent.current().floor;
+  assert.ok(floor > 40, `Etage ${floor}`);
+  assert.equal(descent.tick(t0 + 12 * 3600 * 1000, seeded(6)), 0);
+  assert.equal(descent.current().floor, floor);
   assert.equal(descent.retreat().lost, false);
 });
 

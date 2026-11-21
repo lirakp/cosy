@@ -319,8 +319,7 @@ Mana und Abklingzeit je Rang D … SS: 15 · 20 · 30 · 45 · 65 · 90 Mana,
 
 „Wünsche“ heißt: das erste Stück eines Zugs am Brunnen hat mindestens diesen
 Rang. 🪙/🌟 sind Glückstaler/Sternentaler für den Brunnen. „Schutz“ wehrt die
-nächste Niederlage im Bossrush oder Abstieg ab (es geht einfach weiter, auch im
-AFK-Modus); Schutz-Ladungen werden addiert. Die Zauber der Dimensionen schenken
+nächste Niederlage im Bossrush oder Abstieg ab (es geht einfach weiter); Schutz-Ladungen werden addiert. Die Zauber der Dimensionen schenken
 doppelt so viele Taler, einen Sternentaler und einen Schutz mehr. Lockruf-, Glücks- und Schild-Ladungen desselben Typs werden nicht
 addiert: Es zählen die meisten Ladungen und die stärkste Wirkung. Zauber-
 Sternschnuppen kommen kurz nacheinander, auch am Tag. Ein Rausch aus einem
@@ -782,7 +781,7 @@ Werte in `src/dungeon.js` (`TYPES`, `MEMORIES`).
 
 Im Dungeon-Menü gibt es neben „Erkundung“ den Reiter **⬇ Abstieg**. Das
 Dungeon-Team (5 Helden) steigt in der gewählten Art Etage für Etage hinab: alle
-**10 Sekunden** eine, auch offline, bis es fällt. Solange der Abstieg läuft,
+**10 Sekunden** eine, solange du spielst, bis es fällt. Solange der Abstieg läuft,
 ist das Team gesperrt. Eine normale Erkundung geht dann nicht.
 
 - Jede Etage verlangt 3 % mehr Stärke (linear, × Art). Alle **5** Etagen wartet ein
@@ -846,8 +845,8 @@ Beide werden wie in Arena und Dungeon gelevelt, Monster mit Monster-Duplikaten.
 Wer im Arena- oder Dungeon-Team steckt, ist hier nicht verfügbar und umgekehrt.
 
 - Nach dem Start kämpft das Team **alle 5 Sekunden** gegen einen Boss mit
-  zufälligem Rang (Chancen wie am Brunnen). Das läuft auch offline weiter,
-  bis es verliert.
+  zufälligem Rang (Chancen wie am Brunnen). Das läuft nur, solange du
+  spielst, bis es verliert.
 - Bosse im Rush sind **1,5× so stark** wie in der Arena und werden je bisherigem
   Sieg um 0,4 % stärker (Siegchance siehe „Lange Läufe“ unten).
 - Jeder Sieg bringt Gold (15 · 35 · 80 · 180 · 450 · 1200 je Rang, in
@@ -863,7 +862,7 @@ Sieg nur um 0,3 % statt 0,4 % zäher. Die Beute ist größer: Gold × 1,5 und +1
 Seide-Chance. Wiederbeleben und Heimkehren funktionieren wie im normalen Rush. Der
 beste Lauf wird getrennt gespeichert.
 
-**Lange Läufe und AFK-Modus** (Bossrush, ultimativer Bossrush und Abstieg):
+**Lange Läufe** (Bossrush, ultimativer Bossrush und Abstieg):
 Die volle Siegchance von 99,98 % gibt es erst mit deutlichem Vorsprung (Team
 mindestens 1,25× so stark wie der Gegner). Bei gleicher Stärke sind es 99,5 %, ist
 der Gegner stärker, fällt sie quadratisch: 99,5 % − 1,5 × (1 − Verhältnis)²
@@ -873,14 +872,16 @@ Art). Das Gold je Boss nimmt bei langen Läufen ab (1 / (1 + Bosse/200)), im Abs
 wächst es nur mit der Wurzel der Tiefe (4 × (1 + √Etage) × Art).
 Richtwerte (simuliert, Helden ohne Level): 5 Helden Rang C ≈ 17.000 Gold pro Stunde
 im Bossrush, 10 Helden A ≈ 26.000; Läufe dauern je nach Team Minuten bis zu einer
-Stunde – im AFK-Modus geht es danach automatisch weiter. Der
+Stunde. Der
 Mindest-Rang der Beute steigt im Abstieg alle 100 Etagen, höchstens bis A.
-Mit dem Häkchen **🌙 AFK-Modus** vor dem Start wird nach einer Niederlage
-automatisch eingesammelt und neu gestartet. Im Abstieg geschieht das ohne Verlust,
-Händler werden übersprungen. Während des Laufs zeigt eine Zeile die bisherigen
-AFK-Läufe, den Rekord und das eingesammelte Gold. „AFK beenden“ schaltet es ab.
+**Nur beim Spielen:** Bossrush und Abstieg laufen nur, solange das Spiel sichtbar
+ist und in den letzten 5 Minuten eine Eingabe kam (Taste, Klick, Tippen). Ist das
+Spiel zu, minimiert, im Hintergrund-Tab oder liegt man untätig davor, pausiert der
+Lauf (Hinweis „⏸ Pausiert“) und macht beim Weiterspielen einfach dort weiter –
+nachgeholt wird nichts. Einen AFK-Modus gibt es nicht mehr.
 
-Werte in `src/bossrush.js`.
+Werte in `src/bossrush.js` und `src/activity.js`.
+
 ## Errungenschaften
 
 `R` (oder im Pause-Menü) öffnet die Errungenschaften: 22 Stück in fünf Gruppen

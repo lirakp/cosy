@@ -37,6 +37,8 @@ import { createWorld } from './world.js';
 import * as projects from './projects.js';
 import * as guild from './guild.js';
 import * as achievements from './achievements.js';
+import * as activity from './activity.js';
+activity.init();
 let achCountdown = 2;
 import { createPlayer } from './player.js';
 
@@ -570,9 +572,12 @@ function expeditionTick() {
   if (dungeonNow === 'done' && dungeonWas === 'running' && !document.hidden) ui.toast('Deine Helden sind aus dem Dungeon zurück!', true);
   dungeonWas = dungeonNow;
   ui.updateDungeon();
-  bossrush.tick();
+  // Bossrush und Abstieg laufen nur, solange gespielt wird (sichtbar, mit Eingaben)
+  if (activity.playing()) {
+    bossrush.tick();
+    descent.tick();
+  }
   ui.updateRush();
-  descent.tick();
   ui.updateDescent();
 
   // Mine: Erz wird laufend gehackt

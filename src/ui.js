@@ -30,6 +30,7 @@ import * as friendship from './friendship.js';
 import * as projects from './projects.js';
 import * as guild from './guild.js';
 import * as ach from './achievements.js';
+import * as activity from './activity.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
@@ -70,7 +71,6 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   let selected = null;
   let lastPull = [];
   const pick = { level: 0, type: 'blut' }; // gewählte Art und Gefahrenstufe im Dungeon-Menü
-  let descentAfk = false;
   let dungeonTab = 'erkundung'; // 'erkundung' (feste Zeit) oder 'abstieg' (endlos)
   let descentShown = '';
   let arenaTab = 'fight';
@@ -603,8 +603,11 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   // ------------------------------------------------------------ Bossrush
 
   let rushShown = ''; // zuletzt angezeigter Stand (Siege + Status)
-  let rushAfk = false; // AFK-Modus für den nächsten Start
-  const afkLine = (x, unit) => (x.afk ? `<div class="afk-line"><span>🌙 <b>AFK aktiv</b> · ${x.totals.runs} Läufe beendet · Rekord ${x.totals.best} ${unit} · bisher +${fmt(x.totals.gold)} Gold eingesammelt</span><button data-act="afk-off" data-v="${unit}">AFK beenden</button></div>` : '');
+  // Hinweis, wenn Bossrush/Abstieg gerade pausieren (Spiel im Hintergrund oder untätig)
+  const pauseLine = () => {
+    const why = activity.pauseReason();
+    return why ? `<p class="note">⏸ Pausiert (${why}) – läuft nur, solange du spielst.</p>` : '';
+  };
 
   function rushHtml() {
     const x = bossrush.run();
@@ -612,19 +615,18 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     const matLine = (loot) => ['stoff', 'seide'].flatMap((k) => RARITIES.map((r, t) => (loot[k][t] ? `${arena.MATERIALS[k].name} ${r.id} ×${loot[k][t]}` : null)).filter(Boolean)).join(' · ') || 'noch nichts';
     if (!x) {
       return `
-        <p class="lead">Stell bis zu ${bossrush.TEAM_SIZE} Helden (mit Ausrüstung) und Monster auf. Sie kämpfen alle ${bossrush.FIGHT_SECONDS} Sekunden gegen einen Boss mit zufälligem Rang – auch wenn du nicht spielst – bis sie verlieren. Jeder Sieg bringt Gold, Stoff und manchmal Seide; die Bosse werden mit jedem Sieg zäher.</p>
+        <p class="lead">Stell bis zu ${bossrush.TEAM_SIZE} Helden (mit Ausrüstung) und Monster auf. Sie kämpfen alle ${bossrush.FIGHT_SECONDS} Sekunden gegen einen Boss mit zufälligem Rang, bis sie verlieren – aber nur, solange du spielst (im Hintergrund, bei geschlossenem Spiel oder nach ${activity.IDLE_MINUTES} Minuten ohne Eingabe pausiert der Rush). Jeder Sieg bringt Gold, Stoff und manchmal Seide; die Bosse werden mit jedem Sieg zäher.</p>
         <h4>Rush-Team · Stärke ${fmt(P.teamPower())}</h4>
         ${membersHtml('rush')}
         <div class="chest">
           <p class="muted">Bester Lauf: <b class="gold-text">${bossrush.best('normal')}</b> Bosse · ultimativ: <b class="gold-text">${bossrush.best('ultimate')}</b>. Wiederbeleben kostet ${fmt(bossrush.REVIVE_BASE)} Gold + ${bossrush.REVIVE_STEP} je besiegtem Boss (höchstens ${fmt(bossrush.REVIVE_MAX)}).</p>
-          <label class="popup-toggle"><input type="checkbox" data-act="rush-afk" ${rushAfk ? 'checked' : ''}> 🌙 AFK-Modus: nach einer Niederlage automatisch heimkehren und neu starten</label>
           <div class="rush-modes">
             <button class="big" data-act="rush-start" data-v="normal" ${P.heroIds().length ? '' : 'disabled'}>Bossrush starten<small>Bosse D–SS</small></button>
             <button class="big ultimate" data-act="rush-start" data-v="ultimate" ${P.heroIds().length ? '' : 'disabled'}>⚔ Ultimativer Bossrush<small>nur A–SS · halb so stark, wachsen langsamer · Gold × 1,5 · mehr Seide</small></button>
           </div>
         </div>`;
     }
-    rushShown = `${x.bosses}${x.status}`;
+    rushShown = `${x.bosses}${x.status}${!!activity.pauseReason()}`;
     const boss = bossrush.bossOf(x.boss);
     const odds = bossrush.winChance(x.power, boss.power);
     const log = x.log.map((f) => `<li class="${f.win ? 'good' : 'bad'}">${f.win ? '✓' : f.ward ? '⛨' : '✗'} ${arena.BOSS_NAMES[f.kind]}${f.ward ? ' · Schutzzauber!' : ''} <b class="evo r-${RARITIES[f.tier].id}">${RARITIES[f.tier].id}</b> · ${percent(f.odds)}</li>`).join('');
@@ -635,7 +637,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
           <div><b>${x.status === 'down' ? 'Besiegt von' : 'Nächster Gegner'}: ${boss.name}</b> <span class="evo">Rang ${boss.rank}</span><br>
           Stärke ${fmt(boss.power)} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b><br>
           ${x.status === 'fighting' ? `Kampf in <b id="rush-time">${clock(bossrush.remaining())}</b>` : '<b class="bad">Die Gruppe ist gefallen.</b>'}</div></div>
-        ${afkLine(x, 'Bosse')}
+        ${pauseLine()}
         <div class="line"><span>Beute: <b class="gold-text">${fmt(x.loot.gold)} Gold</b></span></div>
         <p class="muted">${matLine(x.loot)}</p>
         ${log ? `<ul class="rush-log">${log}</ul>` : ''}
@@ -2003,9 +2005,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   // läuft jede Sekunde mit, solange der Bossrush offen ist
   function updateRush() {
     if (view !== 'arena' || arenaTab !== 'rush' || !bossrush.run()) return;
-    bossrush.tick();
+    if (activity.playing()) bossrush.tick();
     const x = bossrush.run();
-    if (`${x.bosses}${x.status}` !== rushShown) return renderArena();
+    if (`${x.bosses}${x.status}${!!activity.pauseReason()}` !== rushShown) return renderArena();
     const t = $('#rush-time');
     if (t) t.textContent = clock(bossrush.remaining());
   }
@@ -2023,19 +2025,18 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       descentShown = '';
       const T = dungeon.type(pick.type);
       body = `
-        <p class="lead">Das Dungeon-Team steigt Etage für Etage hinab – alle ${descent.FLOOR_SECONDS} Sekunden eine, auch wenn du nicht spielst –, bis es fällt. Alle ${descent.GUARD_EVERY} Etagen wartet ein Wächter, alle ${descent.BOSS_EVERY} ein Etagenboss mit sicherem Sammelstück. Dazwischen: Schatzräume, heilende Quellen, Händler und Fallen${T.memories ? ' – und Erinnerungen' : ''}.</p>
+        <p class="lead">Das Dungeon-Team steigt Etage für Etage hinab – alle ${descent.FLOOR_SECONDS} Sekunden eine, bis es fällt – aber nur, solange du spielst (im Hintergrund oder ohne Eingabe pausiert der Abstieg). Alle ${descent.GUARD_EVERY} Etagen wartet ein Wächter, alle ${descent.BOSS_EVERY} ein Etagenboss mit sicherem Sammelstück. Dazwischen: Schatzräume, heilende Quellen, Händler und Fallen${T.memories ? ' – und Erinnerungen' : ''}.</p>
         <nav class="tabs dtypes">${typesHtml}</nav>
         <div class="dtype-info dtype-${T.id}"><b>${T.icon} ${T.name}</b><p>${T.text}</p></div>
         <h4>Team · Stärke ${fmt(dungeon.power())}</h4>
         ${membersHtml('dungeon')}
         <div class="chest">
           <p class="muted">Heimkehren sichert den ganzen Rucksack. Fällt das Team, kannst du es wiederbeleben (${fmt(descent.REVIVE_BASE)} Gold + ${descent.REVIVE_STEP} je Etage, höchstens ${fmt(descent.REVIVE_MAX)}) – oder aufgeben und die Hälfte der Beute verlieren.</p>
-          <label class="popup-toggle"><input type="checkbox" data-act="descent-afk" ${descentAfk ? 'checked' : ''}> 🌙 AFK-Modus: nach einer Niederlage automatisch einsammeln (ohne Verlust) und neu absteigen; Händler werden übersprungen</label>
           <div class="line"><button class="big" data-act="descent-start" ${dungeon.party.heroIds().length && !dungeon.run() ? '' : 'disabled'}>⬇ Abstieg beginnen · ${T.name}</button></div>
           ${dungeon.run() ? '<p class="note">Gerade läuft noch eine Erkundung.</p>' : ''}
         </div>`;
     } else {
-      descentShown = `${x.floor}${x.status}`;
+      descentShown = `${x.floor}${x.status}${!!activity.pauseReason()}`;
       const T = dungeon.type(x.type);
       const kind = x.floor % descent.BOSS_EVERY === 0 ? 'boss' : x.floor % descent.GUARD_EVERY === 0 ? 'waechter' : 'etage';
       const odds = descent.chance(x.floor, x);
@@ -2050,7 +2051,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
       body = `
         <div class="chest rush dtype-${T.id}">
           <div class="line"><span>${T.icon} <b>${T.name}</b> · Etage <b class="gold-text">${x.floor}</b> · Rekord ${descent.best(x.type)}</span><span>Stärke ${fmt(descent.effectivePower(x))}</span></div>
-          ${afkLine(x, 'Etagen')}
+          ${pauseLine()}
           ${mods ? `<p class="muted">${mods}</p>` : ''}
           <p>${x.status === 'down' ? `<b class="bad">Das Team ist auf Etage ${x.floor} gefallen.</b>` : x.status === 'merchant' ? 'Ein Händler versperrt den Weg …' : `Nächste: <b>${descent.KIND_NAMES[kind]} ${x.floor}</b> · Stärke ${fmt(descent.need(x.floor, x.type))} · Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${percent(odds)}</b> · in <b id="descent-time">${clock(descent.remaining())}</b>`}</p>
           ${event}
@@ -2080,9 +2081,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
 
   function updateDescent() {
     if (view !== 'dungeon' || dungeonTab !== 'abstieg' || !descent.current()) return;
-    descent.tick();
+    if (activity.playing()) descent.tick();
     const x = descent.current();
-    if (!x || `${x.floor}${x.status}` !== descentShown) return renderDungeon();
+    if (!x || `${x.floor}${x.status}${!!activity.pauseReason()}` !== descentShown) return renderDungeon();
     const t = $('#descent-time');
     if (t) t.textContent = clock(descent.remaining());
   }
@@ -2100,7 +2101,6 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <div class="gold-won">+${fmt(res.gold)} Gold</div>
         <div class="grid" id="loot"></div>
         <p>${res.items.length} Sammelstück${res.items.length === 1 ? '' : 'e'}${res.lost ? ` · ${res.lostItems} gingen beim Rückzug verloren` : ''}</p>
-        ${res.afkTotals ? `<p class="muted">🌙 Dazu im AFK-Modus: ${res.afkTotals.runs} Läufe, +${fmt(res.afkTotals.gold)} Gold und ${res.afkTotals.items} Sammelstücke (schon in deiner Sammlung), Rekord Etage ${res.afkTotals.best}.</p>` : ''}
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     $('#loot', el).replaceChildren(...res.items.map(({ item, isNew }) => tile(item, { badge: isNew ? '<span class="new">NEU</span>' : '' })));
@@ -2631,14 +2631,13 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         nextReveal();
       }
     }
-    if (act === 'afk-off') { const x = btn.dataset.v === 'Bosse' ? bossrush.run() : descent.current(); if (x) x.afk = false; state.changed(); show(view); }
-    if (act === 'rush-start') { audio.play(bossrush.start(btn.dataset.v || 'normal', { afk: rushAfk }) ? 'start' : 'error'); partySel.rush = null; renderArena(); }
+    if (act === 'rush-start') { audio.play(bossrush.start(btn.dataset.v || 'normal') ? 'start' : 'error'); partySel.rush = null; renderArena(); }
     if (act === 'rush-revive') { audio.play(bossrush.revive() ? 'levelUp' : 'error'); renderArena(); }
     if (act === 'rush-collect') {
       const res = bossrush.collect();
       if (res) {
         audio.play('gold');
-        toast(`Bossrush beendet: ${res.bosses} Bosse besiegt · +${fmt(res.gold)} Gold${res.afkTotals ? ` (dazu ${res.afkTotals.runs} AFK-Läufe mit ${fmt(res.afkTotals.gold)} Gold)` : ''}, Stoff und Seide im Vorrat`);
+        toast(`Bossrush beendet: ${res.bosses} Bosse besiegt · +${fmt(res.gold)} Gold, Stoff und Seide im Vorrat`);
       }
       renderArena();
     }
@@ -2686,7 +2685,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'level') { pick.level = Number(btn.dataset.v); renderDungeon(); }
     if (act === 'dtype') { pick.type = btn.dataset.v; renderDungeon(); }
     if (act === 'dtab') { dungeonTab = btn.dataset.v; renderDungeon(); }
-    if (act === 'descent-start') { audio.play(descent.start(pick.type, Date.now(), descentAfk) ? 'start' : 'error'); partySel.dungeon = null; renderDungeon(); }
+    if (act === 'descent-start') { audio.play(descent.start(pick.type, Date.now()) ? 'start' : 'error'); partySel.dungeon = null; renderDungeon(); }
     if (act === 'descent-buy') { audio.play(descent.merchant(true) ? 'levelUp' : 'error'); renderDungeon(); }
     if (act === 'descent-skip') { descent.merchant(false); renderDungeon(); }
     if (act === 'descent-revive') { audio.play(descent.revive() ? 'levelUp' : 'error'); renderDungeon(); }
@@ -2717,8 +2716,6 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   overlay.addEventListener('change', (e) => {
     const el = e.target;
     if (el.dataset.act === 'helper-plan') { gardener.setPlan(Number(el.dataset.i), el.value); renderGarden(); }
-    if (el.dataset.act === 'rush-afk') { rushAfk = el.checked; audio.click(); }
-    if (el.dataset.act === 'descent-afk') { descentAfk = el.checked; audio.click(); }
     if (el.dataset.act === 'well-popups') { setWellPopups(el.checked); audio.click(); renderWell(); }
     if (el.dataset.act === 'helper-sell') { gardener.setSell(el.checked); renderGarden(); }
 
