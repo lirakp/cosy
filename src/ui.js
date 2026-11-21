@@ -31,6 +31,7 @@ import * as projects from './projects.js';
 import * as guild from './guild.js';
 import * as ach from './achievements.js';
 import * as activity from './activity.js';
+import * as battle from './battle.js';
 import { OUTFITS, makePlayerSprites } from './sprites.js';
 
 // Menüs über dem Spiel: Wunschbrunnen (Ziehen), Galerie und das Pop-up für seltene Funde.
@@ -600,6 +601,59 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (rb && arenaTab === 'rush') $('#rush-boss')?.append(picture(rb.image));
   }
 
+
+  // ------------------------------------------------------------ Rundenkampf (Arena)
+
+  const hpBar = (hp, max, cls = '') => `<div class="hpbar ${cls}"><i style="width:${Math.max(0, (hp / max) * 100)}%"></i><span>${fmt(hp)} / ${fmt(max)}</span></div>`;
+  function battleHtml() {
+    const b = arena.current();
+    const B = b.boss;
+    const boss = arena.bossInfo({ tier: B.tier, kind: B.kind });
+    const cur = battle.active(b);
+    const flags = [B.charging ? '<span class="flag warn">⚠ holt aus!</span>' : '', B.burn ? `<span class="flag burn">🔥 brennt (${B.burn})</span>` : '', B.enraged ? '<span class="flag rage">😡 wütend</span>' : ''].join('');
+    const heroes = b.heroes.map((h, i) => {
+      const C = battle.CLASSES[h.cls];
+      return `<div class="bhero${h.hp <= 0 ? ' down' : ''}${cur && b.turn === i ? ' on' : ''}">
+        <span class="bsprite" data-sprite="${h.id}"></span>
+        <b>${h.name}</b>
+        <span class="muted">${C.icon} ${C.name}${h.defending ? ' · 🛡' : ''}</span>
+        ${hpBar(h.hp, h.maxHp, h.hp < h.maxHp * 0.3 ? 'low' : '')}
+        <span class="muted small">${C.skill.name}: ${h.cd ? `noch ${h.cd} Runde${h.cd > 1 ? 'n' : ''}` : 'bereit'}</span>
+      </div>`;
+    }).join('');
+    const C = cur && battle.CLASSES[cur.cls];
+    const actions = cur ? `
+      <div class="bactions">
+        <span><b>${cur.name}</b> ist dran:</span>
+        <button class="big" data-act="b-act" data-v="attack">⚔ Angriff</button>
+        <button class="big skill" data-act="b-act" data-v="skill" ${cur.cd ? 'disabled' : ''} title="${C.skill.text}">${C.icon} ${C.skill.name}${cur.cd ? ` (${cur.cd})` : ''}</button>
+        <button class="big" data-act="b-act" data-v="defend" title="Halbiert den Schaden bis zur nächsten Runde und heilt ein wenig">🛡 Verteidigen</button>
+      </div>
+      <div class="line"><span class="muted">${C.skill.text}</span>
+        <span><button data-act="b-auto" data-v="round">Runde automatisch</button> <button data-act="b-auto" data-v="end">Bis zum Ende automatisch</button></span></div>` : '';
+    return `<div class="chest battle r-${boss.rank}">
+      <div class="line"><b>Runde ${b.round}</b><span class="muted">Danach ist der Boss dran</span></div>
+      <div class="bboss">
+        <div class="frame" id="boss-frame"></div>
+        <div class="info"><h3>${B.name} <span class="evo">Rang ${boss.rank}</span></h3>
+          ${hpBar(B.hp, B.maxHp, 'boss')}
+          <span>Angriff ${fmt(B.atk)} · Flächenangriff alle ${battle.BIG_EVERY} Runden</span>
+          <div class="flags">${flags}</div></div>
+      </div>
+      <div class="bheroes">${heroes}</div>
+      ${actions}
+      <ul class="blog">${b.log.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
+    </div>`;
+  }
+
+  function battleResult(res) {
+    if (!res || res === true) return renderArena();
+    audio.play('fight');
+    reveals.push({ fight: res });
+    renderArena();
+    nextReveal();
+  }
+
   // ------------------------------------------------------------ Bossrush
 
   let rushShown = ''; // zuletzt angezeigter Stand (Siege + Status)
@@ -653,9 +707,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   function fightHtml() {
     return `
       ${upgradeBar('arena')}
-      <h4>Team · Stärke ${fmt(arena.teamPower())}</h4>
-      ${membersHtml('arena')}
-      <h4>Boss</h4>
+      ${arena.current() ? '' : `<h4>Team · Stärke ${fmt(arena.teamPower())}</h4>
+      ${membersHtml('arena')}`}
+      <h4>${arena.current() ? 'Kampf' : 'Boss'}</h4>
       ${bossHtml()}
       <p class="muted">Vorrat: ${matSummary() || 'noch kein Stoff und keine Seide'}</p>`;
   }
@@ -708,20 +762,22 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
   }
 
   function bossHtml() {
+    if (arena.current()) return battleHtml();
     const boss = arena.bossInfo();
     if (boss) {
-      const odds = arena.winChance();
+      const ratio = arena.ratio();
+      const guess = ratio >= 1.25 ? ['good', 'leicht'] : ratio >= 1 ? ['good', 'machbar'] : ratio >= 0.75 ? ['mid', 'schwer'] : ['bad', 'sehr schwer'];
       return `<div class="chest boss r-${boss.rank}">
         <div class="boss-row">
           <div class="frame" id="boss-frame"></div>
           <div class="info">
             <h3>${boss.name}</h3>
             <span><b class="evo">Rang ${boss.rank}</b> · Stärke ${fmt(boss.power)} · dein Team ${fmt(arena.teamPower())}</span>
-            <span class="odds">Siegchance <b class="${odds >= 0.7 ? 'good' : odds >= 0.35 ? 'mid' : 'bad'}">${arena.teamPower() ? percent(odds) : '–'}</b></span>
-            <span class="muted">Sieg: ${arena.WIN_CLOTH}× Stoff ${boss.rank}, mit ${percent(arena.SILK_CHANCE)} zusätzlich 1× Seide ${boss.rank}. Bei einer Niederlage zieht der Boss ab.</span>
+            <span class="odds">Einschätzung <b class="${guess[0]}">${arena.teamPower() ? guess[1] : '–'}</b></span>
+            <span class="muted">Rundenkampf: Jeder Held wählt Angriff, Spezialfähigkeit oder Verteidigen, dann schlägt der Boss zurück. Sieg: ${arena.WIN_CLOTH}× Stoff ${boss.rank}, mit ${percent(arena.SILK_CHANCE)} zusätzlich 1× Seide ${boss.rank}. Bei einer Niederlage zieht der Boss ab.</span>
           </div>
         </div>
-        <div class="line"><button class="big" data-act="fight" ${arena.teamPower() ? '' : 'disabled'}>Kämpfen!</button></div>
+        <div class="line"><button class="big" data-act="battle-start" ${arena.teamPower() ? '' : 'disabled'}>⚔ Kampf beginnen</button><button data-act="fight" ${arena.teamPower() ? '' : 'disabled'}>Schnellkampf (automatisch)</button></div>
       </div>`;
     }
     const direct = RARITIES.map((r, t) => `
@@ -764,7 +820,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     nextReveal();
   }
 
-  function showFight({ boss, win, odds, stoff, seide }) {
+  function showFight({ boss, win, odds, stoff, seide, rounds }) {
     setTimeout(() => audio.play(win ? 'win' : 'lose'), 420);
     const el = document.createElement('div');
     el.className = `reveal result r-${boss.rank}${win ? '' : ' fail'}`;
@@ -777,7 +833,7 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
         <h3>${boss.name}</h3>
         ${win
           ? `<div class="grid" id="loot"></div><p>${stoff}× Stoff ${boss.rank}${seide ? ` und ${seide}× Seide ${boss.rank}` : ''} erbeutet</p>`
-          : `<p>Der Boss war zu stark und ist weitergezogen.<br>Die Siegchance lag bei ${percent(odds)}.</p>`}
+          : `<p>Der Boss war zu stark und ist weitergezogen.${odds !== undefined ? `<br>Die Siegchance lag bei ${percent(odds)}.` : rounds ? `<br>Gekämpft wurde ${rounds} Runden.` : ''}</p>`}
         <button data-act="reveal-next">Weiter</button>
       </div>`;
     $('.frame', el).append(picture(boss.image));
@@ -2673,6 +2729,9 @@ export function createUI({ onToggle, onOutfit, onTravel, where, onCast, onPortal
     if (act === 'boss-random') { audio.play(arena.challengeRandom() ? 'start' : 'error'); renderArena(); }
     if (act === 'boss') { audio.play(arena.challenge(Number(btn.dataset.v)) ? 'start' : 'error'); renderArena(); }
     if (act === 'fight') fightBoss();
+    if (act === 'battle-start') { if (arena.startBattle()) { audio.play('start'); renderArena(); } else audio.play('error'); }
+    if (act === 'b-act') { audio.click(); battleResult(arena.battleAct(btn.dataset.v)); }
+    if (act === 'b-auto') battleResult(arena.battleAuto(btn.dataset.v === 'end'));
     if (act === 'trade') {
       const got = arena.trade(btn.dataset.k, Number(btn.dataset.v));
       if (got) {

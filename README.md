@@ -820,8 +820,31 @@ Artefakt. Jedes Stück kann nur einmal getragen werden.
 | Preis Boss gezielt (Gold) | 50 | 120 | 300 | 800 | 2500 | 8000 |
 
 - **Zufallsboss:** 30 Gold, der Rang wird mit den Chancen des Brunnens gewürfelt.
-- **Siegchance:** Team-Stärke ÷ Boss-Stärke, begrenzt auf 5–95 %. Nach dem
-  Kampf ist der Boss weg, auch bei einer Niederlage.
+- **Rundenkampf:** Die drei Helden kämpfen Runde für Runde gegen den Boss. Jeder
+  lebende Held wählt nacheinander **⚔ Angriff**, seine **Spezialfähigkeit** oder
+  **🛡 Verteidigen** (halber Schaden bis zur nächsten Runde, +5 % Leben). Danach
+  schlägt der Boss zu: Er trifft einen Helden, holt alle 3 Runden zu einem
+  **Flächenangriff** aus (eine Runde vorher angekündigt, ×1,4 auf alle) und wird
+  unter 30 % Leben **wütend** (+30 % Angriff). Nach 40 Runden zieht er ab.
+  „Runde automatisch“ / „Bis zum Ende automatisch“ spielen mit einer einfachen
+  Taktik; **Schnellkampf** erledigt den ganzen Kampf sofort automatisch.
+- **Klassen** (nach dem Namen des Helden):
+
+| Klasse | Helden | Leben / Angriff | Fähigkeit (Abklingzeit) |
+| --- | --- | --- | --- |
+| ⚔ Krieger | Ritter, Paladin, Berserker | ×1,3 / ×1 | Kraftschlag: 200 % Schaden (3) |
+| ✦ Magier | Magier, Hexe | ×0,85 / ×1,15 | Feuerball: 150 %, Boss brennt 2 Runden je 40 % (3) |
+| ✚ Heiler | Barde, Mönch, Königin | ×1 / ×0,8 | Heilung: alle +35 %, Gefallene zurück mit 25 % (3) |
+| ➶ Waldläufer | Schurke, Waldläufer | ×0,95 / ×1,05 | Doppelschuss: 2 × 90 %, 35 % kritisch (2) |
+
+- **Werte:** Leben = (20 + 2,2 × Stärke) × Klasse, Angriff = (3 + 0,45 × Stärke) ×
+  Klasse; die Stärke enthält Rang, Stufe, Ausrüstung, Umhang, Rubin, Sets und
+  Boni. Boss: Leben 30 + 4,5 × Boss-Stärke, Angriff 3 + 0,28 × Boss-Stärke.
+  Kritische Treffer 10 % (×1,6), Smaragde erhöhen die Chance; Gladiatorrausch
+  +15 % Angriff; der Schutz-Zauber mindert den Schaden des Bosses.
+- **Einschätzung** statt Siegchance: Bei gleicher Stärke gewinnt die Automatik
+  rund 80 %, ab 1,25-facher Stärke praktisch immer – mit guter Taktik mehr.
+  Nach dem Kampf ist der Boss weg, auch bei einer Niederlage.
 - **Beute:** 3× Stoff im Rang des Bosses, mit 40 % zusätzlich 1× Seide.
 - **Arena-Händler:** 3 Stoff → Sammelstück im selben Rang (75 %) oder einen
   Rang höher (25 %). 1 Seide → einen Rang höher (70 %) oder selber Rang (30 %).

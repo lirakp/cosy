@@ -1704,3 +1704,75 @@ test('Errungenschaften: Stufen werden erreicht, zahlen Taler und Punkte und zäh
   // jede Errungenschaft liefert einen Wert
   for (const a of ach.ACHIEVEMENTS) assert.equal(typeof a.value(), 'number', a.id);
 });
+
+// ---------------------------------------------------------------- Rundenkampf
+
+import * as battle from '../src/battle.js';
+
+test('Rundenkampf: Klassen fest je Held, Werte aus der Stärke', () => {
+  assert.equal(battle.classOf('helden-A-3'), battle.classOf('helden-A-3'));
+  const ids = new Set(getGroup('helden', 'B').map((h) => battle.classFor(h.id, h.name)));
+  assert.equal(ids.size, 4, 'alle vier Klassen kommen vor');
+  assert.equal(battle.classFor('x', 'Magier der Kristallgrotte'), 'magier');
+  assert.equal(battle.classFor('x', 'Barde der Drachenhöhle'), 'heiler');
+  assert.equal(battle.classFor('x', 'Ritter des Morgens'), 'krieger');
+  const b = battle.create([{ id: 'x', name: 'X', power: 100, cls: 'krieger' }, { id: 'y', name: 'Y', power: 100, cls: 'magier' }], { tier: 1, kind: 0, name: 'Boss', power: 100 });
+  assert.ok(b.heroes[0].maxHp > b.heroes[1].maxHp, 'Krieger hält mehr aus');
+  assert.ok(b.heroes[1].atk > b.heroes[0].atk, 'Magier trifft härter');
+  assert.equal(battle.active(b).id, 'x');
+});
+
+test('Rundenkampf: Boss kündigt Flächenangriff an, Verteidigen halbiert, Heiler heilt', () => {
+  const r = () => 0.5;
+  const b = battle.create([{ id: 'a', name: 'A', power: 300, cls: 'krieger' }, { id: 'c', name: 'C', power: 300, cls: 'krieger' }], { tier: 3, kind: 0, name: 'Boss', power: 300 });
+  // Runden 1 und 2: angreifen, Runde 3: Boss holt aus
+  for (let i = 0; i < 6; i++) battle.act(b, 'attack', r);
+  assert.equal(b.round, 4);
+  assert.ok(b.boss.charging, 'Ankündigung in Runde 3');
+  for (const h of b.heroes) h.hp = Math.round(h.maxHp * 0.8);
+  const before = b.heroes[0].hp;
+  battle.act(b, 'defend', r);
+  battle.act(b, 'attack', r);
+  const lostA = before - b.heroes[0].hp + Math.round(b.heroes[0].maxHp * battle.DEFEND_HEAL);
+  const lostC = before - b.heroes[1].hp;
+  close(lostA / lostC, battle.DEFEND_MULT, 0.02, 'Verteidigen halbiert');
+  // Heiler heilt alle
+  const h = battle.create([{ id: 'h', name: 'H', power: 300, cls: 'heiler' }, { id: 'k', name: 'K', power: 300, cls: 'krieger' }], { tier: 3, kind: 0, name: 'Boss', power: 300 });
+  h.heroes[1].hp = 1;
+  battle.act(h, 'skill', r);
+  assert.ok(h.heroes[1].hp > h.heroes[1].maxHp * 0.3);
+  assert.equal(h.heroes[0].cd, battle.CLASSES.heiler.skill.cd);
+});
+
+test('Rundenkampf: starke Teams gewinnen, schwache verlieren; Arena zahlt Beute aus', () => {
+  const sim = (ratio) => {
+    let wins = 0;
+    const rnd = seeded(7);
+    for (let i = 0; i < 200; i++) {
+      const b = battle.create([0, 1, 2].map((k) => ({ id: `h${i}-${k}`, name: 'H', power: (500 * ratio) / 3 })), { tier: 3, kind: 0, name: 'B', power: 500 });
+      battle.auto(b, rnd);
+      assert.ok(battle.over(b));
+      if (b.phase === 'won') wins++;
+    }
+    return wins / 200;
+  };
+  assert.ok(sim(1.5) > 0.98);
+  assert.ok(sim(1) > 0.6);
+  assert.ok(sim(0.5) < 0.05);
+  // Arena: Kampf beginnen, Schritt für Schritt, Beute bei Sieg
+  state.buildings.arena = 5;
+  state.addItems(getGroup('helden', 'SS').slice(0, 3));
+  arena.autoEquip();
+  state.arena.boss = { tier: 0, kind: 2 };
+  assert.ok(arena.startBattle());
+  assert.equal(arena.startBattle(), null, 'nur ein Kampf gleichzeitig');
+  let res = true;
+  for (let i = 0; i < 50 && res === true; i++) res = arena.battleAct('attack', seeded(i));
+  assert.ok(res.win);
+  assert.equal(state.arena.mats.stoff[0], arena.WIN_CLOTH);
+  assert.equal(arena.current(), null);
+  assert.equal(state.arena.boss, null);
+  // Schnellkampf
+  state.arena.boss = { tier: 0, kind: 1 };
+  assert.ok(arena.fight().win);
+});

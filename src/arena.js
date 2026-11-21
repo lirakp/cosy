@@ -9,6 +9,8 @@ import { render } from './art/core.js';
 import { MONSTERS } from './art/living.js';
 import { cloth, silk } from './art/materials.js';
 import * as guild from './guild.js';
+import * as battle from './battle.js';
+import * as sets from './sets.js';
 
 // Bossarena: Drei Helden werden ausgerüstet und treten gegen einen Boss an.
 // Siege bringen Stoff und Seide, die der Arena-Händler gegen Sammelstücke tauscht.
@@ -64,8 +66,14 @@ const bossCache = new Map();
 export function bossInfo(boss = a().boss) {
   if (!boss) return null;
   const key = `${boss.kind}-${boss.tier}`;
-  if (!bossCache.has(key)) bossCache.set(key, render(MONSTERS[boss.kind].d, 77000 + boss.kind * 13 + boss.tier, boss.tier));
-  return { ...boss, name: BOSS_NAMES[boss.kind], rank: RARITIES[boss.tier].id, power: BOSS_POWER[boss.tier], image: bossCache.get(key) };
+  // Bild erst bei Bedarf zeichnen (die Spiellogik braucht es nicht)
+  return {
+    ...boss, name: BOSS_NAMES[boss.kind], rank: RARITIES[boss.tier].id, power: BOSS_POWER[boss.tier],
+    get image() {
+      if (!bossCache.has(key)) bossCache.set(key, render(MONSTERS[boss.kind].d, 77000 + boss.kind * 13 + boss.tier, boss.tier));
+      return bossCache.get(key);
+    },
+  };
 }
 
 const summon = (tier) => {
@@ -81,16 +89,50 @@ export const challengeRandom = () => !a().boss && state.spend(RANDOM_PRICE, 'are
 export const canChallenge = (tier) => tier <= arenaTier();
 export const challenge = (tier) => !a().boss && canChallenge(tier) && state.spend(BOSS_PRICE[tier], 'arena') && summon(tier);
 
-// Smaragd: + Erfolgschance
+// Grobe Einschätzung (für die Anzeige): Team-Stärke im Verhältnis zum Boss
+export const ratio = (boss = a().boss) => (boss && teamPower() ? teamPower() / BOSS_POWER[boss.tier] : 0);
+// Alte Siegchance (Bossrush/Abstieg rechnen weiter so); für die Arena nur noch als Richtwert
 export const winChance = (boss = a().boss) => (boss && teamPower() ? buffs.gladiator(clamp(teamPower() / BOSS_POWER[boss.tier] + party.gemSum('smaragd'))) : 0);
 
-export function fight() {
+// ---------------------------------------------------------------- Rundenkampf
+
+// Der laufende Kampf liegt im Spielstand (übersteht Neuladen)
+export const current = () => a().battle || null;
+
+// Kampf beginnen: die Helden des Arena-Teams gegen den herausgeforderten Boss
+export function startBattle() {
   const boss = bossInfo();
-  if (!boss || !teamPower()) return null;
-  // Schutzschild aus dem Zauberbuch wird beim Kampf verbraucht
+  if (!boss || !teamPower() || current()) return null;
+  const mult = (1 + sets.bonus('arenaPower')) * (1 + companions.bonus('power'));
+  const heroes = team().filter((m) => m.hero).map((m) => ({ id: m.hero, name: getItem(m.hero).name, power: Math.round(memberPower(m) * mult) }));
+  // Schutzschild (Zauber) mindert den Schaden, Gladiatorrausch stärkt Angriffe, Smaragd bringt kritische Treffer
   const shield = magic.useShield();
-  const odds = shield ? magic.shielded(winChance(), shield) : winChance();
-  const result = { boss, odds, win: Math.random() < odds, stoff: 0, seide: 0 };
+  const mods = { atkMult: buffs.active('gladiator') ? 1.15 : 1, guard: shield || 0, crit: party.gemSum('smaragd') * 2 };
+  a().battle = battle.create(heroes, { tier: boss.tier, kind: boss.kind, name: boss.name, power: boss.power }, mods);
+  state.changed();
+  return current();
+}
+
+// Aktion des Helden, der dran ist. Liefert das Ergebnis, sobald der Kampf entschieden ist.
+export function battleAct(action, r = Math.random) {
+  const b = current();
+  if (!b || !battle.act(b, action, r)) return null;
+  state.changed();
+  return battle.over(b) ? finishBattle() : true;
+}
+export function battleAuto(untilEnd = true, r = Math.random) {
+  const b = current();
+  if (!b) return null;
+  battle.auto(b, r, untilEnd);
+  state.changed();
+  return battle.over(b) ? finishBattle() : true;
+}
+
+// Kampf auswerten: Beute bei Sieg, der Boss zieht in jedem Fall ab
+function finishBattle() {
+  const b = current();
+  const boss = bossInfo({ tier: b.boss.tier, kind: b.boss.kind });
+  const result = { boss, win: b.phase === 'won', rounds: b.round, stoff: 0, seide: 0 };
   if (result.win) {
     guild.record('arena');
     result.stoff = WIN_CLOTH;
@@ -100,9 +142,16 @@ export function fight() {
     a().mats.seide[boss.tier] += result.seide;
     a().wins++;
   }
+  a().battle = null;
   a().boss = null;
   state.changed();
   return result;
+}
+
+// Schnellkampf: automatisch bis zum Ende
+export function fight(r = Math.random) {
+  if (!current() && !startBattle()) return null;
+  return battleAuto(true, r);
 }
 
 // ---------------------------------------------------------------- Händler
