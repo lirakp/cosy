@@ -3,7 +3,7 @@ name: Desktop-App bauen
 # Baut das Windows-Programm und legt es als Download unter "Releases" ab.
 on:
   push:
-    branches: [main, claude/cozy-game-foundation-nhof2p]
+    branches: [main, claude/pixel-game-foundation-nhof2p]
     paths-ignore: ['README.md']
   workflow_dispatch:
 

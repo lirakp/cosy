@@ -3,7 +3,7 @@ name: Android-App bauen
 # Baut die Android-App (APK) und legt sie als Download unter "Releases" ab.
 on:
   push:
-    branches: [main, claude/cozy-game-foundation-nhof2p]
+    branches: [main, claude/pixel-game-foundation-nhof2p]
     paths-ignore: ['README.md']
   workflow_dispatch:
 
